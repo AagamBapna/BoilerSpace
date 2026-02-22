@@ -1,13 +1,19 @@
-const express = require("express");
+const express = require('express');
+const cors = require('cors');
+const buildingRoutes = require('./routes/buildings');
 
 const app = express();
 
 // Middleware
+app.use(cors());
 app.use(express.json());
 
-// Test route
-app.get("/", (req, res) => {
-  res.send("BoilerSpace API running");
+// Routes
+app.use('/api/buildings', buildingRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 module.exports = app;
