@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
+import CourseSelector from './components/CourseSelector';
 import './index.css';
+
+const MOCK_USER_ID = 'u001';
 
 export default function App() {
   const [buildings, setBuildings] = useState([]);
@@ -10,6 +13,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showCourseSelector, setShowCourseSelector] = useState(false);
 
   // Fetch buildings on mount
   useEffect(() => {
@@ -110,6 +114,23 @@ export default function App() {
         selectedBuilding={selectedBuilding}
         onSelectBuilding={handleSelectBuilding}
       />
+
+      {/* Profile Button */}
+      <button
+        onClick={() => setShowCourseSelector(true)}
+        className="profile-button"
+      >
+        <div className="profile-avatar">T</div>
+        <span>My Courses</span>
+      </button>
+
+      {/* Course Selector Modal */}
+      {showCourseSelector && (
+        <CourseSelector
+          userId={MOCK_USER_ID}
+          onClose={() => setShowCourseSelector(false)}
+        />
+      )}
 
       {/* Mobile toggle button */}
       <button
