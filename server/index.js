@@ -21,17 +21,19 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Start server (MongoDB required for /api/clubs)
+// Start server only when run directly (not when required by tests)
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/boilerspace';
 
-mongoose.connect(MONGO_URI).then(() => {
-  app.listen(PORT, () => {
-    console.log(`BoilerSpace API running on http://localhost:${PORT}`);
+if (require.main === module) {
+  mongoose.connect(MONGO_URI).then(() => {
+    app.listen(PORT, () => {
+      console.log(`BoilerSpace API running on http://localhost:${PORT}`);
+    });
+  }).catch((err) => {
+    console.error('MongoDB connection failed:', err);
+    process.exit(1);
   });
-}).catch((err) => {
-  console.error('MongoDB connection failed:', err);
-  process.exit(1);
-});
+}
 
 module.exports = app;
