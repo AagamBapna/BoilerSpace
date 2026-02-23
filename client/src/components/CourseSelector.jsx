@@ -7,7 +7,6 @@ export default function CourseSelector({ userId, onClose }) {
   const [userCourses, setUserCourses] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -15,28 +14,31 @@ export default function CourseSelector({ userId, onClose }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [coursesRes, userCoursesRes] = await Promise.all([
+        const [fetchedCourses, fetchedUserCourses] = await Promise.all([
           axios.get('/api/courses'),
           axios.get(`/api/users/${userId}/courses`)
         ]);
-        setCourses(coursesRes.data);
-        setUserCourses(userCoursesRes.data);
-        setSelectedCourses(userCoursesRes.data.map(c => c._id));
+        setCourses(fetchedCourses.data);
+        setUserCourses(fetchedUserCourses.data);
+        setSelectedCourses(fetchedUserCourses.data.map(c => c._id));
       } catch (err) {
         console.error('Failed to fetch data:', err);
-        setError('Failed to load courses. Please try again.');
+        if (err.response?.status === 401) {
+          setError('You must be logged in to view your courses.');
+        } else {
+          setError('Failed to load courses. Please try again.');
+        }
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [userId]);
 
   const departments = [...new Set(courses.map(c => c.department))].sort();
 
   const filteredCourses = courses.filter(course => {
-    const matchesSearch = 
+    const matchesSearch =
       course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDepartment = !departmentFilter || course.department === departmentFilter;
@@ -54,19 +56,30 @@ export default function CourseSelector({ userId, onClose }) {
   };
 
   const handleSave = async () => {
+    // in the event that the user attempts to save invalid courses are being 
+    if (searchTerm.trim() !== '' && filteredCourses.length === 0) {
+      setError(`Invalid course ID provided: ${searchTerm}`);
+      setSuccess(false);
+      return;
+    }
     setSaving(true);
     setError(null);
     setSuccess(false);
-
     try {
       const response = await axios.post(`/api/users/${userId}/courses`, {
         courseIds: selectedCourses
+      }, {
+        headers: { 'x-user-id': userId }
       });
       setUserCourses(response.data.courses);
       setSuccess(true);
     } catch (err) {
       console.error('Failed to save courses:', err);
-      if (err.response?.data?.error) {
+      if (err.response?.status === 401) {
+        setError('You must be logged in to save courses.');
+      } else if (err.response?.data?.invalidIds) {
+        setError(`Invalid course IDs: ${err.response.data.invalidIds.join(', ')}`);
+      } else if (err.response?.data?.error) {
         setError(err.response.data.error);
       } else {
         setError('Failed to save courses. Please try again.');
@@ -82,29 +95,16 @@ export default function CourseSelector({ userId, onClose }) {
       .filter(Boolean);
   };
 
-  if (loading) {
-    return (
-      <div className="course-selector-overlay">
-        <div className="course-selector-modal">
-          <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-3 border-[var(--color-purdue-gold)]/30 border-t-[var(--color-purdue-gold)] rounded-full animate-spin" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="course-selector-overlay">
-      <div className="course-selector-modal">
-        {/* Header */}
+    <div className="background-blur">
+      <div className="course-selector">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
               Select Your Courses
             </h2>
-            <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-              Choose the classes you're taking this semester
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Choose your classes for the semester
             </p>
           </div>
           <button
@@ -116,8 +116,6 @@ export default function CourseSelector({ userId, onClose }) {
             </svg>
           </button>
         </div>
-
-        {/* Error/Success Messages */}
         {error && (
           <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
             {error}
@@ -128,7 +126,6 @@ export default function CourseSelector({ userId, onClose }) {
             Courses saved successfully!
           </div>
         )}
-
         {/* Filters */}
         <div className="flex gap-3 mb-4">
           <div className="flex-1 relative">
@@ -154,7 +151,6 @@ export default function CourseSelector({ userId, onClose }) {
             ))}
           </select>
         </div>
-
         {/* Selected Courses Tags */}
         {selectedCourses.length > 0 && (
           <div className="mb-4">
@@ -181,7 +177,6 @@ export default function CourseSelector({ userId, onClose }) {
             </div>
           </div>
         )}
-
         {/* Course List */}
         <div className="course-list">
           {filteredCourses.length === 0 ? (
@@ -201,11 +196,10 @@ export default function CourseSelector({ userId, onClose }) {
                   className="sr-only"
                 />
                 <div className="flex items-start gap-3 w-full">
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
-                    selectedCourses.includes(course._id)
-                      ? 'bg-[var(--color-purdue-gold)] border-[var(--color-purdue-gold)]'
-                      : 'border-[var(--color-border)]'
-                  }`}>
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${selectedCourses.includes(course._id)
+                    ? 'bg-[var(--color-purdue-gold)] border-[var(--color-purdue-gold)]'
+                    : 'border-[var(--color-border)]'
+                    }`}>
                     {selectedCourses.includes(course._id) && (
                       <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -230,7 +224,6 @@ export default function CourseSelector({ userId, onClose }) {
             ))
           )}
         </div>
-
         {/* Footer Actions */}
         <div className="flex items-center justify-between mt-6 pt-4 border-t border-[var(--color-border)]">
           <span className="text-sm text-[var(--color-text-secondary)]">

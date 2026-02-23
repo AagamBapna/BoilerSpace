@@ -246,12 +246,12 @@ body {
   }
 }
 
-/* ── Course Selector Modal ──────────────────────────────────────── */
-.course-selector-overlay {
+/* ── Course Selector ──────────────────────────────────────── */
+.background-blur {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(2px);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -260,9 +260,9 @@ body {
   animation: fadeIn 0.2s ease;
 }
 
-.course-selector-modal {
+.course-selector {
   background: var(--color-surface-light);
-  border: 1px solid rgba(206, 184, 136, 0.15);
+  border: 1px solid rgba(206, 184, 136, 0.2);
   border-radius: 16px;
   width: 100%;
   max-width: 560px;
@@ -270,7 +270,6 @@ body {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
 }
 
 .course-list {
@@ -299,7 +298,7 @@ body {
 }
 
 .course-item.selected {
-  background: rgba(206, 184, 136, 0.08);
+  background: rgba(206, 184, 136, 0.2);
   border-color: rgba(206, 184, 136, 0.2);
 }
 

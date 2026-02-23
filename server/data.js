@@ -132,7 +132,6 @@ const rooms = [
 ];
 
 const courses = [
-    // Computer Science
     { _id: 'c001', code: 'CS 18000', title: 'Problem Solving And Object-Oriented Programming', department: 'Computer Science', semester: 'Spring', year: 2026 },
     { _id: 'c002', code: 'CS 18200', title: 'Foundations of Computer Science', department: 'Computer Science', semester: 'Spring', year: 2026 },
     { _id: 'c003', code: 'CS 24000', title: 'Programming In C', department: 'Computer Science', semester: 'Spring', year: 2026 },
@@ -146,7 +145,6 @@ const courses = [
     { _id: 'c011', code: 'CS 40800', title: 'Software Testing', department: 'Computer Science', semester: 'Spring', year: 2026 },
     { _id: 'c012', code: 'CS 42200', title: 'Computer Networks', department: 'Computer Science', semester: 'Spring', year: 2026 },
     
-    // Mathematics
     { _id: 'c013', code: 'MA 16100', title: 'Plane Analytic Geometry And Calculus I', department: 'Mathematics', semester: 'Spring', year: 2026 },
     { _id: 'c014', code: 'MA 16200', title: 'Plane Analytic Geometry And Calculus II', department: 'Mathematics', semester: 'Spring', year: 2026 },
     { _id: 'c015', code: 'MA 26100', title: 'Multivariate Calculus', department: 'Mathematics', semester: 'Spring', year: 2026 },
@@ -155,26 +153,21 @@ const courses = [
     { _id: 'c018', code: 'MA 35100', title: 'Elementary Linear Algebra', department: 'Mathematics', semester: 'Spring', year: 2026 },
     { _id: 'c019', code: 'MA 41600', title: 'Probability', department: 'Mathematics', semester: 'Spring', year: 2026 },
     
-    // Statistics
     { _id: 'c020', code: 'STAT 35000', title: 'Introduction to Statistics', department: 'Statistics', semester: 'Spring', year: 2026 },
     { _id: 'c021', code: 'STAT 41600', title: 'Probability', department: 'Statistics', semester: 'Spring', year: 2026 },
     { _id: 'c022', code: 'STAT 51100', title: 'Statistical Methods', department: 'Statistics', semester: 'Spring', year: 2026 },
     
-    // Physics
     { _id: 'c023', code: 'PHYS 17200', title: 'Modern Mechanics', department: 'Physics', semester: 'Spring', year: 2026 },
     { _id: 'c024', code: 'PHYS 24100', title: 'Electricity And Optics', department: 'Physics', semester: 'Spring', year: 2026 },
     { _id: 'c025', code: 'PHYS 27200', title: 'Electric And Magnetic Interactions', department: 'Physics', semester: 'Spring', year: 2026 },
     
-    // Electrical and Computer Engineering
     { _id: 'c026', code: 'ECE 20001', title: 'Electrical Engineering Fundamentals I', department: 'Electrical and Computer Engineering', semester: 'Spring', year: 2026 },
     { _id: 'c027', code: 'ECE 20002', title: 'Electrical Engineering Fundamentals II', department: 'Electrical and Computer Engineering', semester: 'Spring', year: 2026 },
     { _id: 'c028', code: 'ECE 26400', title: 'Advanced C Programming', department: 'Electrical and Computer Engineering', semester: 'Spring', year: 2026 },
     { _id: 'c029', code: 'ECE 30100', title: 'Signals And Systems', department: 'Electrical and Computer Engineering', semester: 'Spring', year: 2026 },
     
-    // Communication
     { _id: 'c030', code: 'COM 11400', title: 'Fundamentals of Speech Communication', department: 'Communication', semester: 'Spring', year: 2026 },
     
-    // English
     { _id: 'c031', code: 'ENGL 10600', title: 'First-Year Composition', department: 'English', semester: 'Spring', year: 2026 },
     { _id: 'c032', code: 'ENGL 10800', title: 'Accelerated First-Year Composition', department: 'English', semester: 'Spring', year: 2026 },
 ];
@@ -183,12 +176,12 @@ const users = [
     {
         _id: 'u001',
         email: 'testuser@purdue.edu',
-        password: '$2b$10$placeholder', // placeholder hash
+        password: '$2b$10$placeholder',
         displayName: 'Test User',
         major: 'Computer Science',
         year: 2026,
         isVerified: true,
-        courses: ['c007', 'c005', 'c015'], // CS 30700, CS 25100, MA 26100
+        courses: ['c007', 'c006', 'c020'], // CS 30700, CS 25100, MA 26100
         profileVisibility: 'public',
     },
 ];

@@ -124,7 +124,7 @@ export default function App() {
         <span>My Courses</span>
       </button>
 
-      {/* Course Selector Modal */}
+      {/* Course Selector*/}
       {showCourseSelector && (
         <CourseSelector
           userId={MOCK_USER_ID}
