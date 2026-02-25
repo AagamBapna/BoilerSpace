@@ -280,7 +280,8 @@ describe('App — Sidebar Search Filter', () => {
         await waitFor(() => {
             expect(screen.getByText('1 building')).toBeInTheDocument();
         });
-        expect(screen.getByText('Wilmeth Active Learning Center')).toBeInTheDocument();
+        // Building appears in both sidebar list and search dropdown
+        expect(screen.getAllByText('Wilmeth Active Learning Center').length).toBeGreaterThanOrEqual(1);
     });
 
     test('shows "no buildings found" for unmatched query', async () => {
