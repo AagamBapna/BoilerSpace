@@ -1,17 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 const buildingRoutes = require('./routes/buildings');
-
+const courseRoutes = require('./routes/courses');
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Routes
 app.use('/api/buildings', buildingRoutes);
+app.use('/api/courses', courseRoutes);
 
-// Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
