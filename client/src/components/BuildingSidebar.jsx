@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import SearchBar from './SearchBar';
 
 export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose }) {
     const [rooms, setRooms] = useState([]);
@@ -29,7 +30,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
         fetchRooms();
     }, [selectedBuilding]);
 
-    // Filter buildings by search query
+    // Filter buildings by search query (kept in sync with SearchBar)
     const filteredBuildings = buildings.filter(
         (b) =>
             b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -56,29 +57,15 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                     </div>
                 </div>
 
-                {/* Search */}
-                <div className="relative">
-                    <svg
-                        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-secondary)]"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        />
-                    </svg>
-                    <input
-                        type="text"
-                        placeholder="Search buildings (e.g. WALC, Lawson)..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-[var(--color-surface)] border border-white/10 rounded-lg text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-purdue-gold)]/40 transition-colors"
-                    />
-                </div>
+                {/* Search — uses reusable SearchBar component */}
+                <SearchBar
+                    buildings={buildings}
+                    onSelectBuilding={(building) => {
+                        setSearchQuery('');
+                        onSelectBuilding(building);
+                    }}
+                    onSearchChange={setSearchQuery}
+                />
             </div>
 
             {/* Selected building detail view */}
