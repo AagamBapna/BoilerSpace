@@ -43,6 +43,7 @@ export default function App() {
 
   const handleSelectBuilding = useCallback((building) => {
     setSelectedBuilding(building);
+    setSidebarOpen(true); // auto-open sidebar on mobile when selecting from search
   }, []);
 
   const handleCloseSidebar = useCallback(() => {
