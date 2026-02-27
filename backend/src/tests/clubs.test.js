@@ -1,26 +1,24 @@
-/**
- * Clubs API tests (User Story 71).
- */
-const { describe, it, before, after } = require('node:test');
+
 const assert = require('node:assert');
 const mongoose = require('mongoose');
 const request = require('supertest');
 
-const app = require('../index');
+const app = require('../app');
 const Club = require('../models/Club');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/boilerspace';
 
 describe('Clubs API', () => {
-  before(async () => {
+  beforeAll(async () => {
     await mongoose.connect(MONGO_URI);
   });
 
-  after(async () => {
+  afterAll(async () => {
     await Club.deleteMany({});
     await mongoose.disconnect();
   });
 
+  // ...existing code...
   describe('POST /api/clubs', () => {
     it('returns 400 when name is missing', async () => {
       const res = await request(app)

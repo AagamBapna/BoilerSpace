@@ -11,7 +11,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/buildings', buildingRoutes);
-app.use('/api/clubs', clubRoutes); // User Story 71: club profile create/update/retrieve
+app.use('/api/clubs', clubRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

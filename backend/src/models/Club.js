@@ -1,11 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * Club profile model (User Story 71: Club Profile Creation & Management).
- *
- * Stores organization info so students can discover and view clubs.
- * Authentication is handled elsewhere; this schema only stores the organizer
- * identifier for ownership checks on update.
+ * Club profile model
  */
 const clubSchema = new mongoose.Schema(
   {
