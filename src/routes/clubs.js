@@ -31,7 +31,7 @@ router.get('/', optionalAuth, async (req, res) => {
 
 /**
  * GET /api/clubs/:id
- * Get a single club profile. Public.
+ * Get a single club profile. 
  */
 router.get('/:id', optionalAuth, async (req, res) => {
   try {

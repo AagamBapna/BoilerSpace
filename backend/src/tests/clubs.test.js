@@ -1,6 +1,5 @@
 /**
  * Clubs API tests (User Story 71).
- * Run: npm run test:clubs (from server folder). Requires MongoDB.
  */
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
