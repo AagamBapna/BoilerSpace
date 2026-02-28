@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-
 const checkInSchema = new mongoose.Schema(
     {
         buildingId: {
@@ -19,4 +18,7 @@ const checkInSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
+
+checkInSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+
 module.exports = mongoose.model('CheckIn', checkInSchema);
