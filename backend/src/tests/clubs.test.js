@@ -6,11 +6,14 @@ const request = require('supertest');
 const app = require('../app');
 const Club = require('../models/Club');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/boilerspace';
+const { MongoMemoryServer } = require('mongodb-memory-server');
+
+let mongoServer;
 
 describe('Clubs API', () => {
   beforeAll(async () => {
-    await mongoose.connect(MONGO_URI);
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri());
   });
 
   afterAll(async () => {
@@ -18,7 +21,7 @@ describe('Clubs API', () => {
     await mongoose.disconnect();
   });
 
-  // ...existing code...
+
   describe('POST /api/clubs', () => {
     it('returns 400 when name is missing', async () => {
       const res = await request(app)
