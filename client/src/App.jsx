@@ -2,16 +2,17 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
+import RegisterForm from './components/RegisterForm';
 import './index.css';
 
 export default function App() {
+  const [user, setUser] = useState(null);
   const [buildings, setBuildings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Fetch buildings on mount
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
@@ -28,13 +29,12 @@ export default function App() {
     fetchBuildings();
   }, []);
 
-  // Listen for "View Rooms" click from map popup
   useEffect(() => {
     const handler = (e) => {
       const building = buildings.find((b) => b._id === e.detail);
       if (building) {
         setSelectedBuilding(building);
-        setSidebarOpen(true); // auto-open sidebar on mobile when viewing rooms
+        setSidebarOpen(true);
       }
     };
     document.addEventListener('viewRooms', handler);
@@ -43,7 +43,7 @@ export default function App() {
 
   const handleSelectBuilding = useCallback((building) => {
     setSelectedBuilding(building);
-    setSidebarOpen(true); // auto-open sidebar on mobile when selecting from search
+    setSidebarOpen(true);
   }, []);
 
   const handleCloseSidebar = useCallback(() => {
@@ -85,9 +85,12 @@ export default function App() {
     );
   }
 
+  if (!user) {
+    return <RegisterForm onSuccess={setUser} />;
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden relative">
-      {/* Mobile backdrop overlay */}
       {sidebarOpen && (
         <div
           className="sidebar-backdrop"
@@ -95,7 +98,6 @@ export default function App() {
         />
       )}
 
-      {/* Sidebar */}
       <div className={`sidebar-container ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <BuildingSidebar
           buildings={buildings}
@@ -105,14 +107,12 @@ export default function App() {
         />
       </div>
 
-      {/* Map */}
       <CampusMap
         buildings={buildings}
         selectedBuilding={selectedBuilding}
         onSelectBuilding={handleSelectBuilding}
       />
 
-      {/* Mobile toggle button */}
       <button
         onClick={toggleSidebar}
         className="sidebar-toggle"
