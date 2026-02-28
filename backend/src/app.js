@@ -3,6 +3,8 @@ const cors = require('cors');
 const buildingRoutes = require('./routes/buildings');
 const authRoutes = require('./routes/auth');
 
+require('./config/passport');
+
 const app = express();
 
 app.use(cors());
