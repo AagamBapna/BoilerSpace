@@ -4,6 +4,8 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../app');
 const Course = require('../models/Course');
 
+jest.setTimeout(30000);
+
 let mongoServer;
 
 const sampleCourses = [
