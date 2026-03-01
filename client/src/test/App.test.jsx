@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/react';
 import App from '../App';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
@@ -325,10 +326,12 @@ describe('App — Sidebar Search Filter', () => {
         const searchInput = screen.getByPlaceholderText(/Search buildings/);
         await user.type(searchInput, 'XYZ999');
 
-        await waitFor(() => {
-            expect(screen.getByText(/No buildings found/)).toBeInTheDocument();
-        });
-    });
+        const dropdown = await screen.findByRole('listbox');
+
+        expect(
+        within(dropdown).getByText(/No buildings found matching/i)
+        ).toBeInTheDocument();
+            });
 
     test('restores full list when search is cleared', async () => {
         const user = userEvent.setup();

@@ -25,7 +25,7 @@ function HighlightMatch({ text, query }) {
     );
 }
 
-export default function SearchBar({ buildings = [], onSelectBuilding, onSearchChange }) {
+export default function SearchBar({ buildings, onSelectBuilding, onSearchChange }) {
     const [query, setQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [activeIndex, setActiveIndex] = useState(-1);
