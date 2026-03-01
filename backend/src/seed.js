@@ -2,6 +2,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const Building = require('./models/Building');
 const Room = require('./models/Room');
+const Course = require('./models/Course');
 
 const MONGO_URI = process.env.MONGO_URI;
 
@@ -137,21 +138,60 @@ const roomsData = {
     ],
 };
 
+// ─── Course Data ──────────────────────────────────────────────────────────────
+// Representative Purdue courses for Spring 2026
+const coursesData = [
+    // Computer Science
+    { courseCode: 'CS 18000',  department: 'CS', title: 'Problem Solving And Object-Oriented Programming',        semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'CS 18200',  department: 'CS', title: 'Foundations of Computer Science',                        semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 24000',  department: 'CS', title: 'Programming in C',                                       semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 25000',  department: 'CS', title: 'Computer Architecture',                                  semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'CS 25100',  department: 'CS', title: 'Data Structures and Algorithms',                         semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 30700',  department: 'CS', title: 'Software Engineering I',                                 semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 35400',  department: 'CS', title: 'Operating Systems',                                      semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 37300',  department: 'CS', title: 'Data Mining and Machine Learning',                       semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 38100',  department: 'CS', title: 'Introduction to the Analysis of Algorithms',             semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 40800',  department: 'CS', title: 'Software Testing',                                       semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 42200',  department: 'CS', title: 'Computer Networks',                                      semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 44800',  department: 'CS', title: 'Introduction to Relational Database Systems',            semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 47100',  department: 'CS', title: 'Introduction to Artificial Intelligence',                semester: 'Spring 2026', credits: 3 },
+    // Mathematics
+    { courseCode: 'MA 16100',  department: 'MA', title: 'Plane Analytic Geometry and Calculus I',                 semester: 'Spring 2026', credits: 5 },
+    { courseCode: 'MA 16200',  department: 'MA', title: 'Plane Analytic Geometry and Calculus II',                semester: 'Spring 2026', credits: 5 },
+    { courseCode: 'MA 26100',  department: 'MA', title: 'Multivariate Calculus',                                  semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'MA 26500',  department: 'MA', title: 'Linear Algebra',                                         semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'MA 26600',  department: 'MA', title: 'Ordinary Differential Equations',                        semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'MA 34100',  department: 'MA', title: 'Foundations of Analysis',                                semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'MA 35100',  department: 'MA', title: 'Elementary Linear Algebra',                              semester: 'Spring 2026', credits: 3 },
+    // Electrical and Computer Engineering
+    { courseCode: 'ECE 20001', department: 'ECE', title: 'Electrical Engineering Fundamentals I',                 semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'ECE 20002', department: 'ECE', title: 'Electrical Engineering Fundamentals II',                semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'ECE 30100', department: 'ECE', title: 'Signals and Systems',                                   semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'ECE 36800', department: 'ECE', title: 'Data Structures',                                       semester: 'Spring 2026', credits: 3 },
+    // Statistics
+    { courseCode: 'STAT 35000', department: 'STAT', title: 'Introduction to Statistics',                          semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'STAT 41600', department: 'STAT', title: 'Probability',                                         semester: 'Spring 2026', credits: 3 },
+    // Physics
+    { courseCode: 'PHYS 17200', department: 'PHYS', title: 'Modern Mechanics',                                    semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'PHYS 27200', department: 'PHYS', title: 'Electric and Magnetic Interactions',                  semester: 'Spring 2026', credits: 4 },
+    // Management
+    { courseCode: 'MGMT 20000', department: 'MGMT', title: 'Introductory Accounting',                             semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'MGMT 31000', department: 'MGMT', title: 'Financial Management',                                semester: 'Spring 2026', credits: 3 },
+];
+
 async function seed() {
     try {
         await mongoose.connect(MONGO_URI);
         console.log('Connected to MongoDB');
 
-        // Wipe existing data so re-runs never create duplicates
+        // ── Buildings & Rooms ──────────────────────────────────────────────────
         await Building.deleteMany({});
         await Room.deleteMany({});
         console.log('Cleared existing buildings and rooms');
 
-        // Insert buildings (already in alphabetical order above)
         const createdBuildings = await Building.insertMany(buildingsData);
         console.log(`Inserted ${createdBuildings.length} buildings`);
 
-        // Build rooms array using real _id references
         const allRooms = [];
         for (const building of createdBuildings) {
             const rooms = roomsData[building.abbreviation] || [];
@@ -159,9 +199,15 @@ async function seed() {
                 allRooms.push({ ...room, buildingId: building._id });
             }
         }
-
         const createdRooms = await Room.insertMany(allRooms);
         console.log(`Inserted ${createdRooms.length} rooms`);
+
+        // ── Courses ────────────────────────────────────────────────────────────
+        await Course.deleteMany({});
+        console.log('Cleared existing courses');
+
+        const createdCourses = await Course.insertMany(coursesData);
+        console.log(`Inserted ${createdCourses.length} courses`);
 
         console.log('Seed complete!');
     } catch (err) {
