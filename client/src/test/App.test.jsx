@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
@@ -101,13 +102,21 @@ describe('App — Loading & Error States', () => {
     test('shows loading spinner while fetching buildings', () => {
         // API never resolves — stays loading
         axios.get.mockReturnValue(new Promise(() => { }));
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         expect(screen.getByText('Loading BoilerSpace...')).toBeInTheDocument();
     });
 
     test('shows error message when API fails', async () => {
         axios.get.mockRejectedValueOnce(new Error('Network Error'));
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByText('Connection Error')).toBeInTheDocument();
         });
@@ -117,7 +126,11 @@ describe('App — Loading & Error States', () => {
 
     test('shows login form when not authenticated', async () => {
         axios.get.mockResolvedValueOnce({ data: sampleBuildings });
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
         });
@@ -147,7 +160,11 @@ describe('App — Building List Rendering', () => {
     });
 
     test('displays all buildings in the sidebar list', async () => {
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByText('Wilmeth Active Learning Center')).toBeInTheDocument();
         });
@@ -155,14 +172,22 @@ describe('App — Building List Rendering', () => {
     });
 
     test('shows building count', async () => {
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByText('2 buildings')).toBeInTheDocument();
         });
     });
 
     test('shows building abbreviations', async () => {
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByText('WALC')).toBeInTheDocument();
         });
@@ -183,7 +208,11 @@ describe('App — Building Selection & Room Display', () => {
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: sampleRooms });
 
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
 
         // Wait for buildings to load
         await waitFor(() => {
@@ -215,7 +244,11 @@ describe('App — Building Selection & Room Display', () => {
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: sampleRooms });
 
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByText('Wilmeth Active Learning Center')).toBeInTheDocument();
         });
@@ -239,7 +272,11 @@ describe('App — Building Selection & Room Display', () => {
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: sampleRooms });
 
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByText('Wilmeth Active Learning Center')).toBeInTheDocument();
         });
@@ -260,7 +297,11 @@ describe('App — Building Selection & Room Display', () => {
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: [] });
 
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByText('Wilmeth Active Learning Center')).toBeInTheDocument();
         });
@@ -283,7 +324,11 @@ describe('App — Sidebar Search Filter', () => {
 
     test('filters buildings by name', async () => {
         const user = userEvent.setup();
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByText('2 buildings')).toBeInTheDocument();
         });
@@ -300,7 +345,11 @@ describe('App — Sidebar Search Filter', () => {
 
     test('filters buildings by abbreviation', async () => {
         const user = userEvent.setup();
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByText('2 buildings')).toBeInTheDocument();
         });
@@ -317,7 +366,11 @@ describe('App — Sidebar Search Filter', () => {
 
     test('shows "no buildings found" for unmatched query', async () => {
         const user = userEvent.setup();
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByText('2 buildings')).toBeInTheDocument();
         });
@@ -332,7 +385,11 @@ describe('App — Sidebar Search Filter', () => {
 
     test('restores full list when search is cleared', async () => {
         const user = userEvent.setup();
-        render(<App />);
+        render(
+            <MemoryRouter>
+                <App />
+            </MemoryRouter>
+            );
         await waitFor(() => {
             expect(screen.getByText('2 buildings')).toBeInTheDocument();
         });
