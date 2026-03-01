@@ -25,7 +25,7 @@ export default defineConfig(async () => {
       environment: 'happy-dom',
       setupFiles: './src/test/setup.js',
       css: false,
-      pool: 'vmThreads',
+      pool: 'forks',
       exclude: [...configDefaults.exclude],
       server: {
         deps: {
