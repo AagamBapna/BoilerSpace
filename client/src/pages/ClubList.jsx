@@ -75,7 +75,6 @@ export default function ClubList() {
             buildings={clubsForSearch}
             onSelectBuilding={handleSelectClub}
             onSearchChange={handleSearchChange}
-            placeholder="Search clubs..."
           />
         </div>
       )}

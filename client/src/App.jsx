@@ -1,22 +1,34 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
 import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
-import ClubList from './pages/ClubList';
-import ClubProfile from './pages/ClubProfile';
-import CreateClub from './pages/CreateClub';
 import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
-function MapPage({ user, onLogout }) {
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [authMode, setAuthMode] = useState('login');
   const [buildings, setBuildings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      setToken(token);
+      axios.get('/api/auth/me')
+        .then((res) => setUser(res.data))
+        .catch(() => clearToken())
+        .finally(() => setAuthChecking(false));
+    } else {
+      setAuthChecking(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchBuildings = async () => {
@@ -30,6 +42,7 @@ function MapPage({ user, onLogout }) {
         setLoading(false);
       }
     };
+
     fetchBuildings();
   }, []);
 
@@ -58,7 +71,12 @@ function MapPage({ user, onLogout }) {
     setSidebarOpen((prev) => !prev);
   }, []);
 
-  if (loading) {
+  const handleLogout = useCallback(() => {
+    clearToken();
+    setUser(null);
+  }, []);
+
+  if (authChecking || loading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-[var(--color-surface)]">
         <div className="flex flex-col items-center gap-4">
@@ -89,79 +107,6 @@ function MapPage({ user, onLogout }) {
     );
   }
 
-  return (
-    <div className="flex h-screen w-screen overflow-hidden relative">
-      {sidebarOpen && (
-        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
-      )}
-      <div className={`sidebar-container ${sidebarOpen ? 'sidebar-open' : ''}`}>
-        <BuildingSidebar
-          buildings={buildings}
-          selectedBuilding={selectedBuilding}
-          onSelectBuilding={handleSelectBuilding}
-          onClose={handleCloseSidebar}
-          user={user}
-          onLogout={onLogout}
-        />
-      </div>
-      <CampusMap
-        buildings={buildings}
-        selectedBuilding={selectedBuilding}
-        onSelectBuilding={handleSelectBuilding}
-      />
-      <button
-        onClick={toggleSidebar}
-        className="sidebar-toggle"
-        aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-      >
-        {sidebarOpen ? (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        )}
-      </button>
-    </div>
-  );
-}
-
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [authChecking, setAuthChecking] = useState(true);
-  const [authMode, setAuthMode] = useState('login');
-
-  useEffect(() => {
-    const token = getToken();
-    if (token) {
-      setToken(token);
-      axios.get('/api/auth/me')
-        .then((res) => setUser(res.data))
-        .catch(() => clearToken())
-        .finally(() => setAuthChecking(false));
-    } else {
-      setAuthChecking(false);
-    }
-  }, []);
-
-  const handleLogout = useCallback(() => {
-    clearToken();
-    setUser(null);
-  }, []);
-
-  if (authChecking) {
-    return (
-      <div className="flex items-center justify-center h-screen w-screen bg-[var(--color-surface)]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-[var(--color-purdue-gold)]/30 border-t-[var(--color-purdue-gold)] rounded-full animate-spin" />
-          <p className="text-[var(--color-text-secondary)] text-sm">Loading BoilerSpace...</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!user) {
     if (authMode === 'login') {
       return (
@@ -180,12 +125,46 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<MapPage user={user} onLogout={handleLogout} />} />
-      <Route path="/clubs" element={<ClubList />} />
-      <Route path="/clubs/new" element={<CreateClub user={user} />} />
-      <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <div className="flex h-screen w-screen overflow-hidden relative">
+      {sidebarOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <div className={`sidebar-container ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        <BuildingSidebar
+          buildings={buildings}
+          selectedBuilding={selectedBuilding}
+          onSelectBuilding={handleSelectBuilding}
+          onClose={handleCloseSidebar}
+          user={user}
+          onLogout={handleLogout}
+        />
+      </div>
+
+      <CampusMap
+        buildings={buildings}
+        selectedBuilding={selectedBuilding}
+        onSelectBuilding={handleSelectBuilding}
+      />
+
+      <button
+        onClick={toggleSidebar}
+        className="sidebar-toggle"
+        aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+      >
+        {sidebarOpen ? (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        )}
+      </button>
+    </div>
   );
 }
