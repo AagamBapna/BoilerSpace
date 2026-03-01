@@ -1,9 +1,13 @@
-import { Router } from 'express';
-import Announcement from '../models/Announcement.js';
-import Event from '../models/Event.js';
-import { requireAuth, optionalAuth } from '../middleware/auth.js';
 
-const router = Router();
+
+const express = require('express');
+const router = express.Router();
+const Club = require('../models/Club');
+const Event = require('../models/Event');
+const Announcement = require('../models/Announcement');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
+
+
 
 /**
  * GET /api/events/:eventId/announcements
@@ -82,4 +86,4 @@ router.post('/', requireAuth, async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

@@ -12,4 +12,4 @@ const announcementSchema = new mongoose.Schema(
 announcementSchema.index({ eventId: 1 });
 announcementSchema.index({ createdAt: 1 });
 
-export default mongoose.model('Announcement', announcementSchema);
+module.exports = mongoose.model('Announcement', announcementSchema);

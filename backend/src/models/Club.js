@@ -23,4 +23,4 @@ const clubSchema = new mongoose.Schema(
 clubSchema.index({ organizerId: 1 });
 clubSchema.index({ category: 1 });
 
-module.exports = mongoose.model('Club', clubSchema);
+module.exports = mongoose.models.Club || mongoose.model('Club', clubSchema);
