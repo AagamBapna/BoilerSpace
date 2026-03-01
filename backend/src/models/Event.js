@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-console.log(mongoose.modelNames())
 
 const eventSchema = new mongoose.Schema(
   {
