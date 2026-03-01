@@ -4,7 +4,7 @@ const Building = require('./models/Building');
 const Room = require('./models/Room');
 const Course = require('./models/Course');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/boilerspace';
+const MONGO_URI = process.env.MONGO_URI;
 
 const buildingsData = [
     {

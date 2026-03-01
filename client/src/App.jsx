@@ -2,16 +2,34 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
+import RegisterForm from './components/RegisterForm';
+import LoginForm from './components/LoginForm';
+import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [authMode, setAuthMode] = useState('login');
   const [buildings, setBuildings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Fetch buildings on mount
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      setToken(token);
+      axios.get('/api/auth/me')
+        .then((res) => setUser(res.data))
+        .catch(() => clearToken())
+        .finally(() => setAuthChecking(false));
+    } else {
+      setAuthChecking(false);
+    }
+  }, []);
+
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
@@ -28,13 +46,12 @@ export default function App() {
     fetchBuildings();
   }, []);
 
-  // Listen for "View Rooms" click from map popup
   useEffect(() => {
     const handler = (e) => {
-      const building = buildings.find((b) => b._id === e.detail);
+      const building = buildings.find((b) => String(b._id) === e.detail);
       if (building) {
         setSelectedBuilding(building);
-        setSidebarOpen(true); // auto-open sidebar on mobile when viewing rooms
+        setSidebarOpen(true);
       }
     };
     document.addEventListener('viewRooms', handler);
@@ -43,6 +60,7 @@ export default function App() {
 
   const handleSelectBuilding = useCallback((building) => {
     setSelectedBuilding(building);
+    setSidebarOpen(true);
   }, []);
 
   const handleCloseSidebar = useCallback(() => {
@@ -53,11 +71,16 @@ export default function App() {
     setSidebarOpen((prev) => !prev);
   }, []);
 
-  if (loading) {
+  const handleLogout = useCallback(() => {
+    clearToken();
+    setUser(null);
+  }, []);
+
+  if (authChecking || loading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-[var(--color-surface)]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-3 border-[var(--color-purdue-gold)]/30 border-t-[var(--color-purdue-gold)] rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-[var(--color-purdue-gold)]/30 border-t-[var(--color-purdue-gold)] rounded-full animate-spin" />
           <p className="text-[var(--color-text-secondary)] text-sm">Loading BoilerSpace...</p>
         </div>
       </div>
@@ -84,9 +107,25 @@ export default function App() {
     );
   }
 
+  if (!user) {
+    if (authMode === 'login') {
+      return (
+        <LoginForm
+          onSuccess={setUser}
+          onSwitchToRegister={() => setAuthMode('register')}
+        />
+      );
+    }
+    return (
+      <RegisterForm
+        onSuccess={setUser}
+        onSwitchToLogin={() => setAuthMode('login')}
+      />
+    );
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden relative">
-      {/* Mobile backdrop overlay */}
       {sidebarOpen && (
         <div
           className="sidebar-backdrop"
@@ -94,24 +133,23 @@ export default function App() {
         />
       )}
 
-      {/* Sidebar */}
       <div className={`sidebar-container ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <BuildingSidebar
           buildings={buildings}
           selectedBuilding={selectedBuilding}
           onSelectBuilding={handleSelectBuilding}
           onClose={handleCloseSidebar}
+          user={user}
+          onLogout={handleLogout}
         />
       </div>
 
-      {/* Map */}
       <CampusMap
         buildings={buildings}
         selectedBuilding={selectedBuilding}
         onSelectBuilding={handleSelectBuilding}
       />
 
-      {/* Mobile toggle button */}
       <button
         onClick={toggleSidebar}
         className="sidebar-toggle"

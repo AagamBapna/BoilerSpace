@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import SearchBar from './SearchBar';
 
-export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose }) {
+export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout }) {
     const [rooms, setRooms] = useState([]);
     const [loadingRooms, setLoadingRooms] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -31,11 +31,13 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     }, [selectedBuilding]);
 
     // Filter buildings by search query (kept in sync with SearchBar)
-    const filteredBuildings = buildings.filter(
-        (b) =>
-            b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            b.abbreviation.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredBuildings = Array.isArray(buildings)
+        ? buildings.filter(
+            (b) =>
+                b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                b.abbreviation.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        : [];
 
     const noiseLevelIcon = {
         quiet: '🤫',
@@ -47,14 +49,24 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
         <aside className="w-[360px] h-full bg-[var(--color-surface-light)] border-r border-white/5 flex flex-col overflow-hidden shrink-0">
             {/* Header */}
             <div className="p-5 border-b border-white/5">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] flex items-center justify-center">
-                        <span className="text-black text-lg font-bold">B</span>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] flex items-center justify-center">
+                            <span className="text-black text-lg font-bold">B</span>
+                        </div>
+                        <div>
+                            <h1 className="text-lg font-bold text-[var(--color-purdue-gold)]">BoilerSpace</h1>
+                            <p className="text-[11px] text-[var(--color-text-secondary)]">Find your study spot</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-lg font-bold text-[var(--color-purdue-gold)]">BoilerSpace</h1>
-                        <p className="text-[11px] text-[var(--color-text-secondary)]">Find your study spot</p>
-                    </div>
+                    {user && onLogout && (
+                        <button
+                            onClick={onLogout}
+                            className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-purdue-gold)] transition-colors px-2 py-1"
+                        >
+                            Sign out
+                        </button>
+                    )}
                 </div>
 
                 {/* Search — uses reusable SearchBar component */}
