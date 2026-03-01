@@ -48,7 +48,7 @@ export default function App() {
 
   useEffect(() => {
     const handler = (e) => {
-      const building = buildings.find((b) => b._id === e.detail);
+      const building = buildings.find((b) => String(b._id) === e.detail);
       if (building) {
         setSelectedBuilding(building);
         setSidebarOpen(true);
@@ -80,7 +80,7 @@ export default function App() {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-[var(--color-surface)]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-3 border-[var(--color-purdue-gold)]/30 border-t-[var(--color-purdue-gold)] rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-[var(--color-purdue-gold)]/30 border-t-[var(--color-purdue-gold)] rounded-full animate-spin" />
           <p className="text-[var(--color-text-secondary)] text-sm">Loading BoilerSpace...</p>
         </div>
       </div>
