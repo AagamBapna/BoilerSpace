@@ -15,6 +15,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(passport.initialize());
+app.use('/api/buildings', buildingRoutes);
 app.use('/api/buildings', checkinRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/auth', authRoutes);
