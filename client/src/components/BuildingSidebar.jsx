@@ -31,11 +31,13 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     }, [selectedBuilding]);
 
     // Filter buildings by search query (kept in sync with SearchBar)
-    const filteredBuildings = buildings.filter(
-        (b) =>
-            b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            b.abbreviation.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredBuildings = Array.isArray(buildings)
+        ? buildings.filter(
+            (b) =>
+                b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                b.abbreviation.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        : [];
 
     const noiseLevelIcon = {
         quiet: '🤫',
