@@ -9,10 +9,11 @@ function HighlightMatch({ text, query }) {
     const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
     const parts = text.split(regex);
 
+    const q = query.trim().toLowerCase();
     return (
         <>
             {parts.map((part, i) =>
-                regex.test(part) ? (
+                q && part.toLowerCase() === q ? (
                     <mark key={i} className="search-highlight">
                         {part}
                     </mark>

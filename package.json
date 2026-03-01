@@ -1,25 +1,13 @@
 {
   "name": "boilerspace",
-  "version": "1.0.0",
-  "description": "Club and event management for students",
-  "main": "src/index.js",
-  "type": "module",
+  "private": true,
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "express": "^4.21.0",
-    "mongoose": "^8.8.0",
-    "react-router-dom": "^6.30.3"
+    "start": "bash -c 'source ~/.nvm/nvm.sh 2>/dev/null; nvm use 2>/dev/null; exec concurrently -n backend,client -c blue,magenta \"npm run start:backend\" \"npm run start:client\"'",
+    "start:backend": "cd backend && npm start",
+    "start:client": "cd client && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../client && npm install"
   },
   "devDependencies": {
-    "jest": "^29.7.0",
-    "supertest": "^7.0.0"
+    "concurrently": "^9.1.2"
   }
 }

@@ -45,14 +45,22 @@ vi.mock('mapbox-gl', () => {
     };
 });
 
-// Mock axios
+vi.mock('../lib/auth', () => ({
+    getToken: vi.fn(() => null),
+    setToken: vi.fn(),
+    clearToken: vi.fn(),
+}));
+
 vi.mock('axios', () => ({
     default: {
         get: vi.fn(),
+        post: vi.fn(),
+        defaults: { headers: { common: {} } },
     },
 }));
 
 import axios from 'axios';
+import { getToken } from '../lib/auth';
 
 // ─── Sample data ──────────────────────────────────────────────────────────────
 
@@ -87,6 +95,7 @@ const sampleRooms = [
 describe('App — Loading & Error States', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        getToken.mockReturnValue(null);
     });
 
     test('shows loading spinner while fetching buildings', () => {
@@ -106,8 +115,20 @@ describe('App — Loading & Error States', () => {
         expect(screen.getByText('Retry')).toBeInTheDocument();
     });
 
-    test('renders sidebar and map after successful fetch', async () => {
+    test('shows login form when not authenticated', async () => {
         axios.get.mockResolvedValueOnce({ data: sampleBuildings });
+        render(<App />);
+        await waitFor(() => {
+            expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+        });
+        expect(screen.getByPlaceholderText('you@purdue.edu')).toBeInTheDocument();
+    });
+
+    test('renders sidebar and map after successful fetch', async () => {
+        getToken.mockReturnValue('fake-token');
+        axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: sampleBuildings });
         render(<App />);
         await waitFor(() => {
             expect(screen.getByText('BoilerSpace')).toBeInTheDocument();
@@ -119,7 +140,10 @@ describe('App — Loading & Error States', () => {
 describe('App — Building List Rendering', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        axios.get.mockResolvedValueOnce({ data: sampleBuildings });
+        getToken.mockReturnValue('fake-token');
+        axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: sampleBuildings });
     });
 
     test('displays all buildings in the sidebar list', async () => {
@@ -149,12 +173,13 @@ describe('App — Building List Rendering', () => {
 describe('App — Building Selection & Room Display', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        getToken.mockReturnValue('fake-token');
     });
 
     test('clicking a building shows its detail view with rooms', async () => {
         const user = userEvent.setup();
-        // First call: buildings list. Subsequent calls: rooms
         axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: sampleRooms });
 
@@ -186,6 +211,7 @@ describe('App — Building Selection & Room Display', () => {
     test('clicking "All Buildings" returns to the building list', async () => {
         const user = userEvent.setup();
         axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: sampleRooms });
 
@@ -209,6 +235,7 @@ describe('App — Building Selection & Room Display', () => {
     test('shows room capacity and noise level', async () => {
         const user = userEvent.setup();
         axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: sampleRooms });
 
@@ -229,6 +256,7 @@ describe('App — Building Selection & Room Display', () => {
     test('shows empty rooms message when a building has no rooms', async () => {
         const user = userEvent.setup();
         axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: [] });
 
@@ -247,7 +275,10 @@ describe('App — Building Selection & Room Display', () => {
 describe('App — Sidebar Search Filter', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        axios.get.mockResolvedValueOnce({ data: sampleBuildings });
+        getToken.mockReturnValue('fake-token');
+        axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: sampleBuildings });
     });
 
     test('filters buildings by name', async () => {
