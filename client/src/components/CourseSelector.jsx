@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-export default function CourseSelector({ userId, onClose }) {
+export default function CourseSelector({ userId, onClose, embedded }) {
   const [courses, setCourses] = useState([]);
   const [selectedCourses, setSelectedCourses] = useState([]);
   const [userCourses, setUserCourses] = useState([]);
@@ -91,27 +91,28 @@ export default function CourseSelector({ userId, onClose }) {
       .filter(Boolean);
   };
 
-  return (
-    <div className="background-blur">
-      <div className="course-selector">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
-              Select Your Courses
-            </h2>
-            <p className="text-sm text-[var(--color-text-secondary)]">
-              Choose your classes for the semester
-            </p>
+    const content = (
+      <>
+        {!embedded && (
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
+                Select Your Courses
+              </h2>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                Choose your classes for the semester
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+        )}
         {error && (
           <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
             {error}
@@ -226,12 +227,14 @@ export default function CourseSelector({ userId, onClose }) {
             {selectedCourses.length} course{selectedCourses.length !== 1 ? 's' : ''} selected
           </span>
           <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-            >
-              Cancel
-            </button>
+            {!embedded && (
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+              >
+                Cancel
+              </button>
+            )}            
             <button
               onClick={handleSave}
               disabled={saving}
@@ -241,6 +244,15 @@ export default function CourseSelector({ userId, onClose }) {
             </button>
           </div>
         </div>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <div className="background-blur">
+      <div className="course-selector">
+        {content}
       </div>
     </div>
   );

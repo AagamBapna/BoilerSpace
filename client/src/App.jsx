@@ -3,6 +3,7 @@ import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
 import CourseSelector from './components/CourseSelector';
+import ProfileViewer from './components/ProfileViewer';
 import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import { getToken, setToken, clearToken } from './lib/auth';
@@ -18,6 +19,8 @@ export default function App() {
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCourseSelector, setShowCourseSelector] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+
 
   useEffect(() => {
     const token = getToken();
@@ -153,19 +156,19 @@ export default function App() {
       />
 
       {/* Profile Button — Course Selector */}
-      <button
-        onClick={() => setShowCourseSelector(true)}
-        className="profile-button"
-      >
+      <button onClick={() => setShowProfile(true)} className="profile-button">
         <div className="profile-avatar">{user.displayName?.[0] || 'U'}</div>
-        <span>My Courses</span>
+          <span>My Profile</span>
       </button>
 
+
       {/* Course Selector Modal */}
-      {showCourseSelector && (
-        <CourseSelector
+      {showProfile && (
+        <ProfileViewer
           userId={user.id}
-          onClose={() => setShowCourseSelector(false)}
+          user={user}
+          onClose={() => setShowProfile(false)}
+          onUserUpdate={(updatedUser) => setUser(prev => ({ ...prev, ...updatedUser }))}
         />
       )}
 
