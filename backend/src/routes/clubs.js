@@ -7,6 +7,7 @@ const Club = require('../models/Club');
  * returns all clubs, sorted by name. optional query param filters by category.
  */
 router.get('/', (req, res) => {
+  console.log("route hit")
   const { category } = req.query;
   const filter = category ? { category } : {};
   Club.find(filter)

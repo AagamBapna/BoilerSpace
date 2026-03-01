@@ -5,8 +5,6 @@ const app = require('../app');
 const Building = require('../models/Building');
 const Room = require('../models/Room');
 
-jest.setTimeout(30000);
-
 let mongoServer;
 
 // ─── Test data ────────────────────────────────────────────────────────────────
