@@ -3,6 +3,9 @@ const router = express.Router();
 const Building = require('../models/Building');
 const Room = require('../models/Room');
 const CheckIn = require('../models/CheckIn');
+const { protect } = require('../middleware/auth');
+const User = require('../models/User');
+
 
 // GET /api/buildings — all buildings sorted alphabetically
 router.get('/', async (req, res) => {
@@ -66,9 +69,7 @@ router.get('/:id/rooms/:roomId/checkins', async (req, res) => {
             return res.status(404).json({ error: 'Room not found' });
         }
         const checkins = await CheckIn.find({roomId: req.params.roomId, expiresAt: {$gt: new Date()}});
-        
         res.json(checkins);
-
     } catch (err) {
         if (err.name === 'CastError') {
             return res.status(404).json({ error: 'Invalid ID provided' });
@@ -78,10 +79,10 @@ router.get('/:id/rooms/:roomId/checkins', async (req, res) => {
     }
 });
 
-// POST /api/buoldings/:id/rooms/:roomId/checkins - create a checkin for a room
-router.post('/:id/rooms/:roomId/checkins', async (req, res) => {
+// POST /api/buildings/:id/rooms/:roomId/checkins - create a checkin for a room
+router.post('/:id/rooms/:roomId/checkins',protect,  async (req, res) => {
     try {
-    const building = await Building.findById(req.params.id);
+        const building = await Building.findById(req.params.id);
         if (!building) {
             return res.status(404).json({ error: 'Building not found' });
         }
@@ -89,16 +90,48 @@ router.post('/:id/rooms/:roomId/checkins', async (req, res) => {
         if (!room) {
             return res.status(404).json({ error: 'Room not found' });
         }
-        const checkin = new CheckIn({buildingId: req.params.id, roomId: req.params.roomId, expiresAt: Date.now() + 10 * 1000});
-        await checkin.save();
-        room.currentOccupancy++;
-        await room.save();
-        res.status(201).json(checkin)
+        
+        const checkin = CheckIn.findOne({buildingId: req.params.id, roomId: req.params.roomId, expiresAt: Date.now() + 10 * 1000, userId: req.params.userId});
+        if (checkin) {
+            checkin = new CheckIn({buildingId: req.params.id, roomId: req.params.roomId, expiresAt: Date.now() + 10 * 1000, userId: req.user._id});
+            await checkin.save();
+            room.currentOccupancy++;
+            await room.save();
+            res.status(201).json(checkin)
+        }
     } catch (err) {
         if (err.name === 'CastError') {
             return res.status(404).json({ error: 'Invalid ID provided' });
         }
         console.error('Error fetching checkins:', err);
+        res.status(500).json({ error: 'Failed to fetch checkins' });
+    }
+});
+
+// DELETE /api/buildings/:id/rooms/:roomId/checkins — allow for users to checkout
+router.delete('/:id/rooms/:roomId/checkins/:checkinID', async (req, res) => {
+    try {
+        const building = await Building.findById(req.params.id);
+        if (!building) {
+            return res.status(404).json({ error: 'Building not found' });
+        }
+        const room = await Room.findById(req.params.roomId);
+        if (!room) {
+            return res.status(404).json({ error: 'Room not found' });
+        }
+        const checkin = await CheckIn.findById(req.params.checkinID);
+        if (!checkin) {
+            return res.status(404).json({ error: 'Checkin not found' });
+        }
+        await checkin.deleteOne();
+        room.currentOccupancy--;
+        await room.save()
+        res.status(204).send();
+    } catch (err) {
+        if (err.name === 'CastError') {
+            return res.status(404).json({ error: 'Invalid ID provided' });
+        }
+        console.error('Error deleting checkin:', err);
         res.status(500).json({ error: 'Failed to fetch checkins' });
     }
 });
