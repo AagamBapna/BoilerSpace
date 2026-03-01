@@ -3,30 +3,20 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
+import RegisterForm from './components/RegisterForm';
+import LoginForm from './components/LoginForm';
 import ClubList from './pages/ClubList';
 import ClubProfile from './pages/ClubProfile';
 import CreateClub from './pages/CreateClub';
+import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
-function MapPage() {
+function MapPage({ user, onLogout }) {
   const [buildings, setBuildings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    const token = getToken();
-    if (token) {
-      setToken(token);
-      axios.get('/api/auth/me')
-        .then((res) => setUser(res.data))
-        .catch(() => clearToken())
-        .finally(() => setAuthChecking(false));
-    } else {
-      setAuthChecking(false);
-    }
-  }, []);
 
   useEffect(() => {
     const fetchBuildings = async () => {
@@ -68,12 +58,7 @@ function MapPage() {
     setSidebarOpen((prev) => !prev);
   }, []);
 
-  const handleLogout = useCallback(() => {
-    clearToken();
-    setUser(null);
-  }, []);
-
-  if (authChecking || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-[var(--color-surface)]">
         <div className="flex flex-col items-center gap-4">
@@ -104,23 +89,6 @@ function MapPage() {
     );
   }
 
-  if (!user) {
-    if (authMode === 'login') {
-      return (
-        <LoginForm
-          onSuccess={setUser}
-          onSwitchToRegister={() => setAuthMode('register')}
-        />
-      );
-    }
-    return (
-      <RegisterForm
-        onSuccess={setUser}
-        onSwitchToLogin={() => setAuthMode('login')}
-      />
-    );
-  }
-
   return (
     <div className="flex h-screen w-screen overflow-hidden relative">
       {sidebarOpen && (
@@ -133,7 +101,7 @@ function MapPage() {
           onSelectBuilding={handleSelectBuilding}
           onClose={handleCloseSidebar}
           user={user}
-          onLogout={handleLogout}
+          onLogout={onLogout}
         />
       </div>
       <CampusMap
@@ -161,12 +129,62 @@ function MapPage() {
 }
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [authMode, setAuthMode] = useState('login');
+
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      setToken(token);
+      axios.get('/api/auth/me')
+        .then((res) => setUser(res.data))
+        .catch(() => clearToken())
+        .finally(() => setAuthChecking(false));
+    } else {
+      setAuthChecking(false);
+    }
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    clearToken();
+    setUser(null);
+  }, []);
+
+  if (authChecking) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen bg-[var(--color-surface)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-[var(--color-purdue-gold)]/30 border-t-[var(--color-purdue-gold)] rounded-full animate-spin" />
+          <p className="text-[var(--color-text-secondary)] text-sm">Loading BoilerSpace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (authMode === 'login') {
+      return (
+        <LoginForm
+          onSuccess={setUser}
+          onSwitchToRegister={() => setAuthMode('register')}
+        />
+      );
+    }
+    return (
+      <RegisterForm
+        onSuccess={setUser}
+        onSwitchToLogin={() => setAuthMode('login')}
+      />
+    );
+  }
+
   return (
     <Routes>
-      <Route path="/" element={<MapPage />} />
+      <Route path="/" element={<MapPage user={user} onLogout={handleLogout} />} />
       <Route path="/clubs" element={<ClubList />} />
-      <Route path="/clubs/new" element={<CreateClub />} />
-      <Route path="/clubs/:id" element={<ClubProfile />} />
+      <Route path="/clubs/new" element={<CreateClub user={user} />} />
+      <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
