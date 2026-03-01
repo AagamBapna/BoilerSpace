@@ -1,34 +1,39 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const userSchema = new mongoose.Schema(
     {
         email: {
             type: String,
-            required: true,
+            required: [true, 'Email is required'],
             unique: true,
             trim: true,
             lowercase: true,
+            match: [emailRegex, 'Please provide a valid email address'],
         },
         password: {
             type: String,
-            required: true,
+            required: [true, 'Password is required'],
+            select: false,
         },
         displayName: {
             type: String,
-            required: true,
+            required: [true, 'Display name is required'],
             trim: true,
         },
         major: {
             type: String,
+            required: [true, 'Major is required'],
             trim: true,
-            default: '',
         },
         year: {
-            type: Number,
-            min: 2020,
-            max: 2030,
+            type: String,
+            required: [true, 'Year is required'],
+            trim: true,
         },
-        isVerified: {
+        emailVerified: {
             type: Boolean,
             default: false,
         },
@@ -44,5 +49,11 @@ const userSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
+
+userSchema.pre('save', async function (next) {
+    if (!this.isModified('password')) return next();
+    this.password = await bcrypt.hash(this.password, 10);
+    next();
+});
 
 module.exports = mongoose.model('User', userSchema);

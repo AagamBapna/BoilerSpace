@@ -1,0 +1,10 @@
+﻿6892f87 | docs: add Vite React project readme for client
+f591184 | feat(client): add App root component with building state management and API integration
+d285e82 | feat(client): add interactive CampusMap and BuildingSidebar components for US-40
+73b2115 | feat(client): add Purdue gold and black dark theme with Mapbox and marker styles
+0e9112f | feat(client): initialize React frontend with Vite, Tailwind CSS v4, and Mapbox GL
+7a3f39a | feat(server): add REST API routes for building and room retrieval
+1638af3 | feat(server): add Building and Room models with 10 Purdue campus buildings and 24 rooms
+ad3571f | feat(server): initialize Express backend with CORS and health check endpoint
+306b352 | chore: add root .gitignore for node_modules, env, and build artifacts
+18efb69 | Add files via upload

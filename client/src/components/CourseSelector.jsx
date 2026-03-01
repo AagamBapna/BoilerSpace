@@ -28,8 +28,6 @@ export default function CourseSelector({ userId, onClose }) {
         } else {
           setError('Failed to load courses. Please try again.');
         }
-      } finally {
-        setLoading(false);
       }
     };
     fetchData();
@@ -39,7 +37,7 @@ export default function CourseSelector({ userId, onClose }) {
 
   const filteredCourses = courses.filter(course => {
     const matchesSearch =
-      course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.courseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDepartment = !departmentFilter || course.department === departmentFilter;
     return matchesSearch && matchesDepartment;
@@ -68,8 +66,6 @@ export default function CourseSelector({ userId, onClose }) {
     try {
       const response = await axios.post(`/api/users/${userId}/courses`, {
         courseIds: selectedCourses
-      }, {
-        headers: { 'x-user-id': userId }
       });
       setUserCourses(response.data.courses);
       setSuccess(true);
@@ -163,7 +159,7 @@ export default function CourseSelector({ userId, onClose }) {
                   key={course._id}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--color-purdue-gold)]/20 text-[var(--color-purdue-gold)] rounded-full text-xs font-medium"
                 >
-                  {course.code}
+                  {course.courseCode}
                   <button
                     onClick={() => handleCourseToggle(course._id)}
                     className="hover:text-white transition-colors"
@@ -209,7 +205,7 @@ export default function CourseSelector({ userId, onClose }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-[var(--color-text-primary)]">
-                        {course.code}
+                        {course.courseCode}
                       </span>
                       <span className="text-xs px-2 py-0.5 bg-[var(--color-surface-elevated)] rounded text-[var(--color-text-secondary)]">
                         {course.department}
