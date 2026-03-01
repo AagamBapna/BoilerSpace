@@ -1,17 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
+import ClubList from './pages/ClubList';
+import ClubProfile from './pages/ClubProfile';
+import CreateClub from './pages/CreateClub';
 import './index.css';
 
-export default function App() {
+function MapPage() {
   const [buildings, setBuildings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Fetch buildings on mount
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
@@ -24,17 +27,15 @@ export default function App() {
         setLoading(false);
       }
     };
-
     fetchBuildings();
   }, []);
 
-  // Listen for "View Rooms" click from map popup
   useEffect(() => {
     const handler = (e) => {
       const building = buildings.find((b) => b._id === e.detail);
       if (building) {
         setSelectedBuilding(building);
-        setSidebarOpen(true); // auto-open sidebar on mobile when viewing rooms
+        setSidebarOpen(true);
       }
     };
     document.addEventListener('viewRooms', handler);
@@ -43,7 +44,7 @@ export default function App() {
 
   const handleSelectBuilding = useCallback((building) => {
     setSelectedBuilding(building);
-    setSidebarOpen(true); // auto-open sidebar on mobile when selecting from search
+    setSidebarOpen(true);
   }, []);
 
   const handleCloseSidebar = useCallback(() => {
@@ -87,15 +88,9 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden relative">
-      {/* Mobile backdrop overlay */}
       {sidebarOpen && (
-        <div
-          className="sidebar-backdrop"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
       )}
-
-      {/* Sidebar */}
       <div className={`sidebar-container ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <BuildingSidebar
           buildings={buildings}
@@ -104,15 +99,11 @@ export default function App() {
           onClose={handleCloseSidebar}
         />
       </div>
-
-      {/* Map */}
       <CampusMap
         buildings={buildings}
         selectedBuilding={selectedBuilding}
         onSelectBuilding={handleSelectBuilding}
       />
-
-      {/* Mobile toggle button */}
       <button
         onClick={toggleSidebar}
         className="sidebar-toggle"
@@ -129,5 +120,17 @@ export default function App() {
         )}
       </button>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<MapPage />} />
+      <Route path="/clubs" element={<ClubList />} />
+      <Route path="/clubs/new" element={<CreateClub />} />
+      <Route path="/clubs/:id" element={<ClubProfile />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

@@ -15,7 +15,8 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.21.0",
-    "mongoose": "^8.8.0"
+    "mongoose": "^8.8.0",
+    "react-router-dom": "^6.30.3"
   },
   "devDependencies": {
     "jest": "^29.7.0",

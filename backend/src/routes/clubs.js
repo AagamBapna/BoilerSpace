@@ -3,21 +3,11 @@ const router = express.Router();
 const Club = require('../models/Club');
 
 /**
- * Club profile API (User Story 71).
- *
- * Base path: /api/clubs
- *
- * - GET    /api/clubs       — list clubs (optional filter by category)
- * - GET    /api/clubs/:id   — get one club profile
- * - POST   /api/clubs       — create a club (requires name, organizerId)
- * - PATCH  /api/clubs/:id   — update a club (only organizer; client sends X-User-Id)
- */
-
-/**
  * GET /api/clubs
  * returns all clubs, sorted by name. optional query param filters by category.
  */
 router.get('/', (req, res) => {
+  console.log("route hit")
   const { category } = req.query;
   const filter = category ? { category } : {};
   Club.find(filter)

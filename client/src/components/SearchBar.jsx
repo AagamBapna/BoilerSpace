@@ -24,7 +24,7 @@ function HighlightMatch({ text, query }) {
     );
 }
 
-export default function SearchBar({ buildings, onSelectBuilding, onSearchChange }) {
+export default function SearchBar({ buildings, onSelectBuilding, onSearchChange, placeholder }) {
     const [query, setQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [activeIndex, setActiveIndex] = useState(-1);
@@ -156,7 +156,7 @@ export default function SearchBar({ buildings, onSelectBuilding, onSearchChange 
                     ref={inputRef}
                     id="search-bar-input"
                     type="text"
-                    placeholder="Search buildings (e.g. WALC, Lawson)..."
+                    placeholder={placeholder ?? "Search buildings (e.g. WALC, Lawson)..."}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => setIsFocused(true)}
@@ -172,7 +172,8 @@ export default function SearchBar({ buildings, onSelectBuilding, onSearchChange 
                     aria-activedescendant={
                         activeIndex >= 0 ? `search-result-${sortedResults[activeIndex]?._id}` : undefined
                     }
-                    className="w-full pl-10 pr-9 py-2.5 bg-[var(--color-surface)] border border-white/10 rounded-lg text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-purdue-gold)]/40 transition-colors"
+                    className="w-full pr-9 py-2.5 bg-[var(--color-surface)] border border-white/10 rounded-lg text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-purdue-gold)]/40 transition-colors"
+style={{ paddingLeft: '2.5rem' }}
                 />
 
                 {/* Clear button */}
