@@ -119,7 +119,7 @@ describe('App — Loading & Error States', () => {
         axios.get.mockResolvedValueOnce({ data: sampleBuildings });
         render(<App />);
         await waitFor(() => {
-            expect(screen.getByText('Sign in')).toBeInTheDocument();
+            expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
         });
         expect(screen.getByPlaceholderText('you@purdue.edu')).toBeInTheDocument();
     });
