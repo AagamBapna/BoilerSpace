@@ -3,15 +3,32 @@ import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
 import RegisterForm from './components/RegisterForm';
+import LoginForm from './components/LoginForm';
+import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [authMode, setAuthMode] = useState('login');
   const [buildings, setBuildings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      setToken(token);
+      axios.get('/api/auth/me')
+        .then((res) => setUser(res.data))
+        .catch(() => clearToken())
+        .finally(() => setAuthChecking(false));
+    } else {
+      setAuthChecking(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchBuildings = async () => {
@@ -54,7 +71,12 @@ export default function App() {
     setSidebarOpen((prev) => !prev);
   }, []);
 
-  if (loading) {
+  const handleLogout = useCallback(() => {
+    clearToken();
+    setUser(null);
+  }, []);
+
+  if (authChecking || loading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-[var(--color-surface)]">
         <div className="flex flex-col items-center gap-4">
@@ -86,7 +108,20 @@ export default function App() {
   }
 
   if (!user) {
-    return <RegisterForm onSuccess={setUser} />;
+    if (authMode === 'login') {
+      return (
+        <LoginForm
+          onSuccess={setUser}
+          onSwitchToRegister={() => setAuthMode('register')}
+        />
+      );
+    }
+    return (
+      <RegisterForm
+        onSuccess={setUser}
+        onSwitchToLogin={() => setAuthMode('login')}
+      />
+    );
   }
 
   return (
@@ -104,6 +139,8 @@ export default function App() {
           selectedBuilding={selectedBuilding}
           onSelectBuilding={handleSelectBuilding}
           onClose={handleCloseSidebar}
+          user={user}
+          onLogout={handleLogout}
         />
       </div>
 

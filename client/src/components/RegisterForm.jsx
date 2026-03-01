@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { setToken } from '../lib/auth';
 
 const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'];
 
@@ -30,14 +31,16 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }) {
 
         setLoading(true);
         try {
-            const res = await axios.post('/api/auth/register', {
+            await axios.post('/api/auth/register', {
                 email,
                 password,
                 displayName,
                 major,
                 year,
             });
-            onSuccess(res.data.user);
+            const loginRes = await axios.post('/api/auth/login', { email, password });
+            setToken(loginRes.data.token);
+            onSuccess(loginRes.data.user);
         } catch (err) {
             setError(err.response?.data?.error || 'Something went wrong');
         } finally {
