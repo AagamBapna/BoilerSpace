@@ -15,10 +15,15 @@ const checkInSchema = new mongoose.Schema(
           type: Date,
           required: [true, 'Expire time is required'],
         },
+        userId: {
+            type : mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: [true, 'User reference is required'],
+        },
     },
     { timestamps: true }
 );
 
 checkInSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
-
+3
 module.exports = mongoose.model('CheckIn', checkInSchema);
