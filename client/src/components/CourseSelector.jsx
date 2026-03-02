@@ -126,7 +126,7 @@ export default function CourseSelector({ userId, onClose, embedded }) {
         {/* Filters */}
         <div className="flex gap-3 mb-4">
           <div className="flex-1 relative">
-            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg style={{position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', zIndex: 10, pointerEvents: 'none'}} className="w-4 h-4 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -134,6 +134,7 @@ export default function CourseSelector({ userId, onClose, embedded }) {
               placeholder="Search courses..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              style={{paddingLeft: '2.5rem'}}
               className="w-full pl-10 pr-4 py-2.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-purdue-gold)]"
             />
           </div>

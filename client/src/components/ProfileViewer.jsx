@@ -48,6 +48,24 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
         setError(null);
     };
 
+    const getGradYear = (year) => {
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+        let academicYear;
+        if (currentMonth >= 8) {
+            academicYear = currentYear + 1;
+        } else {
+            academicYear = currentYear;
+        }
+        const yearMap = {
+            'Freshman': academicYear + 3,
+            'Sophomore': academicYear + 2,
+            'Junior': academicYear + 1,
+            'Senior': academicYear   
+        }
+        return yearMap[year] || 'N/A';
+    };
+
   return (
     <div className="background-blur">
       <div className="course-selector">
@@ -89,8 +107,14 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
               </div>
               <div>
                 <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Year</label>
-                <input type="text" value={year} onChange={(e) => setYear(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+                <select value={year} onChange={(e) => setYear(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" >
+                    <option value="">Select Year</option>
+                    <option value="Freshman">Freshman</option>
+                    <option value="Sophomore">Sophomore</option>
+                    <option value="Junior">Junior</option>
+                    <option value="Senior">Senior</option>
+                </select>
               </div>
               <div className="flex gap-2 pt-2">
                 <button onClick={handleCancel}
@@ -112,7 +136,7 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
                 </div>
                 <div>
                   <p className="font-semibold text-[var(--color-text-primary)]">{displayName}</p>
-                  <p className="text-sm text-[var(--color-text-secondary)]">{major} · Class of {year}</p>
+                  <p className="text-sm text-[var(--color-text-secondary)]">{major} · Class of {getGradYear(year)}</p>
                   <p className="text-xs text-[var(--color-text-secondary)]">{user.email}</p>
                 </div>
               </div>
