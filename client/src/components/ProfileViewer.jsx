@@ -148,7 +148,8 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
           )}
         </div>
         {/* ── Divider ── */}
-        <div className="border-t border-[var(--color-border)] mb-6" />
+        <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
+<h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>My Courses</h3>
         {/* ── Course Selector Section (existing component) ── */}
         <CourseSelector userId={userId} embedded={true} />
       </div>
