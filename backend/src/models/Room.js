@@ -33,6 +33,11 @@ const roomSchema = new mongoose.Schema(
             },
             default: 'moderate',
         },
+        currentOccupancy: {
+            type: Number,
+            default: 0,
+            min: [0, 'Capacity can not be negative'],
+        }
     },
     { timestamps: true }
 );

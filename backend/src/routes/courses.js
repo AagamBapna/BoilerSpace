@@ -5,23 +5,15 @@ const Course = require('../models/Course');
 // GET /api/courses, all courses sorted by code
 router.get('/', async (req, res) => {
     try {
-        const { department, semester, search } = req.query;
-        let filter = {};
-
-        if (department) {
-            filter.department = new RegExp(`^${department}$`, 'i');
+        const filter = {};
+        if (req.query.department) {
+            filter.department = req.query.department.toUpperCase();
         }
-        if (semester) {
-            filter.semester = new RegExp(`^${semester}$`, 'i');
-        }
-        if (search) {
-            filter.$or = [
-                { code: new RegExp(search, 'i') },
-                { title: new RegExp(search, 'i') },
-            ];
+        if (req.query.semester) {
+            filter.semester = req.query.semester;
         }
 
-        const courses = await Course.find(filter).sort({ code: 1 });
+        const courses = await Course.find(filter).sort({ courseCode: 1 });
         res.json(courses);
     } catch (err) {
         console.error('Error fetching courses:', err);

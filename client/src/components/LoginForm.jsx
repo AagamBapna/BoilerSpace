@@ -4,7 +4,7 @@ import { setToken } from '../lib/auth';
 
 const inputClass = "w-full bg-[#111111] border border-[#CEB888]/20 rounded-lg px-3 py-2.5 text-sm text-[#f5f5f5] placeholder-[#555] focus:outline-none focus:border-[#CEB888]/50 transition-colors";
 
-export default function LoginForm({ onSuccess, onSwitchToRegister }) {
+export default function LoginForm({ onSuccess, onSwitchToRegister, onForgotPassword }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -85,6 +85,13 @@ export default function LoginForm({ onSuccess, onSwitchToRegister }) {
           <p className="mt-4 text-center text-xs text-[#a0a0a0]">
             Don&apos;t have an account?{' '}
             <button onClick={onSwitchToRegister} className="text-[#CEB888] hover:underline">Create account</button>
+          </p>
+        )}
+
+        {onForgotPassword && (
+          <p className="mt-2 text-center text-xs text-[#a0a0a0]">
+            Forgot your password?{' '}
+            <button onClick={onForgotPassword} className="text-[#CEB888] hover:underline">Reset it</button>
           </p>
         )}
       </div>
