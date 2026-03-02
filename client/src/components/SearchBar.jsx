@@ -173,6 +173,7 @@ export default function SearchBar({ buildings, onSelectBuilding, onSearchChange 
                     aria-activedescendant={
                         activeIndex >= 0 ? `search-result-${sortedResults[activeIndex]?._id}` : undefined
                     }
+                    style={{paddingLeft: '2.5rem'}}
                     className="w-full pl-10 pr-9 py-2.5 bg-[var(--color-surface)] border border-white/10 rounded-lg text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-purdue-gold)]/40 transition-colors"
                 />
 
