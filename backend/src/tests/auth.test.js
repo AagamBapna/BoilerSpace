@@ -288,4 +288,29 @@ describe('POST /api/auth/reset-password', () => {
         expect(res.status).toBe(400);
         expect(res.body.error).toBe('Password must be at least 8 characters');
     });
+
+    test('old password no longer works after successful reset, new password does', async () => {
+        const user = await User.create(validUser);
+        const rawToken = 'login-switch-token';
+        user.resetPasswordTokenHash = hashResetToken(rawToken);
+        user.resetPasswordExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        await user.save();
+
+        const resetRes = await request(app)
+            .post('/api/auth/reset-password')
+            .send({ token: rawToken, newPassword: 'brandnewpass123' });
+        expect(resetRes.status).toBe(200);
+
+        const oldLoginRes = await request(app)
+            .post('/api/auth/login')
+            .send({ email: validUser.email, password: validUser.password });
+        expect(oldLoginRes.status).toBe(401);
+        expect(oldLoginRes.body.error).toBe('Invalid email or password');
+
+        const newLoginRes = await request(app)
+            .post('/api/auth/login')
+            .send({ email: validUser.email, password: 'brandnewpass123' });
+        expect(newLoginRes.status).toBe(200);
+        expect(newLoginRes.body).toHaveProperty('token');
+    });
 });
