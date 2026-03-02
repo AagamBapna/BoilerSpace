@@ -22,9 +22,12 @@ const courseSchema = new mongoose.Schema(
         },
         semester: {
             type: String,
-            enum: ['Fall', 'Spring', 'Summer'],
             required: [true, 'Semester is required'],
             trim: true,
+            validate: {
+                validator: (value) => /^(Spring|Summer|Fall)(\s\d{4})?$/.test(value),
+                message: 'Semester must be Spring, Summer, or Fall (optionally with year, e.g. Spring 2026)',
+            },
         },
         credits: {
             type: Number,
