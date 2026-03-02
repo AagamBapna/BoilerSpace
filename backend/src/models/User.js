@@ -45,7 +45,7 @@ const userSchema = new mongoose.Schema(
             type: String,
             enum: ['public', 'private'],
             default: 'public',
-        }
+        },
         resetPasswordTokenHash: {
             type: String,
             select: false,

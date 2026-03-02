@@ -22,7 +22,7 @@ const courseSchema = new mongoose.Schema(
         },
         semester: {
             type: String,
-            enum: ['Fall', 'Spring', 'Summer']
+            enum: ['Fall', 'Spring', 'Summer'],
             required: [true, 'Semester is required'],
             trim: true,
         },
