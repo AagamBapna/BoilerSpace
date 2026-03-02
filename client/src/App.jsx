@@ -4,6 +4,8 @@ import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
 import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
+import ForgotPasswordForm from './components/ForgotPasswordForm';
+import ResetPasswordForm from './components/ResetPasswordForm';
 import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
@@ -113,6 +115,23 @@ export default function App() {
         <LoginForm
           onSuccess={setUser}
           onSwitchToRegister={() => setAuthMode('register')}
+          onForgotPassword={() => setAuthMode('forgot')}
+        />
+      );
+    }
+    if (authMode === 'forgot') {
+      return (
+        <ForgotPasswordForm
+          onBackToLogin={() => setAuthMode('login')}
+          onSwitchToReset={() => setAuthMode('reset')}
+        />
+      );
+    }
+    if (authMode === 'reset') {
+      return (
+        <ResetPasswordForm
+          onBackToLogin={() => setAuthMode('login')}
+          onSwitchToForgot={() => setAuthMode('forgot')}
         />
       );
     }

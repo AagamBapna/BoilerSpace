@@ -4,6 +4,10 @@ const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const { signToken } = require('../config/jwt');
 const { protect } = require('../middleware/auth');
+const { generatePasswordResetToken, hashResetToken } = require('../utils/passwordReset');
+
+const GENERIC_FORGOT_PASSWORD_MESSAGE =
+    'If an account with that email exists, a password reset link has been sent.';
 
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
@@ -72,6 +76,72 @@ router.post('/register', async (req, res) => {
         }
         console.error('Register error:', err.message);
         res.status(500).json({ error: 'Registration failed. Please try again.' });
+    }
+});
+
+router.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+
+    try {
+        const user = await User.findOne({ email: String(email).toLowerCase() }).select(
+            '+resetPasswordTokenHash +resetPasswordExpiresAt'
+        );
+
+        if (user) {
+            const { token, tokenHash, expiresAt } = generatePasswordResetToken();
+            user.resetPasswordTokenHash = tokenHash;
+            user.resetPasswordExpiresAt = expiresAt;
+            await user.save();
+
+            if (process.env.NODE_ENV !== 'test') {
+                const baseUrl = process.env.APP_BASE_URL || 'http://localhost:5173';
+                console.log(`Password reset token for ${user.email}: ${token}`);
+                console.log(`Mock reset URL: ${baseUrl}/reset-password?token=${token}`);
+            }
+        }
+
+        return res.status(200).json({ message: GENERIC_FORGOT_PASSWORD_MESSAGE });
+    } catch (err) {
+        console.error('Forgot password error:', err.message);
+        return res.status(500).json({ error: 'Failed to process forgot password request' });
+    }
+});
+
+router.post('/reset-password', async (req, res) => {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+        return res.status(400).json({ error: 'Token and new password are required' });
+    }
+
+    if (String(newPassword).length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    try {
+        const tokenHash = hashResetToken(String(token));
+        const user = await User.findOne({
+            resetPasswordTokenHash: tokenHash,
+            resetPasswordExpiresAt: { $gt: new Date() },
+        }).select('+resetPasswordTokenHash +resetPasswordExpiresAt +password');
+
+        if (!user) {
+            return res.status(400).json({ error: 'Invalid or expired reset token' });
+        }
+
+        user.password = String(newPassword);
+        user.resetPasswordTokenHash = undefined;
+        user.resetPasswordExpiresAt = undefined;
+        await user.save();
+
+        return res.status(200).json({ message: 'Password reset successful' });
+    } catch (err) {
+        console.error('Reset password error:', err.message);
+        return res.status(500).json({ error: 'Failed to reset password' });
     }
 });
 
