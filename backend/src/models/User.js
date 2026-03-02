@@ -41,6 +41,10 @@ const userSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Course',
         }],
+        bookmarks: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Room',
+        }],
         profileVisibility: {
             type: String,
             enum: ['public', 'private'],

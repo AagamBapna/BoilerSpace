@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 
 require('./config/passport');
 const userRoutes = require('./routes/users');
+const bookmarkRoutes = require('./routes/bookmarks');
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use('/api/buildings', checkinRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/users', bookmarkRoutes);
 app.use('/api/clubs', clubRoutes);
 
 app.get('/api/health', (req, res) => {
