@@ -42,6 +42,7 @@ const sampleCourses = [
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri());
+    await Course.syncIndexes();
 });
 
 afterAll(async () => {
@@ -81,7 +82,7 @@ describe('Course Schema Validation', () => {
     test('rejects duplicate course codes', async () => {
         await Course.create(sampleCourses[0]);
         const duplicate = new Course({ ...sampleCourses[0] });
-        await expect(duplicate.save()).rejects.toThrow();
+        await expect(duplicate.save()).rejects.toThrow(/E11000|duplicate key/i);
     });
 
     test('stores courseCode and department in uppercase', async () => {
