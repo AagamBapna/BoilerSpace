@@ -92,49 +92,49 @@ const buildingsData = [
 // Rooms keyed by building abbreviation
 const roomsData = {
     EE: [
-        { name: 'EE 117',  floor: 1, capacity: 200, amenities: ['Projector', 'Outlets'],            noiseLevel: 'loud'     },
-        { name: 'EE 207',  floor: 2, capacity: 40,  amenities: ['Outlets', 'Whiteboard'],           noiseLevel: 'moderate' },
-        { name: 'EE 309',  floor: 3, capacity: 25,  amenities: ['Whiteboard'],                      noiseLevel: 'quiet'    },
+        { name: 'EE 117', floor: 1, capacity: 200, amenities: ['Projector', 'Outlets'], noiseLevel: 'loud' },
+        { name: 'EE 207', floor: 2, capacity: 40, amenities: ['Outlets', 'Whiteboard'], noiseLevel: 'moderate' },
+        { name: 'EE 309', floor: 3, capacity: 25, amenities: ['Whiteboard'], noiseLevel: 'quiet' },
     ],
     HAMP: [
-        { name: 'HAMP 1231', floor: 1, capacity: 60, amenities: ['Projector'],                      noiseLevel: 'moderate' },
-        { name: 'HAMP 2201', floor: 2, capacity: 25, amenities: ['Outlets', 'Whiteboard'],           noiseLevel: 'quiet'    },
+        { name: 'HAMP 1231', floor: 1, capacity: 60, amenities: ['Projector'], noiseLevel: 'moderate' },
+        { name: 'HAMP 2201', floor: 2, capacity: 25, amenities: ['Outlets', 'Whiteboard'], noiseLevel: 'quiet' },
     ],
     HEAV: [
-        { name: 'HEAV 226',  floor: 2, capacity: 35, amenities: ['Projector'],                      noiseLevel: 'moderate' },
-        { name: 'HEAV 331',  floor: 3, capacity: 25, amenities: ['Whiteboard'],                     noiseLevel: 'quiet'    },
+        { name: 'HEAV 226', floor: 2, capacity: 35, amenities: ['Projector'], noiseLevel: 'moderate' },
+        { name: 'HEAV 331', floor: 3, capacity: 25, amenities: ['Whiteboard'], noiseLevel: 'quiet' },
     ],
     HIKS: [
-        { name: 'HIKS Study Room A', floor: 1, capacity: 8,   amenities: ['Whiteboard'],            noiseLevel: 'quiet'    },
-        { name: 'HIKS Study Room B', floor: 1, capacity: 8,   amenities: ['Whiteboard'],            noiseLevel: 'quiet'    },
-        { name: 'HIKS Open Area',    floor: 2, capacity: 100, amenities: ['Outlets', 'Printers'],   noiseLevel: 'moderate' },
+        { name: 'HIKS Study Room A', floor: 1, capacity: 8, amenities: ['Whiteboard'], noiseLevel: 'quiet' },
+        { name: 'HIKS Study Room B', floor: 1, capacity: 8, amenities: ['Whiteboard'], noiseLevel: 'quiet' },
+        { name: 'HIKS Open Area', floor: 2, capacity: 100, amenities: ['Outlets', 'Printers'], noiseLevel: 'moderate' },
     ],
     KRAN: [
-        { name: 'KRAN G001', floor: 0, capacity: 80, amenities: ['Projector', 'Outlets'],           noiseLevel: 'loud'     },
-        { name: 'KRAN 105',  floor: 1, capacity: 35, amenities: ['Whiteboard', 'Outlets'],          noiseLevel: 'moderate' },
+        { name: 'KRAN G001', floor: 0, capacity: 80, amenities: ['Projector', 'Outlets'], noiseLevel: 'loud' },
+        { name: 'KRAN 105', floor: 1, capacity: 35, amenities: ['Whiteboard', 'Outlets'], noiseLevel: 'moderate' },
     ],
     LWSN: [
-        { name: 'LWSN B134', floor: 0, capacity: 200, amenities: ['Projector', 'Outlets'],          noiseLevel: 'loud'     },
-        { name: 'LWSN 1106', floor: 1, capacity: 45,  amenities: ['Whiteboard', 'Outlets'],         noiseLevel: 'moderate' },
-        { name: 'LWSN 3102', floor: 3, capacity: 30,  amenities: ['Outlets', 'Whiteboard'],         noiseLevel: 'quiet'    },
+        { name: 'LWSN B134', floor: 0, capacity: 200, amenities: ['Projector', 'Outlets'], noiseLevel: 'loud' },
+        { name: 'LWSN 1106', floor: 1, capacity: 45, amenities: ['Whiteboard', 'Outlets'], noiseLevel: 'moderate' },
+        { name: 'LWSN 3102', floor: 3, capacity: 30, amenities: ['Outlets', 'Whiteboard'], noiseLevel: 'quiet' },
     ],
     LILY: [
-        { name: 'LILY 1105', floor: 1, capacity: 80, amenities: ['Projector', 'Outlets'],           noiseLevel: 'loud'     },
-        { name: 'LILY 2102', floor: 2, capacity: 40, amenities: ['Whiteboard', 'Outlets'],          noiseLevel: 'moderate' },
+        { name: 'LILY 1105', floor: 1, capacity: 80, amenities: ['Projector', 'Outlets'], noiseLevel: 'loud' },
+        { name: 'LILY 2102', floor: 2, capacity: 40, amenities: ['Whiteboard', 'Outlets'], noiseLevel: 'moderate' },
     ],
     MATH: [
-        { name: 'MATH 175', floor: 1, capacity: 120, amenities: ['Projector'],                      noiseLevel: 'loud'     },
-        { name: 'MATH 211', floor: 2, capacity: 30,  amenities: ['Whiteboard', 'Outlets'],          noiseLevel: 'moderate' },
+        { name: 'MATH 175', floor: 1, capacity: 120, amenities: ['Projector'], noiseLevel: 'loud' },
+        { name: 'MATH 211', floor: 2, capacity: 30, amenities: ['Whiteboard', 'Outlets'], noiseLevel: 'moderate' },
     ],
     STEW: [
-        { name: 'STEW 214',   floor: 2, capacity: 50, amenities: ['Projector', 'Outlets'],          noiseLevel: 'moderate' },
-        { name: 'STEW Lounge',floor: 1, capacity: 30, amenities: ['Outlets', 'Cafe'],               noiseLevel: 'moderate' },
+        { name: 'STEW 214', floor: 2, capacity: 50, amenities: ['Projector', 'Outlets'], noiseLevel: 'moderate' },
+        { name: 'STEW Lounge', floor: 1, capacity: 30, amenities: ['Outlets', 'Cafe'], noiseLevel: 'moderate' },
     ],
     WALC: [
-        { name: 'WALC 1018', floor: 1, capacity: 30, amenities: ['Whiteboard', 'Projector'],        noiseLevel: 'moderate' },
-        { name: 'WALC 1055', floor: 1, capacity: 20, amenities: ['Outlets', 'Whiteboard'],          noiseLevel: 'quiet'    },
+        { name: 'WALC 1018', floor: 1, capacity: 30, amenities: ['Whiteboard', 'Projector'], noiseLevel: 'moderate' },
+        { name: 'WALC 1055', floor: 1, capacity: 20, amenities: ['Outlets', 'Whiteboard'], noiseLevel: 'quiet' },
         { name: 'WALC 2051', floor: 2, capacity: 50, amenities: ['Projector', 'Outlets', 'Whiteboard'], noiseLevel: 'moderate' },
-        { name: 'WALC 3087', floor: 3, capacity: 40, amenities: ['Whiteboard', 'Projector', 'Outlets'], noiseLevel: 'loud'  },
+        { name: 'WALC 3087', floor: 3, capacity: 40, amenities: ['Whiteboard', 'Projector', 'Outlets'], noiseLevel: 'loud' },
     ],
 };
 

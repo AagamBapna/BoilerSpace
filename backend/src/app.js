@@ -9,6 +9,8 @@ const clubRoutes = require('./routes/clubs');
 const authRoutes = require('./routes/auth');
 
 require('./config/passport');
+const courseRoutes = require('./routes/courses');
+const userRoutes = require('./routes/users');
 
 const app = express();
 
@@ -19,10 +21,12 @@ app.use('/api/buildings', buildingRoutes);
 app.use('/api/buildings', checkinRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/clubs', clubRoutes);
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 module.exports = app;

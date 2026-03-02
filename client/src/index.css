@@ -320,3 +320,122 @@ body {
     opacity: 1;
   }
 }
+
+/* ── Course Selector ──────────────────────────────────────── */
+.background-blur {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+}
+
+.course-selector {
+  background: var(--color-surface-light);
+  border: 1px solid rgba(206, 184, 136, 0.2);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.course-list {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0 -24px;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+}
+
+.course-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.course-item:hover {
+  background: var(--color-surface-hover);
+}
+
+.course-item.selected {
+  background: rgba(206, 184, 136, 0.2);
+  border-color: rgba(206, 184, 136, 0.2);
+}
+
+/* ── Profile Button ─────────────────────────────────────────────── */
+.profile-button {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--color-surface-light);
+  border: 1px solid rgba(206, 184, 136, 0.2);
+  border-radius: 12px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  z-index: 25;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.profile-button:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-purdue-gold);
+}
+
+.profile-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-purdue-gold), var(--color-purdue-rush));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: black;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* ── Color Variables for Components ─────────────────────────────── */
+:root {
+  --color-surface-elevated: #252525;
+  --color-border: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+  .course-selector-modal {
+    max-height: 90vh;
+    padding: 20px;
+  }
+
+  .course-list {
+    margin: 0 -20px;
+    padding: 0 20px;
+  }
+
+  .profile-button {
+    top: auto;
+    bottom: 16px;
+    right: 16px;
+  }
+}

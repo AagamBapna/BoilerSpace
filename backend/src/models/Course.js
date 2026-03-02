@@ -22,6 +22,7 @@ const courseSchema = new mongoose.Schema(
         },
         semester: {
             type: String,
+            enum: ['Fall', 'Spring', 'Summer']
             required: [true, 'Semester is required'],
             trim: true,
         },
@@ -38,6 +39,7 @@ const courseSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
+
 courseSchema.index({ department: 1 });
 
 module.exports = mongoose.model('Course', courseSchema);

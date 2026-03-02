@@ -37,6 +37,15 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        courses: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Course',
+        }],
+        profileVisibility: {
+            type: String,
+            enum: ['public', 'private'],
+            default: 'public',
+        }
         resetPasswordTokenHash: {
             type: String,
             select: false,

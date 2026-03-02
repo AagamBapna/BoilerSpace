@@ -30,7 +30,7 @@ router.post('/login', async (req, res) => {
         const token = signToken(user);
         res.json({
             token,
-            user: { id: user._id, email: user.email, displayName: user.displayName },
+            user: { id: user._id, email: user.email, displayName: user.displayName, major: user.major, year: user.year },
         });
     } catch (err) {
         console.error('Login error:', err.message);
@@ -43,6 +43,8 @@ router.get('/me', protect, (req, res) => {
         id: req.user._id,
         email: req.user.email,
         displayName: req.user.displayName,
+        major: req.user.major,
+        year: req.user.year
     });
 });
 

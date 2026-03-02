@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Course = require('../models/Course');
 
+// GET /api/courses, all courses sorted by code
 router.get('/', async (req, res) => {
     try {
         const filter = {};
@@ -20,6 +21,7 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /api/courses/:id, single course by ID
 router.get('/:id', async (req, res) => {
     try {
         const course = await Course.findById(req.params.id);

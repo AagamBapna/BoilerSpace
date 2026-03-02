@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
+import CourseSelector from './components/CourseSelector';
+import ProfileViewer from './components/ProfileViewer';
 import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import ForgotPasswordForm from './components/ForgotPasswordForm';
@@ -18,6 +20,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showCourseSelector, setShowCourseSelector] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+
 
   useEffect(() => {
     const token = getToken();
@@ -169,6 +174,24 @@ export default function App() {
         onSelectBuilding={handleSelectBuilding}
       />
 
+      {/* Profile Button — Course Selector */}
+      <button onClick={() => setShowProfile(true)} className="profile-button">
+        <div className="profile-avatar">{user.displayName?.[0] || 'U'}</div>
+          <span>My Profile</span>
+      </button>
+
+
+      {/* Course Selector Modal */}
+      {showProfile && (
+        <ProfileViewer
+          userId={user.id}
+          user={user}
+          onClose={() => setShowProfile(false)}
+          onUserUpdate={(updatedUser) => setUser(prev => ({ ...prev, ...updatedUser }))}
+        />
+      )}
+
+      {/* Mobile toggle button */}
       <button
         onClick={toggleSidebar}
         className="sidebar-toggle"
