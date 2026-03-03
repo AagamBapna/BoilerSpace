@@ -15,6 +15,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [authMode, setAuthMode] = useState('login');
+  const [prefilledResetToken, setPrefilledResetToken] = useState('');
   const [buildings, setBuildings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +24,23 @@ export default function App() {
   const [showCourseSelector, setShowCourseSelector] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenFromUrl = params.get('token');
+    const pathname = window.location.pathname;
+
+    if (tokenFromUrl) {
+      setPrefilledResetToken(tokenFromUrl);
+      window.history.replaceState({}, '', '/reset-password');
+      setAuthMode('reset');
+      return;
+    }
+
+    if (pathname === '/reset-password') {
+      setAuthMode('reset');
+    }
+  }, []);
 
   useEffect(() => {
     const token = getToken();
@@ -83,6 +101,19 @@ export default function App() {
     setUser(null);
   }, []);
 
+  const navigateAuthMode = useCallback((mode, options = {}) => {
+    const nextToken = options.token ?? '';
+
+    if (mode === 'reset') {
+      const query = nextToken ? `?token=${encodeURIComponent(nextToken)}` : '';
+      window.history.replaceState({}, '', `/reset-password${query}`);
+    } else {
+      window.history.replaceState({}, '', '/');
+    }
+
+    setAuthMode(mode);
+  }, []);
+
   if (authChecking || loading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-[var(--color-surface)]">
@@ -119,31 +150,32 @@ export default function App() {
       return (
         <LoginForm
           onSuccess={setUser}
-          onSwitchToRegister={() => setAuthMode('register')}
-          onForgotPassword={() => setAuthMode('forgot')}
+          onSwitchToRegister={() => navigateAuthMode('register')}
+          onForgotPassword={() => navigateAuthMode('forgot')}
         />
       );
     }
     if (authMode === 'forgot') {
       return (
         <ForgotPasswordForm
-          onBackToLogin={() => setAuthMode('login')}
-          onSwitchToReset={() => setAuthMode('reset')}
+          onBackToLogin={() => navigateAuthMode('login')}
+          onSwitchToReset={() => navigateAuthMode('reset')}
         />
       );
     }
     if (authMode === 'reset') {
       return (
         <ResetPasswordForm
-          onBackToLogin={() => setAuthMode('login')}
-          onSwitchToForgot={() => setAuthMode('forgot')}
+          initialToken={prefilledResetToken}
+          onBackToLogin={() => navigateAuthMode('login')}
+          onSwitchToForgot={() => navigateAuthMode('forgot')}
         />
       );
     }
     return (
       <RegisterForm
         onSuccess={setUser}
-        onSwitchToLogin={() => setAuthMode('login')}
+        onSwitchToLogin={() => navigateAuthMode('login')}
       />
     );
   }
