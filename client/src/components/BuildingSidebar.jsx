@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import SearchBar from './SearchBar';
 
-export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout }) {
+export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark }) {
     const [rooms, setRooms] = useState([]);
     const [loadingRooms, setLoadingRooms] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -133,9 +133,24 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                     >
                                         <div className="flex items-center justify-between mb-2">
                                             <h4 className="font-semibold text-sm">{room.name}</h4>
-                                            <span className="text-xs text-[var(--color-text-secondary)]">
-                                                Floor {room.floor}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onToggleBookmark?.(room._id, bookmarkedRoomIds.has(room._id));
+                                                    }}
+                                                    className={`bookmark-btn ${bookmarkedRoomIds.has(room._id) ? 'active' : ''}`}
+                                                    aria-label={bookmarkedRoomIds.has(room._id) ? 'Remove bookmark' : 'Bookmark room'}
+                                                    title={bookmarkedRoomIds.has(room._id) ? 'Remove bookmark' : 'Bookmark room'}
+                                                >
+                                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill={bookmarkedRoomIds.has(room._id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                                    </svg>
+                                                </button>
+                                                <span className="text-xs text-[var(--color-text-secondary)]">
+                                                    Floor {room.floor}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-3 text-xs text-[var(--color-text-secondary)]">
                                             <span>👥 {room.capacity} seats</span>

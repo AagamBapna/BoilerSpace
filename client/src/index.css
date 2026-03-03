@@ -236,6 +236,33 @@ body {
   }
 }
 
+/* Bookmark Button */
+.bookmark-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 0.2s ease, transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bookmark-btn:hover {
+  color: var(--color-purdue-gold);
+  transform: scale(1.15);
+}
+
+.bookmark-btn.active {
+  color: var(--color-purdue-gold);
+}
+
+.bookmark-btn.active:hover {
+  opacity: 0.8;
+}
+
 /* ── Search Bar ──────────────────────────────────────────────── */
 .search-bar-container {
   position: relative;

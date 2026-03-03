@@ -23,6 +23,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCourseSelector, setShowCourseSelector] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [bookmarkedRoomIds, setBookmarkedRoomIds] = useState(new Set());
 
 
   useEffect(() => {
@@ -47,7 +48,15 @@ export default function App() {
     if (token) {
       setToken(token);
       axios.get('/api/auth/me')
-        .then((res) => setUser(res.data))
+        .then((res) => {
+          setUser(res.data);
+          // Fetch bookmarks after auth
+          return axios.get('/api/users/bookmarks');
+        })
+        .then((res) => {
+          const ids = new Set(res.data.map((r) => r._id));
+          setBookmarkedRoomIds(ids);
+        })
         .catch(() => clearToken())
         .finally(() => setAuthChecking(false));
     } else {
@@ -99,6 +108,25 @@ export default function App() {
   const handleLogout = useCallback(() => {
     clearToken();
     setUser(null);
+    setBookmarkedRoomIds(new Set());
+  }, []);
+
+  const handleToggleBookmark = useCallback(async (roomId, isBookmarked) => {
+    try {
+      if (isBookmarked) {
+        await axios.delete(`/api/users/bookmarks/${roomId}`);
+        setBookmarkedRoomIds((prev) => {
+          const next = new Set(prev);
+          next.delete(roomId);
+          return next;
+        });
+      } else {
+        await axios.post(`/api/users/bookmarks/${roomId}`);
+        setBookmarkedRoomIds((prev) => new Set(prev).add(roomId));
+      }
+    } catch (err) {
+      console.error('Failed to toggle bookmark:', err);
+    }
   }, []);
 
   const navigateAuthMode = useCallback((mode, options = {}) => {
@@ -197,6 +225,8 @@ export default function App() {
           onClose={handleCloseSidebar}
           user={user}
           onLogout={handleLogout}
+          bookmarkedRoomIds={bookmarkedRoomIds}
+          onToggleBookmark={handleToggleBookmark}
         />
       </div>
 
@@ -209,7 +239,7 @@ export default function App() {
       {/* Profile Button — Course Selector */}
       <button onClick={() => setShowProfile(true)} className="profile-button">
         <div className="profile-avatar">{user.displayName?.[0] || 'U'}</div>
-          <span>My Profile</span>
+        <span>My Profile</span>
       </button>
 
 
