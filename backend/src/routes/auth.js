@@ -5,6 +5,7 @@ const User = require('../models/User');
 const { signToken } = require('../config/jwt');
 const { protect } = require('../middleware/auth');
 const { generatePasswordResetToken, hashResetToken } = require('../utils/passwordReset');
+const { sendPasswordResetEmail } = require('../utils/mailer');
 
 const GENERIC_FORGOT_PASSWORD_MESSAGE =
     'If an account with that email exists, a password reset link has been sent.';
@@ -101,8 +102,12 @@ router.post('/forgot-password', async (req, res) => {
 
             if (process.env.NODE_ENV !== 'test') {
                 const baseUrl = process.env.APP_BASE_URL || 'http://localhost:5173';
-                console.log(`Password reset token for ${user.email}: ${token}`);
-                console.log(`Mock reset URL: ${baseUrl}/reset-password?token=${token}`);
+                const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+                await sendPasswordResetEmail({
+                    toEmail: user.email,
+                    resetUrl,
+                    rawToken: token,
+                });
             }
         }
 

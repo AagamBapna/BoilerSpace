@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 
 const inputClass =
   "w-full bg-[#111111] border border-[#CEB888]/20 rounded-lg px-3 py-2.5 text-sm text-[#f5f5f5] placeholder-[#555] focus:outline-none focus:border-[#CEB888]/50 transition-colors";
 
-export default function ResetPasswordForm({ onBackToLogin, onSwitchToForgot }) {
+export default function ResetPasswordForm({ onBackToLogin, onSwitchToForgot, initialToken = '' }) {
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -12,12 +12,22 @@ export default function ResetPasswordForm({ onBackToLogin, onSwitchToForgot }) {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (initialToken) {
+      setToken(initialToken);
+    }
+  }, [initialToken]);
+
+  const hasInitialToken = Boolean(initialToken);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
 
-    if (!token || !newPassword) {
+    const trimmedToken = token.trim();
+
+    if (!trimmedToken || !newPassword) {
       setError('Token and new password are required');
       return;
     }
@@ -33,7 +43,7 @@ export default function ResetPasswordForm({ onBackToLogin, onSwitchToForgot }) {
     setLoading(true);
     try {
       const res = await axios.post('/api/auth/reset-password', {
-        token,
+        token: trimmedToken,
         newPassword,
       });
       setMessage(res.data?.message || 'Password reset successful');
@@ -51,21 +61,25 @@ export default function ResetPasswordForm({ onBackToLogin, onSwitchToForgot }) {
         style={{ background: '#1e1e1e', border: '1px solid rgba(206,184,136,0.15)' }}
       >
         <h1 className="text-xl font-bold text-[#f5f5f5]">Reset password</h1>
-        <p className="text-sm text-[#a0a0a0] mt-1 mb-6">Enter your reset token and choose a new password</p>
+        <p className="text-sm text-[#a0a0a0] mt-1 mb-6">
+          {hasInitialToken ? 'Choose your new password' : 'Enter your reset token and choose a new password'}
+        </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="reset-token" className="text-xs text-[#a0a0a0] uppercase tracking-wide">Reset Token</label>
-            <input
-              id="reset-token"
-              type="text"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="Paste reset token"
-              required
-              className={inputClass}
-            />
-          </div>
+          {!hasInitialToken && (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="reset-token" className="text-xs text-[#a0a0a0] uppercase tracking-wide">Reset Token</label>
+              <input
+                id="reset-token"
+                type="text"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="Paste reset token"
+                required
+                className={inputClass}
+              />
+            </div>
+          )}
 
           <div className="flex flex-col gap-1">
             <label htmlFor="reset-password" className="text-xs text-[#a0a0a0] uppercase tracking-wide">New Password</label>

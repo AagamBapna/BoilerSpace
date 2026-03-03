@@ -96,6 +96,7 @@ const sampleRooms = [
 describe('App — Loading & Error States', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        window.history.replaceState({}, '', '/');
         getToken.mockReturnValue(null);
     });
 
@@ -125,6 +126,21 @@ describe('App — Loading & Error States', () => {
         expect(screen.getByPlaceholderText('you@purdue.edu')).toBeInTheDocument();
     });
 
+    test('opens reset password screen from reset URL token', async () => {
+        window.history.replaceState({}, '', '/reset-password?token=token123');
+        axios.get.mockResolvedValueOnce({ data: sampleBuildings });
+
+        render(<App />);
+
+        await waitFor(() => {
+            expect(screen.getByRole('heading', { name: 'Reset password' })).toBeInTheDocument();
+        });
+
+        expect(screen.queryByLabelText('Reset Token')).not.toBeInTheDocument();
+        expect(window.location.pathname).toBe('/reset-password');
+        expect(window.location.search).toBe('');
+    });
+
     test('renders sidebar and map after successful fetch', async () => {
         getToken.mockReturnValue('fake-token');
         axios.get
@@ -141,6 +157,7 @@ describe('App — Loading & Error States', () => {
 describe('App — Building List Rendering', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        window.history.replaceState({}, '', '/');
         getToken.mockReturnValue('fake-token');
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
@@ -174,6 +191,7 @@ describe('App — Building List Rendering', () => {
 describe('App — Building Selection & Room Display', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        window.history.replaceState({}, '', '/');
         getToken.mockReturnValue('fake-token');
     });
 
@@ -276,6 +294,7 @@ describe('App — Building Selection & Room Display', () => {
 describe('App — Sidebar Search Filter', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        window.history.replaceState({}, '', '/');
         getToken.mockReturnValue('fake-token');
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
