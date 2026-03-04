@@ -8,26 +8,24 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     const [searchQuery, setSearchQuery] = useState('');
 
     // Fetch rooms when a building is selected
+    const fetchRooms = async () => {
+    if (!selectedBuilding) return;
+        try {
+            const res = await axios.get(`/api/buildings/${selectedBuilding._id}/rooms`);
+            setRooms(res.data);
+        } catch (err) {
+        console.error('Failed to fetch rooms:', err);
+        }
+    };
+
     useEffect(() => {
         if (!selectedBuilding) {
             setRooms([]);
             return;
         }
-
-        const fetchRooms = async () => {
-            setLoadingRooms(true);
-            try {
-                const res = await axios.get(`/api/buildings/${selectedBuilding._id}/rooms`);
-                setRooms(res.data);
-            } catch (err) {
-                console.error('Failed to fetch rooms:', err);
-                setRooms([]);
-            } finally {
-                setLoadingRooms(false);
-            }
-        };
-
         fetchRooms();
+        const interval = setInterval(fetchRooms, 5000);
+        return () => clearInterval(interval);
     }, [selectedBuilding]);
 
     // Filter buildings by search query (kept in sync with SearchBar)
@@ -151,10 +149,12 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                                     Floor {room.floor}
                                                 </span>
                                             </div>
+                                            
                                         </div>
                                         <div className="flex items-center gap-3 text-xs text-[var(--color-text-secondary)]">
                                             <span>👥 {room.capacity} seats</span>
                                             <span>{noiseLevelIcon[room.noiseLevel] || '💬'} {room.noiseLevel}</span>
+                                            <span> Current occupancy: {room.currentOccupancy}</span>
                                         </div>
                                         {room.amenities?.length > 0 && (
                                             <div className="flex flex-wrap gap-1 mt-2">
@@ -168,6 +168,19 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                                 ))}
                                             </div>
                                         )}
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    await axios.post(`/api/buildings/${selectedBuilding._id}/rooms/${room._id}/checkins`);
+                                                    await fetchRooms();
+                                                } catch (err) {
+                                                    alert(err.response?.data?.error || 'Check-in failed');
+                                                }
+                                            }}
+                                            className="mt-2 w-full py-1.5 rounded-lg bg-[var(--color-purdue-gold)] text-black text-xs font-semibold hover:opacity-90 transition-opacity"
+                                        >
+                                        Check In
+                                        </button>
                                     </div>
                                 ))}
                             </div>
