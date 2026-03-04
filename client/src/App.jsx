@@ -24,6 +24,7 @@ export default function App() {
   const [showCourseSelector, setShowCourseSelector] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [bookmarkedRoomIds, setBookmarkedRoomIds] = useState(new Set());
+  const [bookmarks, setBookmarks] = useState([]);
 
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function App() {
         .then((res) => {
           const ids = new Set(res.data.map((r) => r._id));
           setBookmarkedRoomIds(ids);
+          setBookmarks(res.data);
         })
         .catch(() => clearToken())
         .finally(() => setAuthChecking(false));
@@ -109,20 +111,26 @@ export default function App() {
     clearToken();
     setUser(null);
     setBookmarkedRoomIds(new Set());
+    setBookmarks([]);
   }, []);
 
   const handleToggleBookmark = useCallback(async (roomId, isBookmarked) => {
     try {
+      let res;
       if (isBookmarked) {
-        await axios.delete(`/api/users/bookmarks/${roomId}`);
+        res = await axios.delete(`/api/users/bookmarks/${roomId}`);
         setBookmarkedRoomIds((prev) => {
           const next = new Set(prev);
           next.delete(roomId);
           return next;
         });
       } else {
-        await axios.post(`/api/users/bookmarks/${roomId}`);
+        res = await axios.post(`/api/users/bookmarks/${roomId}`);
         setBookmarkedRoomIds((prev) => new Set(prev).add(roomId));
+      }
+      // Update full bookmarks array from server response
+      if (res.data.bookmarks) {
+        setBookmarks(res.data.bookmarks);
       }
     } catch (err) {
       console.error('Failed to toggle bookmark:', err);
@@ -227,6 +235,7 @@ export default function App() {
           onLogout={handleLogout}
           bookmarkedRoomIds={bookmarkedRoomIds}
           onToggleBookmark={handleToggleBookmark}
+          bookmarks={bookmarks}
         />
       </div>
 

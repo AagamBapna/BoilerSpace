@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import SearchBar from './SearchBar';
+import BookmarkedRooms from './BookmarkedRooms';
 
-export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark }) {
+export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [] }) {
     const [rooms, setRooms] = useState([]);
     const [loadingRooms, setLoadingRooms] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [sidebarView, setSidebarView] = useState('buildings');
 
     // Fetch rooms when a building is selected
     useEffect(() => {
@@ -79,6 +81,30 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                     onSearchChange={setSearchQuery}
                 />
             </div>
+
+            {/* Tab toggle only show when no building is selected */}
+            {!selectedBuilding && (
+                <div className="flex border-b border-white/5">
+                    <button
+                        onClick={() => setSidebarView('buildings')}
+                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${sidebarView === 'buildings'
+                            ? 'text-[var(--color-purdue-gold)] border-b-2 border-[var(--color-purdue-gold)]'
+                            : 'text-[var(--color-text-secondary)] hover:text-white'
+                            }`}
+                    >
+                        🏠 Buildings
+                    </button>
+                    <button
+                        onClick={() => setSidebarView('bookmarks')}
+                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${sidebarView === 'bookmarks'
+                            ? 'text-[var(--color-purdue-gold)] border-b-2 border-[var(--color-purdue-gold)]'
+                            : 'text-[var(--color-text-secondary)] hover:text-white'
+                            }`}
+                    >
+                        ♥ My Rooms {bookmarks.length > 0 && `(${bookmarks.length})`}
+                    </button>
+                </div>
+            )}
 
             {/* Selected building detail view */}
             {selectedBuilding ? (
@@ -174,6 +200,17 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                         )}
                     </div>
                 </div>
+            ) : sidebarView === 'bookmarks' ? (
+                /* Bookmarked rooms view */
+                <BookmarkedRooms
+                    bookmarks={bookmarks}
+                    onToggleBookmark={onToggleBookmark}
+                    onSelectBuilding={(building) => {
+                        setSidebarView('buildings');
+                        onSelectBuilding(building);
+                    }}
+                    buildings={buildings}
+                />
             ) : (
                 /* Building list view */
                 <div className="flex-1 overflow-y-auto">
