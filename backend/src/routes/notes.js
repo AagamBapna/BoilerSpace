@@ -58,4 +58,27 @@ router.post('/:id/notes', protect, (req, res) => {
     });
 });
 
+// GET /api/courses/:id/notes — retrieve all notes for a course
+router.get('/:id/notes', protect, async (req, res) => {
+    try {
+        const course = await Course.findById(req.params.id);
+        if (!course) {
+            return res.status(404).json({ error: 'Course not found.' });
+        }
+
+        const notes = await Note.find({ courseId: course._id })
+            .populate('uploadedBy', 'displayName email')
+            .populate('courseId', 'courseCode title')
+            .sort({ createdAt: -1 });
+
+        res.json(notes);
+    } catch (error) {
+        if (error.name === 'CastError') {
+            return res.status(404).json({ error: 'Course not found.' });
+        }
+        console.error('Error fetching notes:', error);
+        res.status(500).json({ error: 'Failed to fetch notes.' });
+    }
+});
+
 module.exports = router;
