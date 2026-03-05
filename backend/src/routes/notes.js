@@ -1,4 +1,6 @@
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const router = express.Router();
 const multer = require('multer');
 const Note = require('../models/Note');
@@ -78,6 +80,61 @@ router.get('/:id/notes', protect, async (req, res) => {
         }
         console.error('Error fetching notes:', error);
         res.status(500).json({ error: 'Failed to fetch notes.' });
+    }
+});
+
+// GET /api/notes/:noteId/download — download a note's file
+router.get('/:noteId/download', protect, async (req, res) => {
+    try {
+        const note = await Note.findById(req.params.noteId);
+        if (!note) {
+            return res.status(404).json({ error: 'Note not found.' });
+        }
+
+        const filePath = path.join(__dirname, '../../uploads', path.basename(note.fileUrl));
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'File not found on server.' });
+        }
+
+        res.download(filePath, note.fileName);
+    } catch (error) {
+        if (error.name === 'CastError') {
+            return res.status(404).json({ error: 'Note not found.' });
+        }
+        console.error('Error downloading note:', error);
+        res.status(500).json({ error: 'Failed to download note.' });
+    }
+});
+
+// DELETE /api/notes/:noteId — delete a note (only the uploader can delete)
+router.delete('/:noteId', protect, async (req, res) => {
+    try {
+        const note = await Note.findById(req.params.noteId);
+        if (!note) {
+            return res.status(404).json({ error: 'Note not found.' });
+        }
+
+        // Only the uploader can delete their own note
+        if (note.uploadedBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'You can only delete notes you uploaded.' });
+        }
+
+        // Delete the file from disk
+        const filePath = path.join(__dirname, '../../uploads', path.basename(note.fileUrl));
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        await note.deleteOne();
+
+        res.json({ message: 'Note deleted successfully.' });
+    } catch (error) {
+        if (error.name === 'CastError') {
+            return res.status(404).json({ error: 'Note not found.' });
+        }
+        console.error('Error deleting note:', error);
+        res.status(500).json({ error: 'Failed to delete note.' });
     }
 });
 

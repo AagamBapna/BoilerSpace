@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const passport = require('passport');
 
@@ -26,6 +27,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/users', bookmarkRoutes);
 app.use('/api/clubs', clubRoutes);
 app.use('/api/courses', noteRoutes);
+app.use('/api/notes', noteRoutes);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
