@@ -85,6 +85,16 @@ describe('Clubs API', () => {
   });
 
   describe('PATCH /api/clubs/:id', () => {
+    it('returns 401 when X-User-Id is missing', async () => {
+      const club = await Club.findOne({ name: 'CS Club' });
+      const res = await request(app)
+        .patch(`/api/clubs/${club._id}`)
+        .send({ name: 'Attempt Without Auth' })
+        .expect(401);
+      assert.strictEqual(res.body.error, 'Unauthorized');
+      assert.ok(res.body.message.includes('Authentication'));
+    });
+
     it('returns 403 when X-User-Id does not match organizer', async () => {
       const club = await Club.findOne({ name: 'CS Club' });
       const res = await request(app)
