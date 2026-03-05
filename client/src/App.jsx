@@ -140,6 +140,17 @@ export default function App() {
     }
   }, []);
 
+  const handleLoginSuccess = useCallback(async (userData) => {
+    setUser(userData);
+    try {
+      const res = await axios.get('/api/users/bookmarks');
+      setBookmarkedRoomIds(new Set(res.data.map((r) => r._id)));
+      setBookmarks(res.data);
+    } catch (err) {
+      console.error('Failed to fetch bookmarks after login:', err);
+    }
+  }, []);
+
   const navigateAuthMode = useCallback((mode, options = {}) => {
     const nextToken = options.token ?? '';
 
@@ -188,7 +199,7 @@ export default function App() {
     if (authMode === 'login') {
       return (
         <LoginForm
-          onSuccess={setUser}
+          onSuccess={handleLoginSuccess}
           onSwitchToRegister={() => navigateAuthMode('register')}
           onForgotPassword={() => navigateAuthMode('forgot')}
         />
@@ -239,7 +250,7 @@ export default function App() {
     }
     return (
       <RegisterForm
-        onSuccess={setUser}
+        onSuccess={handleLoginSuccess}
         onSwitchToLogin={() => navigateAuthMode('login')}
         onNeedVerification={(email, password) => {
           setPendingVerificationEmail(email);

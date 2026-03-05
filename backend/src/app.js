@@ -21,8 +21,8 @@ app.use('/api/buildings', buildingRoutes);
 app.use('/api/buildings', checkinRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
-app.use('/api/users', userRoutes);
 app.use('/api/users', bookmarkRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/clubs', clubRoutes);
 
 app.get('/api/health', (req, res) => {
