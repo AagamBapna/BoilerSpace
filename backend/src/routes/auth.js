@@ -5,7 +5,9 @@ const User = require('../models/User');
 const { signToken } = require('../config/jwt');
 const { protect } = require('../middleware/auth');
 const { generatePasswordResetToken, hashResetToken } = require('../utils/passwordReset');
-const { sendPasswordResetEmail } = require('../utils/mailer');
+const { sendPasswordResetEmail, sendOtpEmail } = require('../utils/mailer');
+const { createOtp, verifyOtp } = require('../utils/otp');
+const User_OTP = require('../models/Otp');
 
 const GENERIC_FORGOT_PASSWORD_MESSAGE =
     'If an account with that email exists, a password reset link has been sent.';
@@ -31,7 +33,7 @@ router.post('/login', async (req, res) => {
         const token = signToken(user);
         res.json({
             token,
-            user: { id: user._id, email: user.email, displayName: user.displayName, major: user.major, year: user.year },
+            user: { id: user._id, email: user.email, displayName: user.displayName, major: user.major, year: user.year, emailVerified: user.emailVerified },
         });
     } catch (err) {
         console.error('Login error:', err.message);
@@ -61,9 +63,23 @@ router.post('/register', async (req, res) => {
     }
 
     try {
-        const existing = await User.findOne({ email: email.toLowerCase() });
+        const existing = await User.findOne({ email: email.toLowerCase() }).select('+password');
         if (existing) {
-            return res.status(409).json({ error: 'An account with that email already exists' });
+            if (existing.emailVerified) {
+                return res.status(409).json({ error: 'An account with that email already exists' });
+            }
+
+            // Allow re-registration if email was never verified
+            existing.password = password;
+            existing.displayName = displayName;
+            existing.major = major;
+            existing.year = year;
+            await existing.save();
+
+            return res.status(201).json({
+                message: 'Account created successfully',
+                user: { id: existing._id, email: existing.email, displayName: existing.displayName },
+            });
         }
 
         const user = await User.create({ email, password, displayName, major, year });
@@ -149,6 +165,61 @@ router.post('/reset-password', async (req, res) => {
     } catch (err) {
         console.error('Reset password error:', err.message);
         return res.status(500).json({ error: 'Failed to reset password' });
+    }
+});
+
+router.post('/send-otp', async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+
+    if (!normalizedEmail.endsWith('@purdue.edu')) {
+        return res.status(400).json({ error: 'Only @purdue.edu email addresses are allowed' });
+    }
+
+    try {
+        const otp = await createOtp(normalizedEmail);
+
+        if (process.env.NODE_ENV !== 'test') {
+            await sendOtpEmail({ toEmail: normalizedEmail, code: otp.code });
+        }
+
+        res.status(200).json({ message: 'Verification code sent to your email' });
+    } catch (err) {
+        console.error('Send OTP error:', err.message);
+        res.status(500).json({ error: 'Failed to send verification code' });
+    }
+});
+
+router.post('/verify-otp', async (req, res) => {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+        return res.status(400).json({ error: 'Email and code are required' });
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+
+    try {
+        const isValid = await verifyOtp(normalizedEmail, String(code));
+
+        if (!isValid) {
+            return res.status(400).json({ error: 'Invalid or expired verification code' });
+        }
+
+        await User.findOneAndUpdate(
+            { email: normalizedEmail },
+            { emailVerified: true }
+        );
+
+        res.status(200).json({ message: 'Email verified successfully' });
+    } catch (err) {
+        console.error('Verify OTP error:', err.message);
+        res.status(500).json({ error: 'Failed to verify code' });
     }
 });
 
