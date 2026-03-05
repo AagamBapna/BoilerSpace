@@ -8,6 +8,7 @@ import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import ForgotPasswordForm from './components/ForgotPasswordForm';
 import ResetPasswordForm from './components/ResetPasswordForm';
+import EmailVerification from './components/EmailVerification';
 import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
@@ -16,6 +17,8 @@ export default function App() {
   const [authChecking, setAuthChecking] = useState(true);
   const [authMode, setAuthMode] = useState('login');
   const [prefilledResetToken, setPrefilledResetToken] = useState('');
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [pendingVerificationPassword, setPendingVerificationPassword] = useState('');
   const [buildings, setBuildings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -208,10 +211,41 @@ export default function App() {
         />
       );
     }
+    if (authMode === 'verify-email' && pendingVerificationEmail) {
+      return (
+        <EmailVerification
+          email={pendingVerificationEmail}
+          onVerified={async () => {
+            try {
+              const loginRes = await axios.post('/api/auth/login', {
+                email: pendingVerificationEmail,
+                password: pendingVerificationPassword,
+              });
+              setToken(loginRes.data.token);
+              setUser(loginRes.data.user);
+              setPendingVerificationEmail('');
+              setPendingVerificationPassword('');
+            } catch {
+              setAuthMode('login');
+            }
+          }}
+          onBackToLogin={() => {
+            setPendingVerificationEmail('');
+            setPendingVerificationPassword('');
+            navigateAuthMode('login');
+          }}
+        />
+      );
+    }
     return (
       <RegisterForm
         onSuccess={setUser}
         onSwitchToLogin={() => navigateAuthMode('login')}
+        onNeedVerification={(email, password) => {
+          setPendingVerificationEmail(email);
+          setPendingVerificationPassword(password);
+          setAuthMode('verify-email');
+        }}
       />
     );
   }

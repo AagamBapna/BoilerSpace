@@ -6,7 +6,7 @@ const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'];
 
 const inputClass = "w-full bg-[#111111] border border-[#CEB888]/20 rounded-lg px-3 py-2.5 text-sm text-[#f5f5f5] placeholder-[#555] focus:outline-none focus:border-[#CEB888]/50 transition-colors";
 
-export default function RegisterForm({ onSuccess, onSwitchToLogin }) {
+export default function RegisterForm({ onSuccess, onSwitchToLogin, onNeedVerification }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
@@ -38,9 +38,7 @@ export default function RegisterForm({ onSuccess, onSwitchToLogin }) {
                 major,
                 year,
             });
-            const loginRes = await axios.post('/api/auth/login', { email, password });
-            setToken(loginRes.data.token);
-            onSuccess(loginRes.data.user);
+            onNeedVerification(email, password);
         } catch (err) {
             setError(err.response?.data?.error || 'Something went wrong');
         } finally {
