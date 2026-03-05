@@ -145,6 +145,7 @@ describe('App — Loading & Error States', () => {
         getToken.mockReturnValue('fake-token');
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleBuildings });
         render(<App />);
         await waitFor(() => {
@@ -161,6 +162,7 @@ describe('App — Building List Rendering', () => {
         getToken.mockReturnValue('fake-token');
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleBuildings });
     });
 
@@ -199,6 +201,7 @@ describe('App — Building Selection & Room Display', () => {
         const user = userEvent.setup();
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: sampleRooms });
 
@@ -231,6 +234,7 @@ describe('App — Building Selection & Room Display', () => {
         const user = userEvent.setup();
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: sampleRooms });
 
@@ -255,6 +259,7 @@ describe('App — Building Selection & Room Display', () => {
         const user = userEvent.setup();
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: sampleRooms });
 
@@ -276,6 +281,7 @@ describe('App — Building Selection & Room Display', () => {
         const user = userEvent.setup();
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleBuildings })
             .mockResolvedValueOnce({ data: [] });
 
@@ -298,6 +304,7 @@ describe('App — Sidebar Search Filter', () => {
         getToken.mockReturnValue('fake-token');
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleBuildings });
     });
 
@@ -348,9 +355,9 @@ describe('App — Sidebar Search Filter', () => {
         const dropdown = await screen.findByRole('listbox');
 
         expect(
-        within(dropdown).getByText(/No buildings found matching/i)
+            within(dropdown).getByText(/No buildings found matching/i)
         ).toBeInTheDocument();
-            });
+    });
 
     test('restores full list when search is cleared', async () => {
         const user = userEvent.setup();
