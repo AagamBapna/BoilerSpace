@@ -6,6 +6,7 @@ const buildingRoutes = require('./routes/buildings');
 const courseRoutes = require('./routes/courses');
 const checkinRoutes = require('./routes/checkins');
 const clubRoutes = require('./routes/clubs');
+const noteRoutes = require('./routes/notes');
 const authRoutes = require('./routes/auth');
 
 require('./config/passport');
@@ -24,6 +25,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/users', bookmarkRoutes);
 app.use('/api/clubs', clubRoutes);
+app.use('/api/courses', noteRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
