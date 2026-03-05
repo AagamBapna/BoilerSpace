@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-export default function CreateClub() {
+export default function CreateClub({ user }) {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '',
     description: '',
     contactInfo: '',
     category: '',
-    organizerId: '',
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -24,7 +23,7 @@ export default function CreateClub() {
   const validate = () => {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Club name is required.';
-    if (!form.organizerId.trim()) errs.organizerId = 'Organizer ID is required.';
+    if (!user?.id) errs.form = 'You must be logged in to create a club.';
     return errs;
   };
 
@@ -35,8 +34,12 @@ export default function CreateClub() {
     setSubmitting(true);
     setServerError(null);
     try {
-      const res = await axios.post('/api/clubs', form);
-      navigate(`/clubs/${res.data.id}`);
+      const payload = {
+        ...form,
+        organizerIds: [user.id],
+      };
+      const res = await axios.post('/api/clubs', payload);
+      navigate(`/clubs/${res.data.id}`, { state: { notice: 'Club created successfully.' } });
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to create club.';
       setServerError(msg);
@@ -106,12 +109,13 @@ export default function CreateClub() {
             />
             <Field
               label="Organizer ID"
-              name="organizerId"
-              value={form.organizerId}
-              onChange={handleChange}
-              error={errors.organizerId}
-              placeholder="Your user ID"
+              name="organizer"
+              value={user?.id || ''}
+              onChange={() => {}}
+              error={errors.form}
+              placeholder="Auto-filled from your account"
               required
+              readOnly
             />
 
             <div className="flex gap-3 pt-2">
@@ -137,7 +141,7 @@ export default function CreateClub() {
   );
 }
 
-function Field({ label, name, value, onChange, error, placeholder, required, multiline }) {
+function Field({ label, name, value, onChange, error, placeholder, required, multiline, readOnly }) {
   const baseClass = `w-full px-4 py-2.5 bg-[var(--color-surface-light)] border rounded-lg text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)]/40 focus:outline-none focus:border-[var(--color-purdue-gold)]/50 transition-colors ${
     error ? 'border-red-500/50' : 'border-white/10'
   }`;
@@ -154,6 +158,7 @@ function Field({ label, name, value, onChange, error, placeholder, required, mul
           onChange={onChange}
           placeholder={placeholder}
           rows={4}
+          readOnly={readOnly}
           className={baseClass + ' resize-none'}
         />
       ) : (
@@ -163,6 +168,7 @@ function Field({ label, name, value, onChange, error, placeholder, required, mul
           value={value}
           onChange={onChange}
           placeholder={placeholder}
+          readOnly={readOnly}
           className={baseClass}
         />
       )}

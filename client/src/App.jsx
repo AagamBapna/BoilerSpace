@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Routes, Route, useInRouterContext } from 'react-router-dom';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
@@ -9,11 +10,18 @@ import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import ForgotPasswordForm from './components/ForgotPasswordForm';
 import ResetPasswordForm from './components/ResetPasswordForm';
+<<<<<<< HEAD
 import EmailVerification from './components/EmailVerification';
+=======
+import ClubList from './pages/ClubList';
+import ClubProfile from './pages/ClubProfile';
+import CreateClub from './pages/CreateClub';
+>>>>>>> 2b77450 (added route wiring for clubs, with map as fallback)
 import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
 export default function App() {
+  const inRouterContext = useInRouterContext();
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [authMode, setAuthMode] = useState('login');
@@ -264,7 +272,7 @@ export default function App() {
     );
   }
 
-  return (
+  const mapExperience = (
     <div className="flex h-screen w-screen overflow-hidden relative">
       {sidebarOpen && (
         <div
@@ -294,6 +302,14 @@ export default function App() {
       />
 
       {/* Profile Button */}
+      <a
+        href="/clubs"
+        className="absolute top-6 right-44 z-20 px-4 py-2 bg-white/10 hover:bg-white/15 text-[var(--color-text-primary)] text-sm font-semibold rounded-lg border border-white/10 transition-colors"
+      >
+        Clubs
+      </a>
+
+      {/* Profile Button — Course Selector */}
       <button onClick={() => setShowProfile(true)} className="profile-button">
         <div className="profile-avatar">{user.displayName?.[0] || 'U'}</div>
         <span>My Profile</span>
@@ -409,4 +425,19 @@ export default function App() {
       </button>
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+
+  if (!inRouterContext) return mapExperience;
+
+  return (
+    <Routes>
+      <Route path="/clubs" element={<ClubList />} />
+      <Route path="/clubs/new" element={<CreateClub user={user} />} />
+      <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
+      <Route path="*" element={mapExperience} />
+    </Routes>
+  );
+}
+>>>>>>> 2b77450 (added route wiring for clubs, with map as fallback)

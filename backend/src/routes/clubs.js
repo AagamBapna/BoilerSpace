@@ -92,13 +92,20 @@ router.post('/', (req, res) => {
  */
 router.patch('/:id', (req, res) => {
   const requesterId = req.headers['x-user-id'];
+  if (!requesterId) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Authentication is required to edit this club.',
+    });
+  }
   Club.findById(req.params.id)
     .then((club) => {
       if (!club) {
         res.status(404).json({ error: 'Club not found' });
         return null;
       }
-      if (requesterId !== undefined && !Array.isArray(club.organizerIds) ? String(club.organizerIds) !== String(requesterId) : !club.organizerIds.map(String).includes(String(requesterId))) {
+      const organizerIds = Array.isArray(club.organizerIds) ? club.organizerIds.map(String) : [];
+      if (!organizerIds.includes(String(requesterId))) {
         res.status(403).json({
           error: 'Forbidden',
           message: 'You do not have permission to edit this club.',
