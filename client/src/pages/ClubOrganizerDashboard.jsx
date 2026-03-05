@@ -10,6 +10,7 @@ export default function ClubOrganizerDashboard({ user }) {
   const [events, setEvents] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
 
@@ -27,21 +28,41 @@ export default function ClubOrganizerDashboard({ user }) {
   });
 
   const isOrganizer = useMemo(() => {
-    return Boolean(user?.id && Array.isArray(club?.organizerIds) && club.organizerIds.map(String).includes(String(user.id)));
+    const viewerId = String(user?.id || user?._id || '');
+    return Boolean(viewerId && Array.isArray(club?.organizerIds) && club.organizerIds.map(String).includes(viewerId));
   }, [club, user]);
+
+  const loadMembers = async () => {
+    try {
+      setMembersLoading(true);
+      const membersRes = await axios.get(`/api/clubs/${clubId}/members`);
+      setMembers(membersRes.data || []);
+    } catch (err) {
+      setMembers([]);
+      setError(err.response?.data?.message || 'Failed to load members.');
+    } finally {
+      setMembersLoading(false);
+    }
+  };
 
   const loadData = async () => {
     try {
       setError(null);
-      const [clubRes, eventsRes, membersRes] = await Promise.all([
+      const [clubRes, eventsRes] = await Promise.all([
         axios.get(`/api/clubs/${clubId}`),
         axios.get(`/api/events?clubId=${clubId}`),
-        axios.get(`/api/clubs/${clubId}/members`),
       ]);
 
       setClub(clubRes.data);
       setEvents(eventsRes.data || []);
-      setMembers(membersRes.data || []);
+
+      const organizerIds = Array.isArray(clubRes.data?.organizerIds) ? clubRes.data.organizerIds.map(String) : [];
+      const viewerId = String(user?.id || user?._id || '');
+      if (viewerId && organizerIds.includes(viewerId)) {
+        await loadMembers();
+      } else {
+        setMembers([]);
+      }
 
       if (!announcement.eventId && eventsRes.data?.length) {
         setAnnouncement((prev) => ({ ...prev, eventId: eventsRes.data[0].id }));
@@ -55,12 +76,17 @@ export default function ClubOrganizerDashboard({ user }) {
 
   useEffect(() => {
     loadData();
-  }, [clubId]);
+  }, [clubId, user?.id]);
 
   const handleAddOrganizer = async () => {
     try {
       setNotice(null);
-      await axios.post(`/api/clubs/${clubId}/organizers`, { userId: newOrganizerId });
+      const normalizedUserId = String(newOrganizerId).trim();
+      if (!normalizedUserId) {
+        setError('User ID is required.');
+        return;
+      }
+      await axios.post(`/api/clubs/${clubId}/organizers`, { userId: normalizedUserId });
       setNewOrganizerId('');
       await loadData();
       setNotice('Organizer added successfully.');
@@ -171,7 +197,8 @@ export default function ClubOrganizerDashboard({ user }) {
 
           <Panel title="Members">
             <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
-              {members.length === 0 && <p className="text-sm text-[var(--color-text-secondary)]">No members found.</p>}
+              {membersLoading && <p className="text-sm text-[var(--color-text-secondary)]">Loading members...</p>}
+              {!membersLoading && members.length === 0 && <p className="text-sm text-[var(--color-text-secondary)]">No members found.</p>}
               {members.map((m) => (
                 <div key={m.id} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
                   <div>

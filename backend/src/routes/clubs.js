@@ -12,7 +12,8 @@ async function getOrganizerClub(req, res) {
   }
 
   const organizerIds = Array.isArray(club.organizerIds) ? club.organizerIds.map(String) : [];
-  if (!organizerIds.includes(String(req.user.id))) {
+  const requesterId = req.user?.id || req.user?._id;
+  if (!requesterId || !organizerIds.includes(String(requesterId))) {
     res.status(403).json({
       error: 'Forbidden',
       message: 'You do not have permission to manage this club.',
