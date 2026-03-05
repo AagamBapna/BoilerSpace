@@ -10,9 +10,13 @@ export default function EmailVerification({ email, onVerified, onBackToLogin }) 
     const [sent, setSent] = useState(false);
     const [resendCooldown, setResendCooldown] = useState(0);
     const inputRefs = useRef([]);
+    const hasSentOtp = useRef(false);
 
     useEffect(() => {
-        sendOtp();
+        if (!hasSentOtp.current) {
+            hasSentOtp.current = true;
+            sendOtp();
+        }
     }, []);
 
     useEffect(() => {
