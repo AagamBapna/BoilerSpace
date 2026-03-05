@@ -153,6 +153,9 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
 
                     {/* Rooms list */}
                     <div style={{ padding: '16px 20px 20px', background: '#111111' }}>
+                        <p className="text-xs text-[var(--color-text-secondary)]" style={{ marginBottom: '8px' }}>
+                            👥 {rooms.reduce((sum, room) => sum + (room.currentOccupancy || 0), 0)} checked in across all rooms
+                        </p>
                         <h3 className="text-sm font-semibold text-[var(--color-text-secondary)] uppercase" style={{ letterSpacing: '0.05em', marginBottom: '12px' }}>
                             Rooms ({rooms.length})
                         </h3>
