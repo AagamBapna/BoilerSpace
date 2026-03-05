@@ -145,8 +145,8 @@ describe('App — Loading & Error States', () => {
         getToken.mockReturnValue('fake-token');
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: [] })
-            .mockResolvedValueOnce({ data: sampleBuildings });
+            .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] });
         render(<App />);
         await waitFor(() => {
             expect(screen.getByText('BoilerSpace')).toBeInTheDocument();
@@ -162,8 +162,8 @@ describe('App — Building List Rendering', () => {
         getToken.mockReturnValue('fake-token');
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: [] })
-            .mockResolvedValueOnce({ data: sampleBuildings });
+            .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] });
     });
 
     test('displays all buildings in the sidebar list', async () => {
@@ -201,8 +201,8 @@ describe('App — Building Selection & Room Display', () => {
         const user = userEvent.setup();
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleRooms });
 
         render(<App />);
@@ -234,8 +234,8 @@ describe('App — Building Selection & Room Display', () => {
         const user = userEvent.setup();
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleRooms });
 
         render(<App />);
@@ -259,8 +259,8 @@ describe('App — Building Selection & Room Display', () => {
         const user = userEvent.setup();
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleRooms });
 
         render(<App />);
@@ -281,8 +281,8 @@ describe('App — Building Selection & Room Display', () => {
         const user = userEvent.setup();
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] })
             .mockResolvedValueOnce({ data: [] });
 
         render(<App />);
@@ -304,8 +304,8 @@ describe('App — Sidebar Search Filter', () => {
         getToken.mockReturnValue('fake-token');
         axios.get
             .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: [] })
-            .mockResolvedValueOnce({ data: sampleBuildings });
+            .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] });
     });
 
     test('filters buildings by name', async () => {
