@@ -1,10 +1,19 @@
 
+const passport = require('passport');
+
+let mockedUserId = 'user-1';
+jest.spyOn(passport, 'authenticate').mockImplementation(() => (req, res, next) => {
+  req.user = { id: mockedUserId, _id: mockedUserId, email: 'test@purdue.edu' };
+  next();
+});
+
 const assert = require('node:assert');
 const mongoose = require('mongoose');
 const request = require('supertest');
 
 const app = require('../app');
 const Club = require('../models/Club');
+const User = require('../models/User');
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
@@ -17,6 +26,7 @@ describe('Clubs API', () => {
   });
 
   afterAll(async () => {
+    await User.deleteMany({});
     await Club.deleteMany({});
     await mongoose.disconnect();
   });
@@ -114,6 +124,77 @@ describe('Clubs API', () => {
         .send({ description: 'Updated description' })
         .expect(200);
       assert.strictEqual(res.body.description, 'Updated description');
+    });
+  });
+
+  describe('Organizer dashboard APIs', () => {
+    let club;
+    let member;
+    let organizerCandidate;
+
+    beforeAll(async () => {
+      club = await Club.findOne({ name: 'CS Club' });
+
+      member = await User.create({
+        email: 'member@example.com',
+        password: 'password123',
+        displayName: 'Member User',
+        major: 'CS',
+        year: 'Senior',
+        clubIds: [club._id.toString()],
+      });
+
+      organizerCandidate = await User.create({
+        email: 'neworg@example.com',
+        password: 'password123',
+        displayName: 'Future Organizer',
+        major: 'ECE',
+        year: 'Junior',
+        clubIds: [club._id.toString()],
+      });
+    });
+
+    it('lists members for organizer', async () => {
+      mockedUserId = 'user-1';
+      const res = await request(app)
+        .get(`/api/clubs/${club._id}/members`)
+        .expect(200);
+
+      assert(Array.isArray(res.body));
+      assert.ok(res.body.find((u) => u.id === member._id.toString()));
+    });
+
+    it('adds a new organizer', async () => {
+      mockedUserId = 'user-1';
+      const res = await request(app)
+        .post(`/api/clubs/${club._id}/organizers`)
+        .send({ userId: organizerCandidate._id.toString() })
+        .expect(201);
+
+      assert.strictEqual(res.body.success, true);
+
+      const updatedClub = await Club.findById(club._id);
+      assert.ok(updatedClub.organizerIds.map(String).includes(organizerCandidate._id.toString()));
+    });
+
+    it('prevents non-organizers from using organizer APIs', async () => {
+      mockedUserId = member._id.toString();
+      const res = await request(app)
+        .post(`/api/clubs/${club._id}/organizers`)
+        .send({ userId: member._id.toString() })
+        .expect(403);
+
+      assert.strictEqual(res.body.error, 'Forbidden');
+    });
+
+    it('kicks a member from the club', async () => {
+      mockedUserId = 'user-1';
+      await request(app)
+        .delete(`/api/clubs/${club._id}/members/${member._id}`)
+        .expect(200);
+
+      const updatedMember = await User.findById(member._id);
+      assert.ok(!updatedMember.clubIds.map(String).includes(club._id.toString()));
     });
   });
 });

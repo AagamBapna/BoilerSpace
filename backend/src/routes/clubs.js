@@ -1,6 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const Club = require('../models/Club');
+const User = require('../models/User');
+const { protect } = require('../middleware/auth');
+
+async function getOrganizerClub(req, res) {
+  const club = await Club.findById(req.params.id);
+  if (!club) {
+    res.status(404).json({ error: 'Club not found' });
+    return null;
+  }
+
+  const organizerIds = Array.isArray(club.organizerIds) ? club.organizerIds.map(String) : [];
+  if (!organizerIds.includes(String(req.user.id))) {
+    res.status(403).json({
+      error: 'Forbidden',
+      message: 'You do not have permission to manage this club.',
+    });
+    return null;
+  }
+
+  return club;
+}
 
 /**
  * GET /api/clubs
@@ -37,6 +58,103 @@ router.get('/:id', (req, res) => {
       console.error(err);
       res.status(500).json({ error: 'Failed to fetch club' });
     });
+});
+
+/**
+ * GET /api/clubs/:id/members
+ * Organizer-only: list current members for management dashboard.
+ */
+router.get('/:id/members', protect, async (req, res) => {
+  try {
+    const club = await getOrganizerClub(req, res);
+    if (!club) return;
+
+    const members = await User.find({ clubIds: club._id.toString() })
+      .select('_id displayName email major year')
+      .lean();
+
+    const normalized = members.map((m) => ({
+      ...m,
+      id: m._id.toString(),
+    }));
+
+    return res.json(normalized);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to fetch members' });
+  }
+});
+
+/**
+ * POST /api/clubs/:id/organizers
+ * Organizer-only: promote an existing user to organizer.
+ */
+router.post('/:id/organizers', protect, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId || !String(userId).trim()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        fields: { userId: 'User ID is required' },
+      });
+    }
+
+    const club = await getOrganizerClub(req, res);
+    if (!club) return;
+
+    const targetUser = await User.findById(String(userId).trim());
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const targetId = targetUser._id.toString();
+    if (!club.organizerIds.map(String).includes(targetId)) {
+      club.organizerIds.push(targetId);
+    }
+
+    if (!Array.isArray(targetUser.clubIds)) targetUser.clubIds = [];
+    if (!targetUser.clubIds.map(String).includes(club._id.toString())) {
+      targetUser.clubIds.push(club._id.toString());
+    }
+
+    await Promise.all([club.save(), targetUser.save()]);
+    return res.status(201).json({ success: true, organizerIds: club.organizerIds });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to add organizer' });
+  }
+});
+
+/**
+ * DELETE /api/clubs/:id/members/:userId
+ * Organizer-only: remove a member from club membership.
+ */
+router.delete('/:id/members/:userId', protect, async (req, res) => {
+  try {
+    const club = await getOrganizerClub(req, res);
+    if (!club) return;
+
+    const targetUser = await User.findById(req.params.userId);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const targetId = targetUser._id.toString();
+    if (club.organizerIds.map(String).includes(targetId)) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Use organizer management to remove organizer access first.',
+      });
+    }
+
+    targetUser.clubIds = (targetUser.clubIds || []).map(String).filter((clubId) => clubId !== club._id.toString());
+    await targetUser.save();
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to remove member' });
+  }
 });
 
 /**

@@ -204,12 +204,22 @@ export default function ClubProfile({ user }) {
 
             <div className="flex gap-3 pt-2">
               {!editMode ? (
-                <button
-                  onClick={handleEditClick}
-                  className="px-5 py-2.5 bg-[var(--color-purdue-gold)] hover:bg-[var(--color-purdue-gold-light)] text-black font-semibold text-sm rounded-lg transition-colors"
-                >
-                  Edit Club
-                </button>
+                <>
+                  <button
+                    onClick={handleEditClick}
+                    className="px-5 py-2.5 bg-[var(--color-purdue-gold)] hover:bg-[var(--color-purdue-gold-light)] text-black font-semibold text-sm rounded-lg transition-colors"
+                  >
+                    Edit Club
+                  </button>
+                  {isOrganizer && (
+                    <button
+                      onClick={() => navigate(`/clubs/${id}/dashboard`)}
+                      className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-[var(--color-text-primary)] text-sm rounded-lg transition-colors"
+                    >
+                      Organizer Dashboard
+                    </button>
+                  )}
+                </>
               ) : (
                 <>
                   <button

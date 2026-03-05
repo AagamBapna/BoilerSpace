@@ -10,13 +10,10 @@ import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import ForgotPasswordForm from './components/ForgotPasswordForm';
 import ResetPasswordForm from './components/ResetPasswordForm';
-<<<<<<< HEAD
 import EmailVerification from './components/EmailVerification';
-=======
 import ClubList from './pages/ClubList';
 import ClubProfile from './pages/ClubProfile';
 import CreateClub from './pages/CreateClub';
->>>>>>> 2b77450 (added route wiring for clubs, with map as fallback)
 import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
