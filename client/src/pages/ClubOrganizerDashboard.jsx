@@ -219,7 +219,7 @@ export default function ClubOrganizerDashboard({ user }) {
   const organizerIdSet = new Set((club?.organizerIds || []).map(String));
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6 sm:px-12 md:px-16 lg:px-20 xl:px-24">
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6">
       <div className="page-top-actions">
         <button onClick={() => navigate(`/clubs/${clubId}`)} className="profile-button-like">Back to Club</button>
         <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
@@ -228,7 +228,7 @@ export default function ClubOrganizerDashboard({ user }) {
         <button onClick={() => setShowEditClubModal(true)} className="profile-button-like profile-button-gold">Edit Club Details</button>
       </div>
 
-      <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7 pt-14 sm:pt-16">
+      <div className="flex flex-col gap-7" style={{ marginLeft: '2rem', marginRight: '2rem', paddingTop: '2rem' }}>
         <div className="flex flex-col gap-2">
           <p className="text-xs tracking-widest uppercase text-[var(--color-purdue-gold)]">Organizer</p>
           <h1 className="text-3xl font-bold">{club?.name} Dashboard</h1>
