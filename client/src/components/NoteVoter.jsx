@@ -4,9 +4,9 @@ import axios from 'axios';
 export default function NoteVoter({ noteId, initialVotes, userVote }) {
     const [voteCount, setVoteCount] = useState(initialVotes);
     const [currentUserVote, setCurrentUserVote] = useState(userVote);
-    const handleVote = async (type) => {
+    const handleVote = async (vote) => {
         try {
-            const response = await axios.post(`/api/notes/${noteId}/vote`, { type });
+            const response = await axios.post(`/api/notes/${noteId}/vote`, { vote });
             setVoteCount(response.data.voteCount);
             setCurrentUserVote(response.data.userVote);
         } catch (error) {
@@ -18,7 +18,7 @@ export default function NoteVoter({ noteId, initialVotes, userVote }) {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', minWidth: '32px' }}>
         <button onClick={() => handleVote('up')} style={{
             background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '2px',
-            color: userVote === 'up' ? 'var(--color-purdue-gold)' : 'var(--color-text-secondary)',
+            color: currentUserVote === 'up' ? 'var(--color-purdue-gold)' : 'var(--color-text-secondary)',
             transition: 'color 0.2s',
         }}>▲</button>
         <span style={{
@@ -27,7 +27,7 @@ export default function NoteVoter({ noteId, initialVotes, userVote }) {
         }}>{voteCount}</span>
         <button onClick={() => handleVote('down')} style={{
             background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '2px',
-            color: userVote === 'down' ? '#ef4444' : 'var(--color-text-secondary)',
+            color: currentUserVote === 'down' ? '#ef4444' : 'var(--color-text-secondary)',
             transition: 'color 0.2s',
         }}>▼</button>
         </div>

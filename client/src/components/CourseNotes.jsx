@@ -195,8 +195,8 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <NoteVoter
                     noteId={note._id}
-                    initialVoteCount={note.voteCount || 0}
-                    initialUserVote={note.votes?.find(v => v.user === userId || v.user?._id === userId)?.type || null}
+                    initialVotes={note.voteCount || 0}
+                    userVote={note.votes?.find(v => v.user === userId || v.user?._id === userId)?.vote || null}
                   />
                   <button
                     onClick={() => handleDownload(note)}
