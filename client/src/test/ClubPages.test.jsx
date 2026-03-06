@@ -67,17 +67,27 @@ describe('ClubProfile page', () => {
   });
 
   test('does not show organizer dashboard button for non-organizer', async () => {
-    axios.get.mockResolvedValueOnce({
-      data: {
-        id: 'club-1',
-        name: 'CS Club',
-        description: 'Tech org',
-        category: 'Academic',
-        contactInfo: 'cs@example.com',
-        organizerIds: ['owner-1'],
-      },
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/clubs/club-1') {
+        return Promise.resolve({
+          data: {
+            id: 'club-1',
+            name: 'CS Club',
+            description: 'Tech org',
+            category: 'Academic',
+            contactInfo: 'cs@example.com',
+            organizerIds: ['owner-1'],
+          },
+        });
+      }
+      if (url === '/api/events?clubId=club-1') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/api/users/other-user') {
+        return Promise.resolve({ data: { clubIds: [] } });
+      }
+      return Promise.reject(new Error(`Unexpected URL: ${url}`));
     });
-    axios.get.mockResolvedValueOnce({ data: [] });
 
     render(
       <MemoryRouter initialEntries={['/clubs/club-1']}>
@@ -89,21 +99,32 @@ describe('ClubProfile page', () => {
 
     await screen.findByText('CS Club');
     expect(screen.queryByRole('button', { name: 'Organizer Dashboard' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Join Club' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Club' })).not.toBeInTheDocument();
   });
 
   test('shows organizer dashboard button for organizer', async () => {
-    axios.get.mockResolvedValueOnce({
-      data: {
-        id: 'club-1',
-        name: 'CS Club',
-        description: 'Tech org',
-        category: 'Academic',
-        contactInfo: 'cs@example.com',
-        organizerIds: ['owner-1'],
-      },
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/clubs/club-1') {
+        return Promise.resolve({
+          data: {
+            id: 'club-1',
+            name: 'CS Club',
+            description: 'Tech org',
+            category: 'Academic',
+            contactInfo: 'cs@example.com',
+            organizerIds: ['owner-1'],
+          },
+        });
+      }
+      if (url === '/api/events?clubId=club-1') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/api/users/owner-1') {
+        return Promise.resolve({ data: { clubIds: ['club-1'] } });
+      }
+      return Promise.reject(new Error(`Unexpected URL: ${url}`));
     });
-    axios.get.mockResolvedValueOnce({ data: [] });
 
     render(
       <MemoryRouter initialEntries={['/clubs/club-1']}>
@@ -115,6 +136,50 @@ describe('ClubProfile page', () => {
 
     await screen.findByText('CS Club');
     expect(screen.getByRole('button', { name: 'Organizer Dashboard' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Join Club' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Club' })).not.toBeInTheDocument();
+  });
+
+  test('joins club from profile when user is not already a member', async () => {
+    const user = userEvent.setup();
+
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/clubs/club-1') {
+        return Promise.resolve({
+          data: {
+            id: 'club-1',
+            name: 'CS Club',
+            description: 'Tech org',
+            category: 'Academic',
+            contactInfo: 'cs@example.com',
+            organizerIds: ['owner-1'],
+          },
+        });
+      }
+      if (url === '/api/events?clubId=club-1') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/api/users/student-1') {
+        return Promise.resolve({ data: { clubIds: [] } });
+      }
+      return Promise.reject(new Error(`Unexpected URL: ${url}`));
+    });
+    axios.post.mockResolvedValueOnce({ data: { success: true } });
+
+    render(
+      <MemoryRouter initialEntries={['/clubs/club-1']}>
+        <Routes>
+          <Route path="/clubs/:id" element={<ClubProfile user={{ id: 'student-1' }} />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await screen.findByText('CS Club');
+    await user.click(screen.getByRole('button', { name: 'Join Club' }));
+
+    await waitFor(() => {
+      expect(axios.post).toHaveBeenCalledWith('/api/clubs/club-1/join');
+    });
+    expect(screen.getByText('You joined this club.')).toBeInTheDocument();
   });
 });

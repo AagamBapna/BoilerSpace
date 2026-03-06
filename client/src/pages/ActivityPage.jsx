@@ -154,7 +154,7 @@ export default function ActivityPage({ initialTab = 'events' }) {
             {filteredEvents.map((event) => (
               <button
                 key={event.id}
-                onClick={() => event.clubId && navigate(`/clubs/${event.clubId}`)}
+                onClick={() => event.id && navigate(`/events/${event.id}`)}
                 className="text-left rounded-xl bg-[var(--color-surface-light)] hover:bg-[var(--color-surface-hover)] transition-colors p-6"
               >
                 <div className="flex flex-col gap-1 mb-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -178,7 +178,7 @@ export default function ActivityPage({ initialTab = 'events' }) {
                     {event.time ? `${event.time} · ` : ''}
                     {event.location || 'No location'}
                   </span>
-                  <span className="text-[var(--color-purdue-gold)]">Open club profile -&gt;</span>
+                  <span className="text-[var(--color-purdue-gold)]">Open event details -&gt;</span>
                 </div>
               </button>
             ))}

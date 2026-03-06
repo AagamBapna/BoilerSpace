@@ -13,15 +13,9 @@ import ResetPasswordForm from './components/ResetPasswordForm';
 import EmailVerification from './components/EmailVerification';
 import ClubList from './pages/ClubList';
 import ClubProfile from './pages/ClubProfile';
-<<<<<<< HEAD
 import CreateClub from './pages/CreateClub';
-<<<<<<< HEAD
-=======
-=======
->>>>>>> da445f8 (made create club a popup, and fixed organizer dashboard ui)
 import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
 import ActivityPage from './pages/ActivityPage';
->>>>>>> 8ef6d9a (added delete options for events, announcements, clubs and also chnaged activity page to show both events and announcements)
 import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
@@ -467,6 +461,7 @@ export default function App() {
   <div className="h-screen w-screen overflow-hidden">
     <Routes>
       <Route path="/clubs" element={<ClubList user={user} />} />
+      <Route path="/clubs/new" element={<CreateClub user={user} />} />
       <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
       <Route path="/clubs/:id/dashboard" element={<ClubOrganizerDashboard user={user} />} />
       <Route path="/activity" element={<ActivityPage initialTab="events" />} />

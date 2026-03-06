@@ -12,6 +12,8 @@ export default function ClubProfile({ user }) {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(location.state?.notice || null);
+  const [isMember, setIsMember] = useState(false);
+  const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     axios.get(`/api/clubs/${id}`)
@@ -35,9 +37,43 @@ export default function ClubProfile({ user }) {
       .finally(() => setEventsLoading(false));
   }, [id]);
 
+  useEffect(() => {
+    if (!user?.id || !id) {
+      setIsMember(false);
+      return;
+    }
+
+    axios.get(`/api/users/${user.id}`)
+      .then((res) => {
+        const joined = Array.isArray(res.data?.clubIds) ? res.data.clubIds.map(String) : [];
+        setIsMember(joined.includes(String(id)));
+      })
+      .catch(() => {
+        setIsMember(false);
+      });
+  }, [user?.id, id]);
+
   const isOrganizer = Boolean(
     user?.id && Array.isArray(club?.organizerIds) && club.organizerIds.map(String).includes(String(user.id))
   );
+
+  const canJoin = Boolean(user?.id && !isOrganizer && !isMember && club);
+
+  const handleJoinClub = async () => {
+    if (!id || !user?.id) return;
+    setNotice(null);
+    setError(null);
+    try {
+      setJoining(true);
+      await axios.post(`/api/clubs/${id}/join`);
+      setIsMember(true);
+      setNotice('You joined this club.');
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to join club.');
+    } finally {
+      setJoining(false);
+    }
+  };
 
   return (
     <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6 sm:px-12 md:px-16 lg:px-20 xl:px-24">
@@ -45,6 +81,14 @@ export default function ClubProfile({ user }) {
         <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
         <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
         <button onClick={() => navigate('/activity')} className="profile-button-like">Activity</button>
+        {canJoin && (
+          <button onClick={handleJoinClub} disabled={joining} className="profile-button-like profile-button-gold">
+            {joining ? 'Joining...' : 'Join Club'}
+          </button>
+        )}
+        {!canJoin && isMember && !isOrganizer && (
+          <span className="profile-button-like border-emerald-300/40 text-emerald-200 cursor-default">Member</span>
+        )}
         {isOrganizer && (
           <button onClick={() => navigate(`/clubs/${id}/dashboard`)} className="profile-button-like profile-button-gold">Organizer Dashboard</button>
         )}
@@ -135,7 +179,11 @@ export default function ClubProfile({ user }) {
               {!eventsLoading && events.length > 0 && (
                 <div className="space-y-3">
                   {events.map((event) => (
-                    <div key={event.id} className="rounded-lg bg-[var(--color-surface-hover)] hover:bg-[var(--color-surface)] transition-colors p-4 border border-white/10">
+                    <button
+                      key={event.id}
+                      onClick={() => navigate(`/events/${event.id}`)}
+                      className="w-full text-left rounded-lg bg-[var(--color-surface-hover)] hover:bg-[var(--color-surface)] transition-colors p-4 border border-white/10"
+                    >
                       <div className="flex flex-col gap-1">
                         <h3 className="font-semibold text-[var(--color-text-primary)]">{event.title}</h3>
                         {event.description && (
@@ -149,7 +197,7 @@ export default function ClubProfile({ user }) {
                           {event.location && <span>📍 {event.location}</span>}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}

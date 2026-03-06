@@ -64,6 +64,41 @@ router.get('/:id', (req, res) => {
 });
 
 /**
+ * POST /api/clubs/:id/join
+ * Authenticated user joins a club by adding the club id to their membership list.
+ */
+router.post('/:id/join', protect, async (req, res) => {
+  try {
+    const club = await Club.findById(req.params.id);
+    if (!club) return res.status(404).json({ error: 'Club not found' });
+
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const clubIdStr = club._id.toString();
+    const existingClubIds = Array.isArray(user.clubIds) ? user.clubIds.map(String) : [];
+    if (existingClubIds.includes(clubIdStr)) {
+      return res.json({ success: true, alreadyMember: true, clubId: clubIdStr });
+    }
+
+    user.clubIds = [...existingClubIds, clubIdStr];
+    await user.save();
+
+    return res.status(201).json({ success: true, alreadyMember: false, clubId: clubIdStr });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to join club' });
+  }
+});
+
+/**
  * GET /api/clubs/:id/members
  * Organizer-only: list current members for management dashboard.
  */

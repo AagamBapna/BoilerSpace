@@ -202,4 +202,46 @@ describe('Clubs API', () => {
       assert.ok(!updatedMember.clubIds.map(String).includes(club._id.toString()));
     });
   });
+
+  describe('POST /api/clubs/:id/join', () => {
+    let club;
+    let joiner;
+
+    beforeAll(async () => {
+      club = await Club.findOne({ name: 'CS Club' });
+      joiner = await User.create({
+        email: 'joiner@example.com',
+        password: 'password123',
+        displayName: 'Joiner User',
+        major: 'CS',
+        year: 'Junior',
+        clubIds: [],
+      });
+    });
+
+    it('adds club to user memberships when joining', async () => {
+      mockedUserId = joiner._id.toString();
+
+      const res = await request(app)
+        .post(`/api/clubs/${club._id}/join`)
+        .expect(201);
+
+      assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.alreadyMember, false);
+
+      const updated = await User.findById(joiner._id);
+      assert.ok(updated.clubIds.map(String).includes(club._id.toString()));
+    });
+
+    it('is idempotent when user already joined', async () => {
+      mockedUserId = joiner._id.toString();
+
+      const res = await request(app)
+        .post(`/api/clubs/${club._id}/join`)
+        .expect(200);
+
+      assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.alreadyMember, true);
+    });
+  });
 });
