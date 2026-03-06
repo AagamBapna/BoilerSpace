@@ -430,6 +430,31 @@ body {
   border-color: var(--color-purdue-gold);
 }
 
+.notes-button {
+  position: fixed;
+  top: 16px;
+  right: 420px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--color-surface-light);
+  border: 1px solid rgba(206, 184, 136, 0.2);
+  border-radius: 12px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  z-index: 24;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.notes-button:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-purdue-gold);
+}
+
 .map-top-actions {
   position: fixed;
   top: 16px;
@@ -537,6 +562,13 @@ body {
     bottom: 70px;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .notes-button {
+    top: auto;
+    right: 16px;
+    bottom: 132px;
+    justify-content: center;
   }
 
   .page-top-actions {

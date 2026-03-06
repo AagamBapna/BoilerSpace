@@ -3,7 +3,6 @@ import { Routes, Route, useInRouterContext, Link } from 'react-router-dom';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
-import CourseSelector from './components/CourseSelector';
 import CourseNotes from './components/CourseNotes';
 import ProfileViewer from './components/ProfileViewer';
 import RegisterForm from './components/RegisterForm';
@@ -13,9 +12,9 @@ import ResetPasswordForm from './components/ResetPasswordForm';
 import EmailVerification from './components/EmailVerification';
 import ClubList from './pages/ClubList';
 import ClubProfile from './pages/ClubProfile';
-import CreateClub from './pages/CreateClub';
 import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
 import ActivityPage from './pages/ActivityPage';
+import EventPage from './pages/EventPage';
 import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
@@ -32,7 +31,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showCourseSelector, setShowCourseSelector] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [notesView, setNotesView] = useState(null);
   const [userCourses, setUserCourses] = useState([]);
@@ -308,34 +306,38 @@ export default function App() {
         onSelectBuilding={handleSelectBuilding}
       />
 
-      {/* Profile Button */}
-      <a
-        href="/clubs"
-        className="absolute top-6 right-44 z-20 px-4 py-2 bg-white/10 hover:bg-white/15 text-[var(--color-text-primary)] text-sm font-semibold rounded-lg border border-white/10 transition-colors"
-      >
-        Clubs
-      </a>
+      <div className="map-top-actions">
+        {inRouterContext ? (
+          <>
+            <Link to="/clubs" className="profile-button-like">Clubs</Link>
+            <Link to="/activity" className="profile-button-like">Activity</Link>
+          </>
+        ) : (
+          <>
+            <a href="/clubs" className="profile-button-like">Clubs</a>
+            <a href="/activity" className="profile-button-like">Activity</a>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            axios.get(`/api/users/${user.id}/courses`).then(res => {
+              setUserCourses(res.data);
+              setNotesView({ step: 'pick' });
+            }).catch(() => setUserCourses([]));
+          }}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span>Course Notes</span>
+        </button>
+      </div>
 
-      {/* Profile Button — Course Selector */}
       <button onClick={() => setShowProfile(true)} className="profile-button">
         <div className="profile-avatar">{user.displayName?.[0] || 'U'}</div>
         <span>My Profile</span>
-      </button>
-
-      {/* Course Notes Button */}
-      <button
-        onClick={() => {
-          axios.get(`/api/users/${user.id}/courses`).then(res => {
-            setUserCourses(res.data);
-            setNotesView({ step: 'pick' });
-          }).catch(() => setUserCourses([]));
-        }}
-        className="notes-button"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        <span>Course Notes</span>
       </button>
 
       {/* Course Picker for Notes */}
@@ -405,27 +407,6 @@ export default function App() {
       )}
 
       {/* Profile Modal */}
-      <div className="map-top-actions">
-        {inRouterContext ? (
-          <>
-            <Link to="/clubs" className="profile-button-like">Clubs</Link>
-            <Link to="/activity" className="profile-button-like">Activity</Link>
-          </>
-        ) : (
-          <>
-            <a href="/clubs" className="profile-button-like">Clubs</a>
-            <a href="/activity" className="profile-button-like">Activity</a>
-          </>
-        )}
-      </div>
-
-      <button onClick={() => setShowProfile(true)} className="profile-button">
-        <div className="profile-avatar">{user.displayName?.[0] || 'U'}</div>
-        <span>My Profile</span>
-      </button>
-
-
-      {/* Course Selector Modal */}
       {showProfile && (
         <ProfileViewer
           userId={user.id}
@@ -453,23 +434,22 @@ export default function App() {
       </button>
     </div>
   );
-}
 
   if (!inRouterContext) return mapExperience;
 
   return (
-  <div className="h-screen w-screen">
-    <Routes>
-      <Route path="/clubs" element={<ClubList user={user} />} />
-      <Route path="/clubs/new" element={<CreateClub user={user} />} />
-      <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
-      <Route path="/clubs/:id/dashboard" element={<ClubOrganizerDashboard user={user} />} />
-      <Route path="/activity" element={<ActivityPage initialTab="events" />} />
-      <Route path="/events" element={<ActivityPage initialTab="events" />} />
-      <Route path="/events/:id" element={<EventPage user={user} />} />
-      <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
-      <Route path="*" element={mapExperience} />
-    </Routes>
-  </div>
-);
+    <div className="h-screen w-screen">
+      <Routes>
+        <Route path="/clubs" element={<ClubList user={user} />} />
+        <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
+        <Route path="/clubs/:id/dashboard" element={<ClubOrganizerDashboard user={user} />} />
+        <Route path="/activity" element={<ActivityPage initialTab="events" />} />
+        <Route path="/events" element={<ActivityPage initialTab="events" />} />
+        <Route path="/events/:id" element={<EventPage user={user} />} />
+        <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
+        <Route path="*" element={mapExperience} />
+      </Routes>
+    </div>
+  );
 }
+
