@@ -11,6 +11,7 @@ const noteRoutes = require('./routes/notes');
 const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
 const announcementRoutes = require('./routes/announcements');
+const announcementFeedRoutes = require('./routes/announcementFeed');
 
 require('./config/passport');
 const userRoutes = require('./routes/users');
@@ -32,6 +33,7 @@ app.use('/api/courses', noteRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/events', announcementRoutes);
+app.use('/api/announcements', announcementFeedRoutes);
 
 app.use('/api/events', eventRoutes);
 app.get('/api/health', (req, res) => {

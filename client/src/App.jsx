@@ -14,6 +14,8 @@ import EmailVerification from './components/EmailVerification';
 import ClubList from './pages/ClubList';
 import ClubProfile from './pages/ClubProfile';
 import CreateClub from './pages/CreateClub';
+import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
+import AnnouncementsFeed from './pages/AnnouncementsFeed';
 import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
@@ -306,6 +308,13 @@ export default function App() {
         Clubs
       </a>
 
+      <a
+        href="/announcements"
+        className="absolute top-6 right-16 z-20 px-4 py-2 bg-white/10 hover:bg-white/15 text-[var(--color-text-primary)] text-sm font-semibold rounded-lg border border-white/10 transition-colors"
+      >
+        Announcements
+      </a>
+
       {/* Profile Button — Course Selector */}
       <button onClick={() => setShowProfile(true)} className="profile-button">
         <div className="profile-avatar">{user.displayName?.[0] || 'U'}</div>
@@ -433,6 +442,11 @@ export default function App() {
       <Route path="/clubs" element={<ClubList />} />
       <Route path="/clubs/new" element={<CreateClub user={user} />} />
       <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
+<<<<<<< HEAD
+=======
+      <Route path="/clubs/:id/dashboard" element={<ClubOrganizerDashboard user={user} />} />
+      <Route path="/announcements" element={<AnnouncementsFeed />} />
+>>>>>>> 626b148 (add announcements page, with routing)
       <Route path="*" element={mapExperience} />
     </Routes>
   );

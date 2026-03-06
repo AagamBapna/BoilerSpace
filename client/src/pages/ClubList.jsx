@@ -60,12 +60,20 @@ export default function ClubList() {
             </span>
           )}
         </div>
-        <button
-          onClick={() => navigate('/clubs/new')}
-          className="px-4 py-2 bg-[var(--color-purdue-gold)] hover:bg-[var(--color-purdue-gold-light)] text-black font-semibold text-sm rounded-lg transition-colors"
-        >
-          + Create Club
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => navigate('/announcements')}
+            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-[var(--color-text-primary)] font-semibold text-sm rounded-lg transition-colors"
+          >
+            Announcements
+          </button>
+          <button
+            onClick={() => navigate('/clubs/new')}
+            className="px-4 py-2 bg-[var(--color-purdue-gold)] hover:bg-[var(--color-purdue-gold-light)] text-black font-semibold text-sm rounded-lg transition-colors"
+          >
+            + Create Club
+          </button>
+        </div>
       </div>
 
       {/* Search */}
