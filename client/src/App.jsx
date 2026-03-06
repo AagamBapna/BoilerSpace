@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, useInRouterContext } from 'react-router-dom';
+import { Routes, Route, useInRouterContext, Link } from 'react-router-dom';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
@@ -62,15 +62,23 @@ export default function App() {
       axios.get('/api/auth/me')
         .then((res) => {
           setUser(res.data);
-          // Fetch bookmarks after auth
-          return axios.get('/api/users/bookmarks');
+          // Fetch bookmarks after auth, but do not invalidate auth if this fails.
+          axios.get('/api/users/bookmarks')
+            .then((bookmarksRes) => {
+              const ids = new Set(bookmarksRes.data.map((r) => r._id));
+              setBookmarkedRoomIds(ids);
+              setBookmarks(bookmarksRes.data);
+            })
+            .catch((err) => {
+              console.error('Failed to fetch bookmarks:', err);
+              setBookmarkedRoomIds(new Set());
+              setBookmarks([]);
+            });
         })
-        .then((res) => {
-          const ids = new Set(res.data.map((r) => r._id));
-          setBookmarkedRoomIds(ids);
-          setBookmarks(res.data);
+        .catch(() => {
+          clearToken();
+          setUser(null);
         })
-        .catch(() => clearToken())
         .finally(() => setAuthChecking(false));
     } else {
       setAuthChecking(false);
@@ -395,6 +403,27 @@ export default function App() {
       )}
 
       {/* Profile Modal */}
+      <div className="map-top-actions">
+        {inRouterContext ? (
+          <>
+            <Link to="/clubs" className="profile-button-like">Clubs</Link>
+            <Link to="/announcements" className="profile-button-like">Announcements</Link>
+          </>
+        ) : (
+          <>
+            <a href="/clubs" className="profile-button-like">Clubs</a>
+            <a href="/announcements" className="profile-button-like">Announcements</a>
+          </>
+        )}
+      </div>
+
+      <button onClick={() => setShowProfile(true)} className="profile-button">
+        <div className="profile-avatar">{user.displayName?.[0] || 'U'}</div>
+        <span>My Profile</span>
+      </button>
+
+
+      {/* Course Selector Modal */}
       {showProfile && (
         <ProfileViewer
           userId={user.id}
@@ -428,7 +457,7 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/clubs" element={<ClubList />} />
+      <Route path="/clubs" element={<ClubList user={user} />} />
       <Route path="/clubs/new" element={<CreateClub user={user} />} />
       <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
       <Route path="*" element={mapExperience} />

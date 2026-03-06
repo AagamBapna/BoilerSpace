@@ -147,7 +147,7 @@ export default function ClubOrganizerDashboard({ user }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[var(--color-surface)] text-[var(--color-text-primary)]">
+      <div className="flex items-center justify-center h-screen bg-[var(--color-surface-light)] text-[var(--color-text-primary)]">
         Loading organizer dashboard...
       </div>
     );
@@ -155,7 +155,7 @@ export default function ClubOrganizerDashboard({ user }) {
 
   if (error && !club) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[var(--color-surface)] text-[var(--color-text-primary)] gap-3">
+      <div className="flex flex-col items-center justify-center h-screen bg-[var(--color-surface-light)] text-[var(--color-text-primary)] gap-3">
         <p>{error}</p>
         <button className="text-sm text-[var(--color-purdue-gold)]" onClick={() => navigate(`/clubs/${clubId}`)}>Back to Club</button>
       </div>
@@ -164,7 +164,7 @@ export default function ClubOrganizerDashboard({ user }) {
 
   if (!isOrganizer) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[var(--color-surface)] text-[var(--color-text-primary)] gap-3">
+      <div className="flex flex-col items-center justify-center h-screen bg-[var(--color-surface-light)] text-[var(--color-text-primary)] gap-3">
         <p>You do not have permission to access this organizer dashboard.</p>
         <button className="text-sm text-[var(--color-purdue-gold)]" onClick={() => navigate(`/clubs/${clubId}`)}>Back to Club</button>
       </div>
@@ -172,23 +172,28 @@ export default function ClubOrganizerDashboard({ user }) {
   }
 
   return (
-    <div className="min-h-screen w-screen bg-[var(--color-surface)] text-[var(--color-text-primary)] px-8 py-8">
-      <div className="max-w-6xl mx-auto flex flex-col gap-6">
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 pr-4 pl-8 sm:pr-6 sm:pl-12 md:pr-8 md:pl-16 lg:pr-10 lg:pl-20 xl:pr-12 xl:pl-24">
+      <div className="page-top-actions">
+        <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
+        <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
+        <button onClick={() => navigate('/announcements')} className="profile-button-like">Announcements</button>
+      </div>
+
+      <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7">
+        <div className="rounded-2xl bg-[var(--color-surface-light)] p-7 sm:p-8">
+          <div className="flex items-center justify-between">
           <div>
             <p className="text-xs tracking-widest uppercase text-[var(--color-purdue-gold)]">Organizer</p>
             <h1 className="text-3xl font-bold">{club?.name} Dashboard</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="text-sm text-[var(--color-text-secondary)]" onClick={() => navigate(`/clubs/${clubId}`)}>Back to Club</button>
-            <button className="text-sm text-[var(--color-text-secondary)]" onClick={() => navigate('/')}>Map</button>
+          <button className="profile-button-like" onClick={() => navigate(`/clubs/${clubId}`)}>Back to Club</button>
           </div>
         </div>
 
         {notice && <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm">{notice}</div>}
         {error && <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-sm">{error}</div>}
 
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 ml-8 sm:ml-12 md:ml-16 lg:ml-20">
           <Panel title="Organizers">
             <p className="text-sm text-[var(--color-text-secondary)] mb-2">Current organizer IDs</p>
             <div className="flex flex-wrap gap-2 mb-4">
@@ -224,7 +229,7 @@ export default function ClubOrganizerDashboard({ user }) {
           </Panel>
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 ml-8 sm:ml-12 md:ml-16 lg:ml-20">
           <Panel title="Create Event">
             <div className="grid grid-cols-1 gap-2">
               <Input value={newEvent.title} onChange={(v) => setNewEvent((p) => ({ ...p, title: v }))} placeholder="Title" />
@@ -266,7 +271,7 @@ export default function ClubOrganizerDashboard({ user }) {
 
 function Panel({ title, children }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-[var(--color-surface-light)] p-4">
+    <div className="rounded-xl bg-[var(--color-surface-light)] p-4">
       <h2 className="text-lg font-semibold mb-3">{title}</h2>
       {children}
     </div>

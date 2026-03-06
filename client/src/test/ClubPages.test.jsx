@@ -59,7 +59,7 @@ describe('ClubProfile page', () => {
     vi.clearAllMocks();
   });
 
-  test('shows permission message when non-organizer tries to edit', async () => {
+  test('does not show organizer dashboard button for non-organizer', async () => {
     axios.get.mockResolvedValueOnce({
       data: {
         id: 'club-1',
@@ -71,7 +71,6 @@ describe('ClubProfile page', () => {
       },
     });
 
-    const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={['/clubs/club-1']}>
         <Routes>
@@ -81,12 +80,11 @@ describe('ClubProfile page', () => {
     );
 
     await screen.findByText('CS Club');
-    await user.click(screen.getByRole('button', { name: 'Edit Club' }));
-
-    expect(screen.getByText('You do not have permission to edit this club.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Organizer Dashboard' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit Club' })).not.toBeInTheDocument();
   });
 
-  test('organizer can save profile updates and sends auth header', async () => {
+  test('shows organizer dashboard button for organizer', async () => {
     axios.get.mockResolvedValueOnce({
       data: {
         id: 'club-1',
@@ -98,18 +96,6 @@ describe('ClubProfile page', () => {
       },
     });
 
-    axios.patch.mockResolvedValueOnce({
-      data: {
-        id: 'club-1',
-        name: 'CS Club',
-        description: 'Updated description',
-        category: 'Academic',
-        contactInfo: 'cs@example.com',
-        organizerIds: ['owner-1'],
-      },
-    });
-
-    const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={['/clubs/club-1']}>
         <Routes>
@@ -119,31 +105,7 @@ describe('ClubProfile page', () => {
     );
 
     await screen.findByText('CS Club');
-    await user.click(screen.getByRole('button', { name: 'Edit Club' }));
-
-    const aboutLabel = screen.getByText('About');
-    const aboutSection = aboutLabel.closest('div');
-    const textarea = aboutSection.querySelector('textarea');
-    await user.clear(textarea);
-    await user.type(textarea, 'Updated description');
-
-    await user.click(screen.getByRole('button', { name: 'Save Changes' }));
-
-    await waitFor(() => {
-      expect(axios.patch).toHaveBeenCalledWith(
-        '/api/clubs/club-1',
-        {
-          name: 'CS Club',
-          description: 'Updated description',
-          contactInfo: 'cs@example.com',
-          category: 'Academic',
-        },
-        {
-          headers: { 'X-User-Id': 'owner-1' },
-        }
-      );
-    });
-
-    expect(screen.getByText('Club profile updated successfully.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Organizer Dashboard' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit Club' })).not.toBeInTheDocument();
   });
 });

@@ -1,13 +1,15 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import SearchBar from '../components/SearchBar';
 
-export default function ClubList() {
+export default function ClubList({ user }) {
   const [clubs, setClubs] = useState([]);
   const [filteredClubs, setFilteredClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showMyClubsOnly, setShowMyClubsOnly] = useState(false);
+  const [memberClubIds, setMemberClubIds] = useState(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +21,22 @@ export default function ClubList() {
       .catch(() => setError('Failed to load clubs.'))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setMemberClubIds(new Set());
+      return;
+    }
+
+    axios.get(`/api/users/${user.id}`)
+      .then((res) => {
+        const joined = Array.isArray(res.data?.clubIds) ? res.data.clubIds.map(String) : [];
+        setMemberClubIds(new Set(joined));
+      })
+      .catch(() => {
+        setMemberClubIds(new Set());
+      });
+  }, [user?.id]);
 
   // Called by SearchBar when query changes
   const handleSearchChange = useCallback((query) => {
@@ -47,109 +65,135 @@ export default function ClubList() {
     navigate(`/clubs/${club.id}`);
   }, [navigate]);
 
-  return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-primary)]">
+  const displayedClubs = useMemo(() => {
+    if (!showMyClubsOnly) return filteredClubs;
+    const userId = String(user?.id || user?._id || '');
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-8 py-6 border-b border-white/5 shrink-0">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-3xl font-bold tracking-tight">Clubs</h1>
-          {!loading && !error && (
-            <span className="text-sm text-[var(--color-text-secondary)]">
-              {filteredClubs.length} club{filteredClubs.length !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate('/')}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-[var(--color-text-primary)] font-semibold text-sm rounded-lg transition-colors"
-          >
-            Map
-          </button>
-          <button
-            onClick={() => navigate('/announcements')}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-[var(--color-text-primary)] font-semibold text-sm rounded-lg transition-colors"
-          >
-            Announcements
-          </button>
-          <button
-            onClick={() => navigate('/clubs/new')}
-            className="px-4 py-2 bg-[var(--color-purdue-gold)] hover:bg-[var(--color-purdue-gold-light)] text-black font-semibold text-sm rounded-lg transition-colors"
-          >
-            + Create Club
-          </button>
-        </div>
+    return filteredClubs.filter((club) => {
+      const organizerIds = Array.isArray(club.organizerIds) ? club.organizerIds.map(String) : [];
+      const clubId = String(club.id || club._id || '');
+      return organizerIds.includes(userId) || memberClubIds.has(clubId);
+    });
+  }, [filteredClubs, showMyClubsOnly, user?.id, user?._id, memberClubIds]);
+
+  return (
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 pr-4 pl-8 sm:pr-6 sm:pl-12 md:pr-8 md:pl-16 lg:pr-10 lg:pl-20 xl:pr-12 xl:pl-24">
+      <div className="page-top-actions">
+        <button
+          onClick={() => navigate('/clubs/new')}
+          className="profile-button-like profile-button-gold"
+        >
+          + Create Club
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowMyClubsOnly((prev) => !prev)}
+          className={`profile-button-like ${
+            showMyClubsOnly
+              ? 'bg-[var(--color-purdue-gold)] text-black border-transparent hover:bg-[var(--color-purdue-gold-light)]'
+              : ''
+          }`}
+        >
+          My Clubs
+        </button>
+        <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
+        <button onClick={() => navigate('/announcements')} className="profile-button-like">Announcements</button>
       </div>
 
-      {/* Search */}
-      {!loading && !error && clubs.length > 0 && (
-        <div className="px-8 py-4 border-b border-white/5 shrink-0">
-          <SearchBar
-            buildings={clubsForSearch}
-            onSelectBuilding={handleSelectClub}
-            onSearchChange={handleSearchChange}
-          />
-        </div>
-      )}
+      <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7">
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto">
-        {loading && (
-          <div className="flex flex-col items-center justify-center h-full gap-3">
-            <div className="w-6 h-6 rounded-full border-2 border-[var(--color-purdue-gold)]/20 border-t-[var(--color-purdue-gold)] animate-spin" />
-            <p className="text-sm text-[var(--color-text-secondary)]">Loading clubs...</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-[var(--color-text-secondary)]">{error}</p>
-          </div>
-        )}
-
-        {!loading && !error && filteredClubs.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-3">
-            <p className="text-sm text-[var(--color-text-secondary)]">
-              {clubs.length === 0 ? 'No clubs yet.' : 'No clubs match your search.'}
-            </p>
-            {clubs.length === 0 && (
-              <button
-                onClick={() => navigate('/clubs/new')}
-                className="text-xs text-[var(--color-purdue-gold)] hover:underline"
-              >
-                Create the first one →
-              </button>
-            )}
-          </div>
-        )}
-
-        {!loading && !error && filteredClubs.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredClubs.map(club => (
-              <button
-                key={club.id}
-                onClick={() => navigate(`/clubs/${club.id}`)}
-                className="group flex flex-col gap-2 p-6 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors text-left"
-              >
-                {club.category && (
-                  <span className="text-xs font-semibold uppercase tracking-widest text-[var(--color-purdue-gold)]">
-                    {club.category}
+        {/* Header */}
+        <div className="rounded-2xl bg-[var(--color-surface-light)] p-7 sm:p-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-3">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Clubs</h1>
+                {!loading && !error && (
+                  <span className="text-sm text-[var(--color-text-secondary)]">
+                    {displayedClubs.length} club{displayedClubs.length !== 1 ? 's' : ''}
                   </span>
                 )}
-                <h2 className="font-semibold text-base text-[var(--color-text-primary)] leading-snug">
-                  {club.name}
-                </h2>
-                <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed line-clamp-3 flex-1">
-                  {club.description || 'No description available.'}
-                </p>
-                <span className="text-xs text-[var(--color-text-secondary)]/40 group-hover:text-[var(--color-purdue-gold)] transition-colors mt-1">
-                  View details →
-                </span>
-              </button>
-            ))}
+              </div>
+              <p className="text-[11px] tracking-[0.2em] uppercase text-[var(--color-purdue-gold)]">Community Directory</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Search */}
+        {!loading && !error && clubs.length > 0 && (
+          <div className="rounded-2xl bg-[var(--color-surface-light)] p-6 sm:p-7">
+            <SearchBar
+              buildings={clubsForSearch}
+              onSelectBuilding={handleSelectClub}
+              onSearchChange={handleSearchChange}
+            />
           </div>
         )}
+
+        {/* Body */}
+        <div className="rounded-2xl bg-[var(--color-surface-light)] p-6 sm:p-7 min-h-[340px] ml-8 sm:ml-12 md:ml-16 lg:ml-20">
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="w-6 h-6 rounded-full border-2 border-[var(--color-purdue-gold)]/20 border-t-[var(--color-purdue-gold)] animate-spin" />
+              <p className="text-sm text-[var(--color-text-secondary)]">Loading clubs...</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center justify-center py-16">
+              <p className="text-sm text-[var(--color-text-secondary)]">{error}</p>
+            </div>
+          )}
+
+          {!loading && !error && displayedClubs.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                {clubs.length === 0
+                  ? 'No clubs yet.'
+                  : showMyClubsOnly
+                    ? 'You are not in any clubs yet, or none match your search.'
+                    : 'No clubs match your search.'}
+              </p>
+              {clubs.length === 0 && (
+                <button
+                  onClick={() => navigate('/clubs/new')}
+                  className="text-xs text-[var(--color-purdue-gold)] hover:underline"
+                >
+                  Create the first one →
+                </button>
+              )}
+            </div>
+          )}
+
+          {!loading && !error && displayedClubs.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-5">
+              {displayedClubs.map(club => (
+                <button
+                  key={club.id}
+                  onClick={() => navigate(`/clubs/${club.id}`)}
+                  className="group rounded-xl bg-[var(--color-surface-light)] hover:bg-[var(--color-surface-hover)] transition-colors text-left p-3"
+                >
+                  <div className="h-full rounded-lg px-4 py-3.5 flex flex-col gap-2">
+                    {club.category && (
+                      <span className="text-xs font-semibold uppercase tracking-widest text-[var(--color-purdue-gold)]">
+                        {club.category}
+                      </span>
+                    )}
+                    <h2 className="font-semibold text-base text-[var(--color-text-primary)] leading-tight">
+                      {club.name}
+                    </h2>
+                    <p className="text-sm text-[var(--color-text-secondary)] leading-normal line-clamp-3 flex-1">
+                      {club.description || 'No description available.'}
+                    </p>
+                    <span className="text-xs text-[var(--color-text-secondary)]/40 group-hover:text-[var(--color-purdue-gold)] transition-colors pt-0.5">
+                      View details →
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -10,15 +10,6 @@ export default function ClubProfile({ user }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(location.state?.notice || null);
-  const [editMode, setEditMode] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
-  const [form, setForm] = useState({
-    name: '',
-    description: '',
-    contactInfo: '',
-    category: '',
-  });
 
   useEffect(() => {
     axios.get(`/api/clubs/${id}`)
@@ -30,80 +21,28 @@ export default function ClubProfile({ user }) {
       .finally(() => setLoading(false));
   }, [id]);
 
-  useEffect(() => {
-    if (!club) return;
-    setForm({
-      name: club.name || '',
-      description: club.description || '',
-      contactInfo: club.contactInfo || '',
-      category: club.category || '',
-    });
-  }, [club]);
-
   const isOrganizer = Boolean(
     user?.id && Array.isArray(club?.organizerIds) && club.organizerIds.map(String).includes(String(user.id))
   );
 
-  const handleEditClick = () => {
-    setSaveError(null);
-    if (!isOrganizer) {
-      setSaveError('You do not have permission to edit this club.');
-      return;
-    }
-    setEditMode(true);
-  };
-
-  const handleSave = async () => {
-    if (!user?.id) {
-      setSaveError('You must be logged in to edit this club.');
-      return;
-    }
-    setSaving(true);
-    setSaveError(null);
-    try {
-      const res = await axios.patch(`/api/clubs/${id}`, form, {
-        headers: { 'X-User-Id': user.id },
-      });
-      setClub(res.data);
-      setEditMode(false);
-      setNotice('Club profile updated successfully.');
-    } catch (err) {
-      setSaveError(err.response?.data?.message || 'Failed to update club.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-primary)]">
-
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 px-8 py-6 border-b border-white/5 shrink-0">
-        <button
-          onClick={() => navigate('/clubs')}
-          className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-        >
-          ← Back to Clubs
-        </button>
-        <button
-          onClick={() => navigate('/')}
-          className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-        >
-          Map
-        </button>
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 pr-4 pl-8 sm:pr-6 sm:pl-12 md:pr-8 md:pl-16 lg:pr-10 lg:pl-20 xl:pr-12 xl:pl-24">
+      <div className="page-top-actions">
+        <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
+        <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
+        <button onClick={() => navigate('/announcements')} className="profile-button-like">Announcements</button>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7 pt-14 sm:pt-16">
         {loading && (
-          <div className="flex flex-col items-center justify-center h-full gap-3">
+          <div className="flex flex-col items-center justify-center py-24 gap-3 rounded-2xl bg-[var(--color-surface-light)] ml-8 sm:ml-12 md:ml-16 lg:ml-20">
             <div className="w-6 h-6 rounded-full border-2 border-[var(--color-purdue-gold)]/20 border-t-[var(--color-purdue-gold)] animate-spin" />
             <p className="text-sm text-[var(--color-text-secondary)]">Loading club...</p>
           </div>
         )}
 
         {error && (
-          <div className="flex flex-col items-center justify-center h-full gap-3">
+          <div className="flex flex-col items-center justify-center py-24 gap-3 rounded-2xl bg-[var(--color-surface-light)] ml-8 sm:ml-12 md:ml-16 lg:ml-20">
             <p className="text-sm text-[var(--color-text-secondary)]">{error}</p>
             <button
               onClick={() => navigate('/clubs')}
@@ -115,7 +54,8 @@ export default function ClubProfile({ user }) {
         )}
 
         {!loading && !error && club && (
-          <div className="max-w-2xl mx-auto px-8 py-10 flex flex-col gap-6">
+          <div className="rounded-2xl bg-[var(--color-surface-light)] p-6 sm:p-7 ml-8 sm:ml-12 md:ml-16 lg:ml-20">
+          <div className="max-w-3xl mx-auto flex flex-col gap-6">
 
             {notice && (
               <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm text-emerald-300">
@@ -123,41 +63,16 @@ export default function ClubProfile({ user }) {
               </div>
             )}
 
-            {saveError && (
-              <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
-                {saveError}
-              </div>
-            )}
-
             {/* Category + Name */}
             <div>
-              {editMode ? (
-                <input
-                  type="text"
-                  value={form.category}
-                  onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-                  placeholder="Category"
-                  className="mb-3 w-full max-w-xs px-3 py-2 rounded-lg bg-[var(--color-surface-light)] border border-white/10 text-sm"
-                />
-              ) : (
-                club.category && (
-                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-purdue-gold)] mb-2">
-                  {club.category}
-                </p>
-                )
+              {club.category && (
+              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-purdue-gold)] mb-2">
+                {club.category}
+              </p>
               )}
-              {editMode ? (
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-[var(--color-surface-light)] border border-white/10 text-2xl font-semibold"
-                />
-              ) : (
-                <h1 className="text-4xl font-bold tracking-tight text-[var(--color-text-primary)]">
-                  {club.name}
-                </h1>
-              )}
+              <h1 className="text-4xl font-bold tracking-tight text-[var(--color-text-primary)]">
+                {club.name}
+              </h1>
             </div>
 
             <div className="h-px bg-white/5" />
@@ -165,37 +80,19 @@ export default function ClubProfile({ user }) {
             {/* Description */}
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-white/20 mb-2">About</p>
-              {editMode ? (
-                <textarea
-                  rows={4}
-                  value={form.description}
-                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-[var(--color-surface-light)] border border-white/10 text-sm"
-                />
-              ) : (
-                <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
-                  {club.description || 'No description available.'}
-                </p>
-              )}
+              <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
+                {club.description || 'No description available.'}
+              </p>
             </div>
 
             <div className="h-px bg-white/5" />
 
             {/* Meta */}
             <div className="flex flex-col gap-4">
-              {(club.contactInfo || editMode) && (
+              {club.contactInfo && (
                 <div className="flex gap-6">
                   <span className="text-xs font-semibold uppercase tracking-wider text-white/20 w-20 shrink-0 pt-px">Contact</span>
-                  {editMode ? (
-                    <input
-                      type="text"
-                      value={form.contactInfo}
-                      onChange={(e) => setForm((prev) => ({ ...prev, contactInfo: e.target.value }))}
-                      className="flex-1 px-3 py-2 rounded-lg bg-[var(--color-surface-light)] border border-white/10 text-sm"
-                    />
-                  ) : (
-                    <span className="text-sm text-[var(--color-text-secondary)]">{club.contactInfo}</span>
-                  )}
+                  <span className="text-sm text-[var(--color-text-secondary)]">{club.contactInfo}</span>
                 </div>
               )}
               {club.createdAt && (
@@ -209,45 +106,17 @@ export default function ClubProfile({ user }) {
             </div>
 
             <div className="flex gap-3 pt-2">
-              {!editMode ? (
-                <>
-                  <button
-                    onClick={handleEditClick}
-                    className="px-5 py-2.5 bg-[var(--color-purdue-gold)] hover:bg-[var(--color-purdue-gold-light)] text-black font-semibold text-sm rounded-lg transition-colors"
-                  >
-                    Edit Club
-                  </button>
-                  {isOrganizer && (
-                    <button
-                      onClick={() => navigate(`/clubs/${id}/dashboard`)}
-                      className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-[var(--color-text-primary)] text-sm rounded-lg transition-colors"
-                    >
-                      Organizer Dashboard
-                    </button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="px-5 py-2.5 bg-[var(--color-purdue-gold)] hover:bg-[var(--color-purdue-gold-light)] text-black font-semibold text-sm rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditMode(false);
-                      setSaveError(null);
-                    }}
-                    className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-[var(--color-text-secondary)] text-sm rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </>
+              {isOrganizer && (
+                <button
+                  onClick={() => navigate(`/clubs/${id}/dashboard`)}
+                  className="px-5 py-2.5 bg-[var(--color-purdue-gold)] hover:bg-[var(--color-purdue-gold-light)] text-black font-semibold text-sm rounded-lg transition-colors"
+                >
+                  Organizer Dashboard
+                </button>
               )}
             </div>
 
+          </div>
           </div>
         )}
       </div>
