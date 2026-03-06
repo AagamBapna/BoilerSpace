@@ -243,5 +243,30 @@ describe('Clubs API', () => {
       assert.strictEqual(res.body.success, true);
       assert.strictEqual(res.body.alreadyMember, true);
     });
+
+    it('removes club from memberships when leaving', async () => {
+      mockedUserId = joiner._id.toString();
+
+      const res = await request(app)
+        .post(`/api/clubs/${club._id}/leave`)
+        .expect(200);
+
+      assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.alreadyLeft, false);
+
+      const updated = await User.findById(joiner._id);
+      assert.ok(!updated.clubIds.map(String).includes(club._id.toString()));
+    });
+
+    it('is idempotent when user already left', async () => {
+      mockedUserId = joiner._id.toString();
+
+      const res = await request(app)
+        .post(`/api/clubs/${club._id}/leave`)
+        .expect(200);
+
+      assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.alreadyLeft, true);
+    });
   });
 });

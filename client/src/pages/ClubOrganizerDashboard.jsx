@@ -14,19 +14,13 @@ export default function ClubOrganizerDashboard({ user }) {
   const [membersLoading, setMembersLoading] = useState(false);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
-
-  const [newOrganizerId, setNewOrganizerId] = useState('');
-  const [newEvent, setNewEvent] = useState({
-    title: '',
+  const [clubForm, setClubForm] = useState({
     description: '',
-    date: '',
-    time: '',
-    location: '',
+    category: '',
+    contactInfo: '',
   });
-  const [announcement, setAnnouncement] = useState({
-    eventId: '',
-    message: '',
-  });
+  const [savingClub, setSavingClub] = useState(false);
+  const [showEditClubModal, setShowEditClubModal] = useState(false);
   const [showDeleteClubConfirm, setShowDeleteClubConfirm] = useState(false);
 
   const isOrganizer = useMemo(() => {
@@ -53,6 +47,11 @@ export default function ClubOrganizerDashboard({ user }) {
     try {
       const clubRes = await axios.get(`/api/clubs/${clubId}`);
       setClub(clubRes.data);
+      setClubForm({
+        description: clubRes.data?.description || '',
+        category: clubRes.data?.category || '',
+        contactInfo: clubRes.data?.contactInfo || '',
+      });
 
       const organizerIds = Array.isArray(clubRes.data?.organizerIds) ? clubRes.data.organizerIds.map(String) : [];
       const viewerId = String(user?.id || user?._id || '');
@@ -94,23 +93,6 @@ export default function ClubOrganizerDashboard({ user }) {
     loadData();
   }, [clubId, user?.id]);
 
-  const handleAddOrganizer = async () => {
-    try {
-      setNotice(null);
-      const normalizedUserId = String(newOrganizerId).trim();
-      if (!normalizedUserId) {
-        setError('User ID is required.');
-        return;
-      }
-      await axios.post(`/api/clubs/${clubId}/organizers`, { userId: normalizedUserId });
-      setNewOrganizerId('');
-      await loadData();
-      setNotice('Organizer added successfully.');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add organizer.');
-    }
-  };
-
   const handleKickMember = async (memberId) => {
     try {
       setNotice(null);
@@ -122,51 +104,50 @@ export default function ClubOrganizerDashboard({ user }) {
     }
   };
 
-  const handleCreateEvent = async () => {
+  const handlePromoteMember = async (memberId) => {
     try {
       setNotice(null);
       setError(null);
-      const requiredEventFields = ['title', 'description', 'date', 'time', 'location'];
-      const missingEventField = requiredEventFields.find((key) => !String(newEvent[key] || '').trim());
-      if (missingEventField) {
-        setError('All event fields are required.');
-        return;
-      }
-      const res = await axios.post('/api/events', {
-        ...newEvent,
-        clubId,
-      });
-      const created = res.data;
-      setNewEvent({ title: '', description: '', date: '', time: '', location: '' });
+      await axios.post(`/api/clubs/${clubId}/organizers`, { userId: memberId });
+      setNotice('Member promoted to organizer.');
       await loadData();
-      setAnnouncement((prev) => ({ ...prev, eventId: created.id }));
-      setNotice('Event created successfully.');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create event.');
+      setError(err.response?.data?.message || 'Failed to promote member.');
     }
   };
 
-  const handleCreateAnnouncement = async () => {
+  const handleSaveClubDetails = async () => {
+    const requesterId = user?.id || user?._id;
+    if (!requesterId) {
+      setError('You must be logged in to update club details.');
+      return false;
+    }
+
     try {
+      setSavingClub(true);
       setNotice(null);
-      const message = String(announcement.message || '').trim();
-      if (!message) {
-        setError('Announcement message is required.');
-        return;
-      }
+      setError(null);
 
-      const endpoint = announcement.eventId
-        ? `/api/events/${announcement.eventId}/announcements`
-        : `/api/clubs/${clubId}/announcements`;
+      const payload = {
+        description: String(clubForm.description || '').trim(),
+        category: String(clubForm.category || '').trim(),
+        contactInfo: String(clubForm.contactInfo || '').trim(),
+      };
 
-      await axios.post(endpoint, {
-        message,
+      const res = await axios.patch(`/api/clubs/${clubId}`, payload, {
+        headers: {
+          'X-User-Id': String(requesterId),
+        },
       });
-      setAnnouncement((prev) => ({ ...prev, message: '' }));
-      setNotice('Announcement posted.');
-      await loadData();
+
+      setClub(res.data);
+      setNotice('Club details updated.');
+      return true;
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to post announcement.');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to update club details.');
+      return false;
+    } finally {
+      setSavingClub(false);
     }
   };
 
@@ -235,6 +216,8 @@ export default function ClubOrganizerDashboard({ user }) {
     );
   }
 
+  const organizerIdSet = new Set((club?.organizerIds || []).map(String));
+
   return (
     <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6 sm:px-12 md:px-16 lg:px-20 xl:px-24">
       <div className="page-top-actions">
@@ -242,6 +225,7 @@ export default function ClubOrganizerDashboard({ user }) {
         <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
         <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
         <button onClick={() => navigate('/activity')} className="profile-button-like">Activity</button>
+        <button onClick={() => setShowEditClubModal(true)} className="profile-button-like profile-button-gold">Edit Club Details</button>
       </div>
 
       <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7 pt-14 sm:pt-16">
@@ -255,30 +239,22 @@ export default function ClubOrganizerDashboard({ user }) {
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Panel title="Organizers">
-            <p className="text-sm text-[var(--color-text-secondary)] mb-2">Current organizer IDs</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {(club?.organizerIds || []).map((oid) => (
-                <span key={oid} className="text-xs px-2 py-1 rounded bg-white/10">{String(oid)}</span>
-              ))}
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-                Promote by User ID
-              </label>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <input
-                  value={newOrganizerId}
-                  onChange={(e) => setNewOrganizerId(e.target.value)}
-                  placeholder="Paste user ID"
-                  className="w-full sm:max-w-xs px-3 py-2 rounded-xl bg-[var(--color-surface-light)] border border-white/10 text-sm"
-                />
-                <button
-                  onClick={handleAddOrganizer}
-                  className="w-full sm:w-auto sm:shrink-0 px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded-xl text-sm font-semibold"
-                >
-                  Add Organizer
-                </button>
-              </div>
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+              {membersLoading && <p className="text-sm text-[var(--color-text-secondary)]">Loading organizers...</p>}
+              {!membersLoading && members.filter((m) => organizerIdSet.has(String(m.id))).length === 0 && (
+                <p className="text-sm text-[var(--color-text-secondary)]">No organizers found.</p>
+              )}
+              {members
+                .filter((m) => organizerIdSet.has(String(m.id)))
+                .map((m) => (
+                  <div key={m.id} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
+                    <div>
+                      <p className="text-sm font-medium">{m.displayName || m.email}</p>
+                      <p className="text-xs text-[var(--color-text-secondary)]">{m.email}</p>
+                    </div>
+                    <span className="text-xs text-emerald-300">Organizer</span>
+                  </div>
+                ))}
             </div>
           </Panel>
 
@@ -292,45 +268,23 @@ export default function ClubOrganizerDashboard({ user }) {
                     <p className="text-sm font-medium">{m.displayName || m.email}</p>
                     <p className="text-xs text-[var(--color-text-secondary)]">{m.email}</p>
                   </div>
-                  <button onClick={() => handleKickMember(m.id)} className="text-xs text-red-300 hover:text-red-200">Kick</button>
+                  <div className="flex items-center gap-3">
+                    {organizerIdSet.has(String(m.id)) ? (
+                      <span className="text-xs text-emerald-300">Organizer</span>
+                    ) : (
+                      <button
+                        onClick={() => handlePromoteMember(m.id)}
+                        className="text-xs text-[var(--color-purdue-gold)] hover:text-[var(--color-purdue-gold-light)]"
+                      >
+                        Promote
+                      </button>
+                    )}
+                    {!organizerIdSet.has(String(m.id)) && (
+                      <button onClick={() => handleKickMember(m.id)} className="text-xs text-red-300 hover:text-red-200">Kick</button>
+                    )}
+                  </div>
                 </div>
               ))}
-            </div>
-          </Panel>
-        </section>
-
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Panel title="Create Event">
-            <div className="grid grid-cols-1 gap-2">
-              <Input value={newEvent.title} onChange={(v) => setNewEvent((p) => ({ ...p, title: v }))} placeholder="Title" />
-              <Input value={newEvent.description} onChange={(v) => setNewEvent((p) => ({ ...p, description: v }))} placeholder="Description" />
-              <Input value={newEvent.date} onChange={(v) => setNewEvent((p) => ({ ...p, date: v }))} placeholder="Date (YYYY-MM-DD)" />
-              <Input value={newEvent.time} onChange={(v) => setNewEvent((p) => ({ ...p, time: v }))} placeholder="Time (HH:mm)" />
-              <Input value={newEvent.location} onChange={(v) => setNewEvent((p) => ({ ...p, location: v }))} placeholder="Location" />
-              <button onClick={handleCreateEvent} className="mt-1 px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded text-sm font-semibold">Create Event</button>
-            </div>
-          </Panel>
-
-          <Panel title="Post Announcement">
-            <div className="grid grid-cols-1 gap-2">
-              <select
-                value={announcement.eventId}
-                onChange={(e) => setAnnouncement((p) => ({ ...p, eventId: e.target.value }))}
-                className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
-              >
-                <option value="">No event (club-wide)</option>
-                {events.map((e) => (
-                  <option key={e.id} value={e.id}>{e.title}</option>
-                ))}
-              </select>
-              <textarea
-                rows={5}
-                value={announcement.message}
-                onChange={(e) => setAnnouncement((p) => ({ ...p, message: e.target.value }))}
-                placeholder="Announcement message"
-                className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
-              />
-              <button onClick={handleCreateAnnouncement} className="px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded text-sm font-semibold">Post Announcement</button>
             </div>
           </Panel>
         </section>
@@ -366,7 +320,75 @@ export default function ClubOrganizerDashboard({ user }) {
             </div>
           </Panel>
         </section>
+
       </div>
+
+      {showEditClubModal && (
+        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-6">
+          <div className="w-full max-w-2xl rounded-2xl bg-[var(--color-surface-light)] p-7 sm:p-8 flex flex-col gap-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Edit Club Details</h2>
+              <button
+                onClick={() => !savingClub && setShowEditClubModal(false)}
+                className="profile-button-like"
+                disabled={savingClub}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[var(--color-text-secondary)]">Description</label>
+                <textarea
+                  rows={4}
+                  value={clubForm.description}
+                  onChange={(e) => setClubForm((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Club description"
+                  className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-[var(--color-text-secondary)]">Category</label>
+                  <Input
+                    value={clubForm.category}
+                    onChange={(v) => setClubForm((prev) => ({ ...prev, category: v }))}
+                    placeholder="Category"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-[var(--color-text-secondary)]">Contact Info</label>
+                  <Input
+                    value={clubForm.contactInfo}
+                    onChange={(v) => setClubForm((prev) => ({ ...prev, contactInfo: v }))}
+                    placeholder="email@purdue.edu"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setShowEditClubModal(false)}
+                  disabled={savingClub}
+                  className="profile-button-like"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    const ok = await handleSaveClubDetails();
+                    if (ok) setShowEditClubModal(false);
+                  }}
+                  disabled={savingClub}
+                  className="px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded text-sm font-semibold disabled:opacity-60"
+                >
+                  {savingClub ? 'Saving...' : 'Save Club Details'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <button
         onClick={() => setShowDeleteClubConfirm(true)}

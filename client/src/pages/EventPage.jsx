@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { getToken } from '../lib/auth';
 
-export default function EventPage() {
+export default function EventPage({ user }) {
   const { id: eventId } = useParams();
   const navigate = useNavigate();
 
@@ -14,6 +14,7 @@ export default function EventPage() {
   const [notice, setNotice] = useState(null);
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showCreateAnnouncementModal, setShowCreateAnnouncementModal] = useState(false);
 
   const token = getToken();
   const topActionClass = 'profile-button-like min-w-[110px] justify-center';
@@ -21,6 +22,12 @@ export default function EventPage() {
   const headers = useMemo(() => (
     token ? { Authorization: `Bearer ${token}` } : undefined
   ), [token]);
+
+  const isOrganizer = useMemo(() => {
+    const userId = String(user?.id || user?._id || '');
+    const organizerIds = Array.isArray(event?.club?.organizerIds) ? event.club.organizerIds : [];
+    return organizerIds.some((o) => String(o?._id || o?.id || o) === userId);
+  }, [event, user?.id, user?._id]);
 
   const loadData = useCallback(async () => {
     if (!headers) {
@@ -70,12 +77,12 @@ export default function EventPage() {
 
     if (!message.trim()) {
       setError('Announcement message is required.');
-      return;
+      return false;
     }
 
     if (!headers) {
       setError('You must be logged in to post announcements.');
-      return;
+      return false;
     }
 
     try {
@@ -88,12 +95,24 @@ export default function EventPage() {
       setMessage('');
       setNotice('Announcement posted.');
       await loadData();
+      return true;
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || 'Failed to post announcement.';
       setError(msg);
+      return false;
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCreateAnnouncementClick = () => {
+    setNotice(null);
+    setError(null);
+    if (!isOrganizer) {
+      setError('You do not have permission to post announcements for this event.');
+      return;
+    }
+    setShowCreateAnnouncementModal(true);
   };
 
   if (loading) {
@@ -114,6 +133,7 @@ export default function EventPage() {
         {event?.clubId && (
           <button onClick={() => navigate(`/clubs/${event.clubId}`)} className={topActionClass}>Back to Club</button>
         )}
+        <button onClick={handleCreateAnnouncementClick} className="profile-button-like profile-button-gold min-w-[130px] justify-center">Create Announcement</button>
       </div>
 
       <div className="w-full max-w-[1200px] mx-auto flex flex-col gap-6 pt-14 sm:pt-16">
@@ -147,32 +167,6 @@ export default function EventPage() {
         )}
 
         <section className="rounded-2xl bg-[var(--color-surface-light)] p-6 sm:p-7">
-          <h2 className="text-lg font-semibold mb-3">Post Announcement</h2>
-          <p className="text-xs text-[var(--color-text-secondary)] mb-3">
-            Only organizers can post. Others will see a permission message.
-          </p>
-          <div className="flex flex-col gap-3">
-            <textarea
-              rows={4}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Announcement message"
-              className="px-3 py-2 rounded-xl bg-[var(--color-surface)] border border-white/10 text-sm"
-            />
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handlePostAnnouncement}
-                disabled={submitting}
-                className="px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded-xl text-sm font-semibold disabled:opacity-60"
-              >
-                {submitting ? 'Posting...' : 'Post Announcement'}
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-2xl bg-[var(--color-surface-light)] p-6 sm:p-7">
           <h2 className="text-lg font-semibold mb-3">Announcements</h2>
           {announcements.length === 0 ? (
             <p className="text-sm text-[var(--color-text-secondary)]">No announcements yet.</p>
@@ -195,6 +189,47 @@ export default function EventPage() {
           )}
         </section>
       </div>
+
+      {showCreateAnnouncementModal && (
+        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-6">
+          <div className="w-full max-w-2xl rounded-2xl bg-[var(--color-surface-light)] p-7 sm:p-8 flex flex-col gap-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Create Announcement</h2>
+              <button
+                onClick={() => !submitting && setShowCreateAnnouncementModal(false)}
+                className="profile-button-like"
+                disabled={submitting}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <textarea
+                rows={5}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Announcement message"
+                className="px-3 py-2 rounded-xl bg-[var(--color-surface)] border border-white/10 text-sm"
+              />
+              <div className="flex justify-end gap-3 pt-2">
+                <button onClick={() => setShowCreateAnnouncementModal(false)} disabled={submitting} className="profile-button-like">Cancel</button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const ok = await handlePostAnnouncement();
+                    if (ok) setShowCreateAnnouncementModal(false);
+                  }}
+                  disabled={submitting}
+                  className="px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded-xl text-sm font-semibold disabled:opacity-60"
+                >
+                  {submitting ? 'Posting...' : 'Post Announcement'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

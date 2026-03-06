@@ -25,7 +25,7 @@ describe('EventPage announcements', () => {
           id: 'event-1',
           title: 'Hack Night',
           clubId: 'club-1',
-          club: { name: 'CS Club' },
+          club: { name: 'CS Club', organizerIds: ['user-1'] },
         },
       })
       .mockResolvedValueOnce({
@@ -53,7 +53,7 @@ describe('EventPage announcements', () => {
 
     axios.get
       .mockResolvedValueOnce({
-        data: { id: 'event-1', title: 'Hack Night', clubId: 'club-1', club: { name: 'CS Club' } },
+        data: { id: 'event-1', title: 'Hack Night', clubId: 'club-1', club: { name: 'CS Club', organizerIds: ['user-1'] } },
       })
       .mockResolvedValueOnce({ data: [] });
 
@@ -65,6 +65,8 @@ describe('EventPage announcements', () => {
       </MemoryRouter>
     );
 
+    await screen.findByRole('button', { name: 'Create Announcement' });
+    await user.click(screen.getByRole('button', { name: 'Create Announcement' }));
     await screen.findByPlaceholderText('Announcement message');
     await user.click(screen.getByRole('button', { name: 'Post Announcement' }));
 
@@ -76,17 +78,9 @@ describe('EventPage announcements', () => {
 
     axios.get
       .mockResolvedValueOnce({
-        data: { id: 'event-1', title: 'Hack Night', clubId: 'club-1', club: { name: 'CS Club' } },
+        data: { id: 'event-1', title: 'Hack Night', clubId: 'club-1', club: { name: 'CS Club', organizerIds: ['organizer-1'] } },
       })
       .mockResolvedValueOnce({ data: [] });
-
-    axios.post.mockRejectedValueOnce({
-      response: {
-        data: {
-          message: 'You do not have permission to post announcements for this event.',
-        },
-      },
-    });
 
     render(
       <MemoryRouter initialEntries={['/events/event-1']}>
@@ -96,9 +90,8 @@ describe('EventPage announcements', () => {
       </MemoryRouter>
     );
 
-    await screen.findByPlaceholderText('Announcement message');
-    await user.type(screen.getByPlaceholderText('Announcement message'), 'Test update');
-    await user.click(screen.getByRole('button', { name: 'Post Announcement' }));
+    await screen.findByRole('button', { name: 'Create Announcement' });
+    await user.click(screen.getByRole('button', { name: 'Create Announcement' }));
 
     await waitFor(() => {
       expect(screen.getByText('You do not have permission to post announcements for this event.')).toBeInTheDocument();

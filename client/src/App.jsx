@@ -466,6 +466,7 @@ export default function App() {
       <Route path="/clubs/:id/dashboard" element={<ClubOrganizerDashboard user={user} />} />
       <Route path="/activity" element={<ActivityPage initialTab="events" />} />
       <Route path="/events" element={<ActivityPage initialTab="events" />} />
+      <Route path="/events/:id" element={<EventPage user={user} />} />
       <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
       <Route path="*" element={mapExperience} />
     </Routes>

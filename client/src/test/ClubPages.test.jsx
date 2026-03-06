@@ -182,4 +182,52 @@ describe('ClubProfile page', () => {
     });
     expect(screen.getByText('You joined this club.')).toBeInTheDocument();
   });
+
+  test('shows leave club button for members and leaves successfully', async () => {
+    const user = userEvent.setup();
+    const originalConfirm = globalThis.confirm;
+    globalThis.confirm = vi.fn(() => true);
+
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/clubs/club-1') {
+        return Promise.resolve({
+          data: {
+            id: 'club-1',
+            name: 'CS Club',
+            description: 'Tech org',
+            category: 'Academic',
+            contactInfo: 'cs@example.com',
+            organizerIds: ['owner-1'],
+          },
+        });
+      }
+      if (url === '/api/events?clubId=club-1') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/api/users/student-1') {
+        return Promise.resolve({ data: { clubIds: ['club-1'] } });
+      }
+      return Promise.reject(new Error(`Unexpected URL: ${url}`));
+    });
+
+    axios.post.mockResolvedValueOnce({ data: { success: true } });
+
+    render(
+      <MemoryRouter initialEntries={['/clubs/club-1']}>
+        <Routes>
+          <Route path="/clubs/:id" element={<ClubProfile user={{ id: 'student-1' }} />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await screen.findByText('CS Club');
+    expect(screen.getByRole('button', { name: 'Leave Club' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Leave Club' }));
+
+    await waitFor(() => {
+      expect(axios.post).toHaveBeenCalledWith('/api/clubs/club-1/leave');
+    });
+    expect(screen.getByText('You left this club.')).toBeInTheDocument();
+    globalThis.confirm = originalConfirm;
+  });
 });
