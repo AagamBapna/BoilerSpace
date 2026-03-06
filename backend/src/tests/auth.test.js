@@ -50,13 +50,13 @@ describe('POST /api/auth/register', () => {
 
         const user = await User.findOne({ email: validUser.email }).select('+password');
         expect(user.password).not.toBe(validUser.password);
-        
+
         const isMatch = await bcrypt.compare(validUser.password, user.password);
         expect(isMatch).toBe(true);
     });
 
     test('rejects duplicate emails', async () => {
-        await User.create(validUser);
+        await User.create({ ...validUser, emailVerified: true });
 
         const res = await request(app)
             .post('/api/auth/register')

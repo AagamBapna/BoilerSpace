@@ -33,7 +33,7 @@ router.post('/login', async (req, res) => {
         const token = signToken(user);
         res.json({
             token,
-            user: { id: user._id, email: user.email, displayName: user.displayName, major: user.major, year: user.year },
+            user: { id: user._id, email: user.email, displayName: user.displayName, major: user.major, year: user.year, emailVerified: user.emailVerified },
         });
     } catch (err) {
         console.error('Login error:', err.message);
@@ -63,9 +63,23 @@ router.post('/register', async (req, res) => {
     }
 
     try {
-        const existing = await User.findOne({ email: email.toLowerCase() });
+        const existing = await User.findOne({ email: email.toLowerCase() }).select('+password');
         if (existing) {
-            return res.status(409).json({ error: 'An account with that email already exists' });
+            if (existing.emailVerified) {
+                return res.status(409).json({ error: 'An account with that email already exists' });
+            }
+
+            // Allow re-registration if email was never verified
+            existing.password = password;
+            existing.displayName = displayName;
+            existing.major = major;
+            existing.year = year;
+            await existing.save();
+
+            return res.status(201).json({
+                message: 'Account created successfully',
+                user: { id: existing._id, email: existing.email, displayName: existing.displayName },
+            });
         }
 
         const user = await User.create({ email, password, displayName, major, year });

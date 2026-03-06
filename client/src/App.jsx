@@ -9,6 +9,7 @@ import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import ForgotPasswordForm from './components/ForgotPasswordForm';
 import ResetPasswordForm from './components/ResetPasswordForm';
+import EmailVerification from './components/EmailVerification';
 import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
@@ -17,6 +18,8 @@ export default function App() {
   const [authChecking, setAuthChecking] = useState(true);
   const [authMode, setAuthMode] = useState('login');
   const [prefilledResetToken, setPrefilledResetToken] = useState('');
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [pendingVerificationPassword, setPendingVerificationPassword] = useState('');
   const [buildings, setBuildings] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -140,6 +143,17 @@ export default function App() {
     }
   }, []);
 
+  const handleLoginSuccess = useCallback(async (userData) => {
+    setUser(userData);
+    try {
+      const res = await axios.get('/api/users/bookmarks');
+      setBookmarkedRoomIds(new Set(res.data.map((r) => r._id)));
+      setBookmarks(res.data);
+    } catch (err) {
+      console.error('Failed to fetch bookmarks after login:', err);
+    }
+  }, []);
+
   const navigateAuthMode = useCallback((mode, options = {}) => {
     const nextToken = options.token ?? '';
 
@@ -188,7 +202,7 @@ export default function App() {
     if (authMode === 'login') {
       return (
         <LoginForm
-          onSuccess={setUser}
+          onSuccess={handleLoginSuccess}
           onSwitchToRegister={() => navigateAuthMode('register')}
           onForgotPassword={() => navigateAuthMode('forgot')}
         />
@@ -211,10 +225,41 @@ export default function App() {
         />
       );
     }
+    if (authMode === 'verify-email' && pendingVerificationEmail) {
+      return (
+        <EmailVerification
+          email={pendingVerificationEmail}
+          onVerified={async () => {
+            try {
+              const loginRes = await axios.post('/api/auth/login', {
+                email: pendingVerificationEmail,
+                password: pendingVerificationPassword,
+              });
+              setToken(loginRes.data.token);
+              setUser(loginRes.data.user);
+              setPendingVerificationEmail('');
+              setPendingVerificationPassword('');
+            } catch {
+              setAuthMode('login');
+            }
+          }}
+          onBackToLogin={() => {
+            setPendingVerificationEmail('');
+            setPendingVerificationPassword('');
+            navigateAuthMode('login');
+          }}
+        />
+      );
+    }
     return (
       <RegisterForm
-        onSuccess={setUser}
+        onSuccess={handleLoginSuccess}
         onSwitchToLogin={() => navigateAuthMode('login')}
+        onNeedVerification={(email, password) => {
+          setPendingVerificationEmail(email);
+          setPendingVerificationPassword(password);
+          setAuthMode('verify-email');
+        }}
       />
     );
   }
