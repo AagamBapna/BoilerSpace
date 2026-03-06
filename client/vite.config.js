@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import { configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
-const isTest = process.env.VITEST === 'true'
+const isTest = globalThis.process?.env?.VITEST === 'true'
 
 // https://vite.dev/config/
 export default defineConfig(async () => {

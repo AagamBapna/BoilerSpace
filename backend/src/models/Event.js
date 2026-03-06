@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const eventSchema = new mongoose.Schema(
   {
@@ -15,4 +15,4 @@ const eventSchema = new mongoose.Schema(
 eventSchema.index({ clubId: 1 });
 eventSchema.index({ date: 1 });
 
-export default mongoose.model('Event', eventSchema);
+module.exports = mongoose.models.Event || mongoose.model('Event', eventSchema);
