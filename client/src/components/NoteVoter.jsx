@@ -20,7 +20,11 @@ export default function NoteVoter({ noteId, initialVotes, userVote }) {
             background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '2px',
             color: currentUserVote === 'up' ? 'var(--color-purdue-gold)' : 'var(--color-text-secondary)',
             transition: 'color 0.2s',
-        }}>▲</button>
+        }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 4l-8 8h5v8h6v-8h5z"/>
+            </svg>
+        </button>
         <span style={{
             fontWeight: 'bold', fontSize: '13px', textAlign: 'center',
             color: voteCount > 0 ? 'var(--color-purdue-gold)' : voteCount < 0 ? '#ef4444' : 'var(--color-text-secondary)',
@@ -29,7 +33,11 @@ export default function NoteVoter({ noteId, initialVotes, userVote }) {
             background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '2px',
             color: currentUserVote === 'down' ? '#ef4444' : 'var(--color-text-secondary)',
             transition: 'color 0.2s',
-        }}>▼</button>
+        }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 20l8-8h-5V4H9v8H4z"/>
+            </svg>
+        </button>
         </div>
     );
 }
