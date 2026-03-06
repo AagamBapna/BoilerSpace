@@ -138,4 +138,42 @@ router.delete('/:noteId', protect, async (req, res) => {
     }
 });
 
+// POST /api/notes/:noteId/vote, vote on a note
+router.post('/:noteId/vote', protect, async (req, res) => {
+    try {
+        const { type } = req.body;
+        if (type !== 'up' && type !== 'down') {
+            return res.status(400).json({ error: 'Invalid vote type. Must be "up" or "down".' });
+        }
+        const note = await Note.findById(req.params.noteId);
+        if (!note) {
+            return res.status(404).json({ error: 'Note not found.' });
+        }
+        const existingVoteIndex = note.votes.findIndex(v => v.user.toString() === req.user._id.toString());
+        if (existingVoteIndex !== -1) {
+            if (note.votes[existingVoteIndex].vote === type) {
+                return res.status(400).json({ error: `You have already ${type}voted this note.` });
+            }
+            note.votes[existingVoteIndex].vote = type;
+            if (type === 'up') {
+                note.voteCount += 2;
+            } else {
+                note.voteCount -= 2;
+            }
+        } else {
+            note.votes.push({ user: req.user._id, vote: type });
+            if (type === 'up') {
+                note.voteCount += 1;
+            } else {
+                note.voteCount -= 1;
+            }
+        }
+        await note.save();
+        res.json({ message: 'Vote recorded.', voteCount: note.voteCount, userVote: type });
+    } catch (error) {
+        console.error('Error placing vote:', error);
+        res.status(500).json({ error: 'Failed to place vote.' });
+    }
+});
+
 module.exports = router;
