@@ -217,8 +217,7 @@ describe('POST /api/courses/:id/notes', () => {
 
     test('returns 401 without auth token', async () => {
         const res = await request(app)
-            .post(`/api/courses/${course._id}/notes`)
-            .attach('file', testFilePath);
+            .post(`/api/courses/${course._id}/notes`);
 
         expect(res.status).toBe(401);
     });

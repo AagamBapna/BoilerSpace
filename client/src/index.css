@@ -430,24 +430,52 @@ body {
   border-color: var(--color-purdue-gold);
 }
 
-.profile-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-purdue-gold), var(--color-purdue-rush));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: black;
-  font-weight: 600;
-  font-size: 12px;
-}
-
-/* ── Notes Button ──────────────────────────────────────────────── */
 .notes-button {
   position: fixed;
-  top: 68px;
+  top: 16px;
+  right: 420px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--color-surface-light);
+  border: 1px solid rgba(206, 184, 136, 0.2);
+  border-radius: 12px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  z-index: 24;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.notes-button:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-purdue-gold);
+}
+
+.map-top-actions {
+  position: fixed;
+  top: 16px;
+  right: 176px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 24;
+}
+
+.page-top-actions {
+  position: fixed;
+  top: 16px;
   right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 25;
+}
+
+.profile-button-like {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -459,14 +487,49 @@ body {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  z-index: 25;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: all 0.2s ease;
+  text-decoration: none;
 }
 
-.notes-button:hover {
+.profile-button-like:hover {
   background: var(--color-surface-hover);
   border-color: var(--color-purdue-gold);
+}
+
+.profile-button-gold {
+  background: var(--color-purdue-gold);
+  color: black;
+  border-color: transparent;
+}
+
+.profile-button-gold:hover {
+  background: var(--color-purdue-gold-light);
+  border-color: transparent;
+}
+
+.profile-button-danger {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.profile-button-danger:hover {
+  background: #ef4444;
+  border-color: transparent;
+}
+
+.profile-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-purdue-gold), var(--color-purdue-rush));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: black;
+  font-weight: 600;
+  font-size: 12px;
 }
 
 /* ── Color Variables for Components ─────────────────────────────── */
@@ -490,11 +553,29 @@ body {
     top: auto;
     bottom: 16px;
     right: 16px;
+    justify-content: center;
+  }
+
+  .map-top-actions {
+    top: auto;
+    right: 16px;
+    bottom: 70px;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .notes-button {
     top: auto;
-    bottom: 68px;
     right: 16px;
+    bottom: 132px;
+    justify-content: center;
+  }
+
+  .page-top-actions {
+    top: auto;
+    right: 16px;
+    bottom: 16px;
+    flex-direction: column;
+    align-items: stretch;
   }
 }
