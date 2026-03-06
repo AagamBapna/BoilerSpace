@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Club = require('../models/Club');
 const Event = require('../models/Event');
+const Announcement = require('../models/Announcement');
 const { protect } = require('../middleware/auth'); // only protect now
 
 /**
@@ -119,6 +120,38 @@ router.post('/', protect, async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Failed to create event' });
+  }
+});
+
+/**
+ * DELETE /api/events/:id
+ * Delete an event. Requester must be an organizer of the event's club.
+ */
+router.delete('/:id', protect, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    const club = await Club.findById(event.clubId);
+    if (!club) return res.status(404).json({ error: 'Club not found' });
+
+    const organizerIds = Array.isArray(club.organizerIds) ? club.organizerIds.map(String) : [];
+    if (!organizerIds.includes(String(req.user.id))) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'You do not have permission to delete events for this club.',
+      });
+    }
+
+    await Promise.all([
+      Event.deleteOne({ _id: event._id }),
+      Announcement.deleteMany({ eventId: event._id }),
+    ]);
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to delete event' });
   }
 });
 

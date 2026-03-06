@@ -35,6 +35,7 @@ export default function AnnouncementsFeed() {
       <div className="page-top-actions">
         <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
         <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
+        <button onClick={() => navigate('/activity')} className="profile-button-like">Activity</button>
       </div>
 
       <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7 pt-14 sm:pt-16">

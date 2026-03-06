@@ -96,5 +96,16 @@ describe('Announcements API', () => {
       assert.strictEqual(list.body[0].message, 'First update');
       assert.strictEqual(list.body[1].message, 'Second update');
     });
+
+    it('creates a club-wide announcement when no event is selected', async () => {
+      const res = await request(app)
+        .post(`/api/events/clubs/${club._id}/announcements`)
+        .send({ message: 'Club-wide update' })
+        .expect(201);
+
+      assert.strictEqual(res.body.message, 'Club-wide update');
+      assert.strictEqual(res.body.eventId, null);
+      assert.ok(res.body.clubId);
+    });
   });
 });

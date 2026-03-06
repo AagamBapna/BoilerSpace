@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Club = require('../models/Club');
 const User = require('../models/User');
+const Announcement = require('../models/Announcement');
+const Event = require('../models/Event');
 const { protect } = require('../middleware/auth');
 
 async function getOrganizerClub(req, res) {
@@ -159,6 +161,102 @@ router.delete('/:id/members/:userId', protect, async (req, res) => {
 });
 
 /**
+ * GET /api/clubs/:id/announcements
+ * Organizer-only: list announcements for this club (including event and club-wide).
+ */
+router.get('/:id/announcements', protect, async (req, res) => {
+  try {
+    const club = await getOrganizerClub(req, res);
+    if (!club) return;
+
+    const anns = await Announcement.find({ clubId: club._id })
+      .populate({ path: 'authorId', select: 'id displayName email' })
+      .populate({ path: 'eventId', select: 'title date time location' })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const normalized = anns.map((a) => ({
+      ...a,
+      id: a._id.toString(),
+      event: a.eventId || null,
+      eventId: a.eventId?._id?.toString() || null,
+      author: a.authorId,
+      authorId: a.authorId?._id?.toString(),
+      clubId: club._id.toString(),
+    }));
+
+    return res.json(normalized);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to fetch club announcements' });
+  }
+});
+
+/**
+ * POST /api/clubs/:id/announcements
+ * Organizer-only: post a club-wide announcement (no event required).
+ */
+router.post('/:id/announcements', protect, async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        fields: { message: 'Message is required' },
+      });
+    }
+
+    const club = await getOrganizerClub(req, res);
+    if (!club) return;
+
+    const ann = await Announcement.create({
+      eventId: null,
+      clubId: club._id,
+      authorId: req.user?._id || req.user?.id,
+      message: String(message).trim(),
+    });
+
+    await ann.populate({ path: 'authorId', select: 'id displayName email' });
+    await ann.populate({ path: 'clubId', select: 'name category' });
+
+    const doc = ann.toObject();
+    return res.status(201).json({
+      ...doc,
+      id: doc._id.toString(),
+      eventId: null,
+      event: null,
+      club: doc.clubId,
+      clubId: doc.clubId?._id?.toString(),
+      author: doc.authorId,
+      authorId: doc.authorId?._id?.toString(),
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to create announcement' });
+  }
+});
+
+/**
+ * DELETE /api/clubs/:id/announcements/:announcementId
+ * Organizer-only: delete one announcement from this club.
+ */
+router.delete('/:id/announcements/:announcementId', protect, async (req, res) => {
+  try {
+    const club = await getOrganizerClub(req, res);
+    if (!club) return;
+
+    const ann = await Announcement.findOne({ _id: req.params.announcementId, clubId: club._id });
+    if (!ann) return res.status(404).json({ error: 'Announcement not found' });
+
+    await Announcement.deleteOne({ _id: ann._id });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to delete announcement' });
+  }
+});
+
+/**
  * POST /api/clubs
  * creates a new club. required fields are validated; missing required fields
  * return 400 with a clear message and field names.
@@ -257,6 +355,34 @@ router.patch('/:id', (req, res) => {
       console.error(err);
       if (!res.headersSent) res.status(500).json({ error: 'Failed to update club' });
     });
+});
+
+/**
+ * DELETE /api/clubs/:id
+ * Organizer-only: delete club and related events/announcements, and remove membership links.
+ */
+router.delete('/:id', protect, async (req, res) => {
+  try {
+    const club = await getOrganizerClub(req, res);
+    if (!club) return;
+
+    const clubIdStr = club._id.toString();
+
+    await Promise.all([
+      Announcement.deleteMany({ clubId: club._id }),
+      Event.deleteMany({ clubId: club._id }),
+      User.updateMany(
+        { clubIds: clubIdStr },
+        { $pull: { clubIds: clubIdStr } }
+      ),
+      Club.deleteOne({ _id: club._id }),
+    ]);
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to delete club' });
+  }
 });
 
 module.exports = router;

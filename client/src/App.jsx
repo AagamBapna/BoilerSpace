@@ -14,6 +14,11 @@ import EmailVerification from './components/EmailVerification';
 import ClubList from './pages/ClubList';
 import ClubProfile from './pages/ClubProfile';
 import CreateClub from './pages/CreateClub';
+<<<<<<< HEAD
+=======
+import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
+import ActivityPage from './pages/ActivityPage';
+>>>>>>> 8ef6d9a (added delete options for events, announcements, clubs and also chnaged activity page to show both events and announcements)
 import { getToken, setToken, clearToken } from './lib/auth';
 import './index.css';
 
@@ -407,12 +412,12 @@ export default function App() {
         {inRouterContext ? (
           <>
             <Link to="/clubs" className="profile-button-like">Clubs</Link>
-            <Link to="/announcements" className="profile-button-like">Announcements</Link>
+            <Link to="/activity" className="profile-button-like">Activity</Link>
           </>
         ) : (
           <>
             <a href="/clubs" className="profile-button-like">Clubs</a>
-            <a href="/announcements" className="profile-button-like">Announcements</a>
+            <a href="/activity" className="profile-button-like">Activity</a>
           </>
         )}
       </div>
@@ -461,6 +466,10 @@ export default function App() {
       <Route path="/clubs" element={<ClubList user={user} />} />
       <Route path="/clubs/new" element={<CreateClub user={user} />} />
       <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
+      <Route path="/clubs/:id/dashboard" element={<ClubOrganizerDashboard user={user} />} />
+      <Route path="/activity" element={<ActivityPage initialTab="events" />} />
+      <Route path="/events" element={<ActivityPage initialTab="events" />} />
+      <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
       <Route path="*" element={mapExperience} />
     </Routes>
   </div>

@@ -8,6 +8,7 @@ export default function ClubOrganizerDashboard({ user }) {
 
   const [club, setClub] = useState(null);
   const [events, setEvents] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -69,6 +70,14 @@ export default function ClubOrganizerDashboard({ user }) {
       } catch (err) {
         setEvents([]);
         setError(err.response?.data?.error || 'Failed to load club events.');
+      }
+
+      try {
+        const announcementsRes = await axios.get(`/api/clubs/${clubId}/announcements`);
+        setAnnouncements(announcementsRes.data || []);
+      } catch (err) {
+        setAnnouncements([]);
+        setError(err.response?.data?.error || 'Failed to load club announcements.');
       }
 
       await loadMembers();
@@ -140,15 +149,57 @@ export default function ClubOrganizerDashboard({ user }) {
 
       const endpoint = announcement.eventId
         ? `/api/events/${announcement.eventId}/announcements`
-        : `/api/events/clubs/${clubId}/announcements`;
+        : `/api/clubs/${clubId}/announcements`;
 
       await axios.post(endpoint, {
-        message: announcement.message,
+        message,
       });
       setAnnouncement((prev) => ({ ...prev, message: '' }));
       setNotice('Announcement posted.');
+      await loadData();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to post announcement.');
+    }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    const confirmed = window.confirm('Delete this event? This will also delete its announcements.');
+    if (!confirmed) return;
+    try {
+      setNotice(null);
+      setError(null);
+      await axios.delete(`/api/events/${eventId}`);
+      await loadData();
+      setNotice('Event deleted.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete event.');
+    }
+  };
+
+  const handleDeleteAnnouncement = async (announcementId) => {
+    const confirmed = window.confirm('Delete this announcement?');
+    if (!confirmed) return;
+    try {
+      setNotice(null);
+      setError(null);
+      await axios.delete(`/api/clubs/${clubId}/announcements/${announcementId}`);
+      await loadData();
+      setNotice('Announcement deleted.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete announcement.');
+    }
+  };
+
+  const handleDeleteClub = async () => {
+    const confirmed = window.confirm('Delete this club? This will remove all events and announcements permanently.');
+    if (!confirmed) return;
+    try {
+      setNotice(null);
+      setError(null);
+      await axios.delete(`/api/clubs/${clubId}`);
+      navigate('/clubs');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete club.');
     }
   };
 
@@ -184,7 +235,7 @@ export default function ClubOrganizerDashboard({ user }) {
         <button onClick={() => navigate(`/clubs/${clubId}`)} className="profile-button-like">Back to Club</button>
         <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
         <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
-        <button onClick={() => navigate('/announcements')} className="profile-button-like">Announcements</button>
+        <button onClick={() => navigate('/activity')} className="profile-button-like">Activity</button>
       </div>
 
       <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7 pt-14 sm:pt-16">
@@ -264,6 +315,50 @@ export default function ClubOrganizerDashboard({ user }) {
                 className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
               />
               <button onClick={handleCreateAnnouncement} className="px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded text-sm font-semibold">Post Announcement</button>
+            </div>
+          </Panel>
+        </section>
+
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Panel title="Manage Events">
+            <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+              {events.length === 0 && <p className="text-sm text-[var(--color-text-secondary)]">No events to manage.</p>}
+              {events.map((event) => (
+                <div key={event.id} className="flex items-center justify-between bg-white/5 rounded px-3 py-2 gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{event.title}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)] truncate">{event.date} {event.time ? `· ${event.time}` : ''}</p>
+                  </div>
+                  <button onClick={() => handleDeleteEvent(event.id)} className="text-xs text-red-300 hover:text-red-200">Delete</button>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="Manage Announcements">
+            <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+              {announcements.length === 0 && <p className="text-sm text-[var(--color-text-secondary)]">No announcements to manage.</p>}
+              {announcements.map((a) => (
+                <div key={a.id} className="flex items-center justify-between bg-white/5 rounded px-3 py-2 gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{a.message}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)] truncate">{a.event?.title || 'Club-wide'} · {a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</p>
+                  </div>
+                  <button onClick={() => handleDeleteAnnouncement(a.id)} className="text-xs text-red-300 hover:text-red-200">Delete</button>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </section>
+
+        <section>
+          <Panel title="Danger Zone">
+            <div className="flex items-center justify-between gap-3 bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+              <div>
+                <p className="text-sm font-semibold text-red-200">Delete Club</p>
+                <p className="text-xs text-[var(--color-text-secondary)]">Permanently removes this club and all related events and announcements.</p>
+              </div>
+              <button onClick={handleDeleteClub} className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded text-xs font-semibold transition-colors">Delete Club</button>
             </div>
           </Panel>
         </section>

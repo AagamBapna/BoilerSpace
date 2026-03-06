@@ -44,7 +44,7 @@ export default function ClubProfile({ user }) {
       <div className="page-top-actions">
         <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
         <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
-        <button onClick={() => navigate('/announcements')} className="profile-button-like">Announcements</button>
+        <button onClick={() => navigate('/activity')} className="profile-button-like">Activity</button>
         {isOrganizer && (
           <button onClick={() => navigate(`/clubs/${id}/dashboard`)} className="profile-button-like profile-button-gold">Organizer Dashboard</button>
         )}
