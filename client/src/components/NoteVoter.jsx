@@ -6,9 +6,19 @@ export default function NoteVoter({ noteId, initialVotes, userVote }) {
     const [currentUserVote, setCurrentUserVote] = useState(userVote);
     const handleVote = async (vote) => {
         try {
-            const response = await axios.post(`/api/notes/${noteId}/vote`, { vote });
-            setVoteCount(response.data.voteCount);
-            setCurrentUserVote(response.data.userVote);
+            if (currentUserVote === vote) {
+                await axios.delete(`/api/notes/${noteId}/vote`);
+                if (vote === 'up') {
+                    setVoteCount(prev => prev - 1);
+                } else {
+                    setVoteCount(prev => prev + 1);
+                }
+                setCurrentUserVote(null);
+            } else {
+                const response = await axios.post(`/api/notes/${noteId}/vote`, { vote });
+                setVoteCount(response.data.voteCount);
+                setCurrentUserVote(response.data.userVote);
+            }
         } catch (error) {
             console.error('Error placing vote:', error);
         }
