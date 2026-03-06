@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const ALLOWED_FILE_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-const MAX_FILE_SIZE = 16 * 1024 * 1024; // 16MB
+const MAX_FILE_SIZE = 16 * 1024 * 1024;
 
 const noteSchema = new mongoose.Schema(
     {
