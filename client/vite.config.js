@@ -17,7 +17,7 @@ export default defineConfig(async () => {
     plugins,
     server: {
       proxy: {
-        '/api': 'http://localhost:3000',
+        '/api': 'http://localhost:5001',
       },
     },
     test: {

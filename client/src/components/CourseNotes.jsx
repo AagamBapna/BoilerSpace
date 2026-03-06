@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import NoteUploadForm from './NoteUploadForm';
+import NoteVoter from './NoteVoter';
 
 export default function CourseNotes({ courseId, courseName, onClose, userId }) {
   const [notes, setNotes] = useState([]);
@@ -191,7 +192,12 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
                     <span>{formatFileSize(note.fileSize)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <NoteVoter
+                    noteId={note._id}
+                    initialVotes={note.voteCount || 0}
+                    userVote={note.votes?.find(v => v.user === userId || v.user?._id === userId)?.vote || null}
+                  />
                   <button
                     onClick={() => handleDownload(note)}
                     className="p-2 hover:bg-[var(--color-surface)] rounded-lg transition-colors"

@@ -49,6 +49,21 @@ const noteSchema = new mongoose.Schema(
                 message: 'File type must be PDF, PNG, or JPEG',
             },
         },
+        voteCount: {
+            type: Number,
+            default: 0,
+        },
+        votes: [{
+            user: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+            },
+            vote: {
+                type: String,
+                enum: ['up', 'down'],
+                required: true,
+            },
+        }],
     },
     { timestamps: true }
 );
