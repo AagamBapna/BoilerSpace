@@ -261,14 +261,24 @@ export default function ClubOrganizerDashboard({ user }) {
                 <span key={oid} className="text-xs px-2 py-1 rounded bg-white/10">{String(oid)}</span>
               ))}
             </div>
-            <div className="flex gap-2">
-              <input
-                value={newOrganizerId}
-                onChange={(e) => setNewOrganizerId(e.target.value)}
-                placeholder="User ID to promote"
-                className="flex-1 px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
-              />
-              <button onClick={handleAddOrganizer} className="px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded text-sm font-semibold">Add</button>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
+                Promote by User ID
+              </label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <input
+                  value={newOrganizerId}
+                  onChange={(e) => setNewOrganizerId(e.target.value)}
+                  placeholder="Paste user ID"
+                  className="w-full sm:max-w-xs px-3 py-2 rounded-xl bg-[var(--color-surface-light)] border border-white/10 text-sm"
+                />
+                <button
+                  onClick={handleAddOrganizer}
+                  className="w-full sm:w-auto sm:shrink-0 px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded-xl text-sm font-semibold"
+                >
+                  Add Organizer
+                </button>
+              </div>
             </div>
           </Panel>
 

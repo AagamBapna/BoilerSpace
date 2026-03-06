@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import CreateClub from '../pages/CreateClub';
+import ClubList from '../pages/ClubList';
 import ClubProfile from '../pages/ClubProfile';
 
 vi.mock('axios', () => ({
@@ -19,24 +19,28 @@ function NoticeView() {
   return <div>{location.state?.notice || 'no-notice'}</div>;
 }
 
-describe('CreateClub page', () => {
+describe('ClubList create popup', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   test('posts organizerIds from logged-in user and navigates with confirmation notice', async () => {
     const user = userEvent.setup();
+
+    axios.get.mockResolvedValueOnce({ data: [] });
+    axios.get.mockResolvedValueOnce({ data: { clubIds: [] } });
     axios.post.mockResolvedValueOnce({ data: { id: 'club-1' } });
 
     render(
-      <MemoryRouter initialEntries={['/clubs/new']}>
+      <MemoryRouter initialEntries={['/clubs']}>
         <Routes>
-          <Route path="/clubs/new" element={<CreateClub user={{ id: 'user-1' }} />} />
+          <Route path="/clubs" element={<ClubList user={{ id: 'user-1' }} />} />
           <Route path="/clubs/:id" element={<NoticeView />} />
         </Routes>
       </MemoryRouter>
     );
 
+    await user.click(screen.getByRole('button', { name: '+ Create Club' }));
     await user.type(screen.getByPlaceholderText('e.g. Purdue Robotics Club'), 'Robotics Club');
     await user.type(screen.getByPlaceholderText('What does your club do?'), 'We build robots.');
     await user.type(screen.getByPlaceholderText('e.g. Engineering, Arts, Sports'), 'Engineering');
