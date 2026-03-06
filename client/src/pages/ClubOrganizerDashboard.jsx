@@ -330,7 +330,7 @@ export default function ClubOrganizerDashboard({ user }) {
               <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Edit Club Details</h2>
               <button
                 onClick={() => !savingClub && setShowEditClubModal(false)}
-                className="profile-button-like"
+                className="profile-button-like px-5 py-2.5 text-base"
                 disabled={savingClub}
               >
                 Close
@@ -370,7 +370,7 @@ export default function ClubOrganizerDashboard({ user }) {
                 <button
                   onClick={() => setShowEditClubModal(false)}
                   disabled={savingClub}
-                  className="profile-button-like"
+                  className="profile-button-like px-5 py-2.5 text-base"
                 >
                   Cancel
                 </button>
@@ -380,7 +380,7 @@ export default function ClubOrganizerDashboard({ user }) {
                     if (ok) setShowEditClubModal(false);
                   }}
                   disabled={savingClub}
-                  className="px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded text-sm font-semibold disabled:opacity-60"
+                  className="px-5 py-2.5 bg-[var(--color-purdue-gold)] text-black rounded text-base font-semibold disabled:opacity-60"
                 >
                   {savingClub ? 'Saving...' : 'Save Club Details'}
                 </button>
@@ -408,7 +408,7 @@ export default function ClubOrganizerDashboard({ user }) {
             <div className="flex gap-3 justify-end pt-2">
               <button
                 onClick={() => setShowDeleteClubConfirm(false)}
-                className="profile-button-like"
+                className="profile-button-like px-5 py-2.5 text-base"
               >
                 Cancel
               </button>
@@ -417,7 +417,7 @@ export default function ClubOrganizerDashboard({ user }) {
                   setShowDeleteClubConfirm(false);
                   await handleDeleteClub();
                 }}
-                className="profile-button-like profile-button-danger"
+                className="profile-button-like profile-button-danger px-5 py-2.5 text-base"
               >
                 Yes, Delete Club
               </button>

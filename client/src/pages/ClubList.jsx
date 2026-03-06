@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import SearchBar from '../components/SearchBar';
 
 export default function ClubList({ user }) {
   const [clubs, setClubs] = useState([]);
@@ -9,6 +8,7 @@ export default function ClubList({ user }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showMyClubsOnly, setShowMyClubsOnly] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [memberClubIds, setMemberClubIds] = useState(new Set());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -62,18 +62,6 @@ export default function ClubList({ user }) {
       )
     );
   }, [clubs]);
-
-  // SearchBar expects buildings with `name` and `abbreviation` fields.
-  // We map clubs to that shape, using category as the abbreviation.
-  const clubsForSearch = clubs.map(c => ({
-    ...c,
-    _id: c.id,
-    abbreviation: c.category || '',
-  }));
-
-  const handleSelectClub = useCallback((club) => {
-    navigate(`/clubs/${club.id}`);
-  }, [navigate]);
 
   const handleOpenCreateModal = useCallback(() => {
     setShowCreateModal(true);
@@ -141,7 +129,7 @@ export default function ClubList({ user }) {
   }, [filteredClubs, showMyClubsOnly, user?.id, user?._id, memberClubIds]);
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 pr-4 pl-8 sm:pr-6 sm:pl-12 md:pr-8 md:pl-16 lg:pr-10 lg:pl-20 xl:pr-12 xl:pl-24">
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6">
       <div className="page-top-actions">
         <button
           onClick={handleOpenCreateModal}
@@ -164,7 +152,7 @@ export default function ClubList({ user }) {
         <button onClick={() => navigate('/activity')} className="profile-button-like">Activity</button>
       </div>
 
-      <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7">
+      <div className="flex flex-col gap-7" style={{ marginLeft: '2rem', marginRight: '2rem', paddingTop: '2rem' }}>
 
         {/* Header */}
         <div className="rounded-2xl bg-[var(--color-surface-light)] p-7 sm:p-8">
@@ -186,16 +174,22 @@ export default function ClubList({ user }) {
         {/* Search */}
         {!loading && !error && clubs.length > 0 && (
           <div className="rounded-2xl bg-[var(--color-surface-light)] p-6 sm:p-7">
-            <SearchBar
-              buildings={clubsForSearch}
-              onSelectBuilding={handleSelectClub}
-              onSearchChange={handleSearchChange}
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearchQuery(value);
+                handleSearchChange(value);
+              }}
+              placeholder="Search clubs by name or category"
+              className="w-full px-4 py-2.5 bg-[var(--color-surface)] border border-white/10 rounded-lg text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-purdue-gold)]/40 transition-colors"
             />
           </div>
         )}
 
         {/* Body */}
-        <div className="rounded-2xl bg-[var(--color-surface-light)] p-6 sm:p-7 min-h-[340px] ml-8 sm:ml-12 md:ml-16 lg:ml-20">
+        <div className="rounded-2xl bg-[var(--color-surface-light)] p-6 sm:p-7 min-h-[340px]">
           {loading && (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="w-6 h-6 rounded-full border-2 border-[var(--color-purdue-gold)]/20 border-t-[var(--color-purdue-gold)] animate-spin" />

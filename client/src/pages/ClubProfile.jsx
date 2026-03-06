@@ -149,7 +149,7 @@ export default function ClubProfile({ user }) {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6 sm:px-12 md:px-16 lg:px-20 xl:px-24">
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6">
       <div className="page-top-actions">
         <button onClick={() => navigate('/clubs')} className={topActionClass}>Clubs</button>
         <button onClick={() => navigate('/')} className={topActionClass}>Map</button>
@@ -191,7 +191,7 @@ export default function ClubProfile({ user }) {
         )}
 
         {!loading && !error && club && (
-          <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+          <div className="flex flex-col gap-6 w-full" style={{ maxWidth: '48rem', marginLeft: '2rem', paddingTop: '2rem' }}>
 
             {notice && (
               <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm text-emerald-300">
@@ -290,41 +290,45 @@ export default function ClubProfile({ user }) {
       </div>
 
       {showCreateEventModal && (
-        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-6">
-          <div className="w-full max-w-2xl rounded-2xl bg-[var(--color-surface-light)] p-7 sm:p-8 flex flex-col gap-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Create Event</h2>
+        <div className="background-blur">
+          <div className="course-selector">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Create Event</h2>
               <button
                 onClick={() => !creatingEvent && setShowCreateEventModal(false)}
-                className="profile-button-like"
+                className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors"
                 disabled={creatingEvent}
               >
-                Close
+                <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
-              <InputField label="Title" value={newEvent.title} onChange={(v) => setNewEvent((p) => ({ ...p, title: v }))} placeholder="Event title" />
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-[var(--color-text-secondary)]">Description</label>
-                <textarea
-                  rows={4}
-                  value={newEvent.description}
-                  onChange={(e) => setNewEvent((p) => ({ ...p, description: e.target.value }))}
-                  placeholder="Event description"
-                  className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <InputField label="Date" value={newEvent.date} onChange={(v) => setNewEvent((p) => ({ ...p, date: v }))} placeholder="YYYY-MM-DD" />
-                <InputField label="Time" value={newEvent.time} onChange={(v) => setNewEvent((p) => ({ ...p, time: v }))} placeholder="HH:mm" />
-              </div>
-              <InputField label="Location" value={newEvent.location} onChange={(v) => setNewEvent((p) => ({ ...p, location: v }))} placeholder="Location" />
-              <div className="flex justify-end gap-3 pt-2">
-                <button onClick={() => setShowCreateEventModal(false)} disabled={creatingEvent} className="profile-button-like">Cancel</button>
-                <button onClick={handleCreateEvent} disabled={creatingEvent} className="px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded text-sm font-semibold disabled:opacity-60">
-                  {creatingEvent ? 'Creating...' : 'Create Event'}
-                </button>
+            <div className="mb-6">
+              <div className="grid grid-cols-1 gap-3">
+                <InputField label="Title" value={newEvent.title} onChange={(v) => setNewEvent((p) => ({ ...p, title: v }))} placeholder="Event title" />
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-[var(--color-text-secondary)]">Description</label>
+                  <textarea
+                    rows={4}
+                    value={newEvent.description}
+                    onChange={(e) => setNewEvent((p) => ({ ...p, description: e.target.value }))}
+                    placeholder="Event description"
+                    className="px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <InputField label="Date" value={newEvent.date} onChange={(v) => setNewEvent((p) => ({ ...p, date: v }))} placeholder="YYYY-MM-DD" />
+                  <InputField label="Time" value={newEvent.time} onChange={(v) => setNewEvent((p) => ({ ...p, time: v }))} placeholder="HH:mm" />
+                </div>
+                <InputField label="Location" value={newEvent.location} onChange={(v) => setNewEvent((p) => ({ ...p, location: v }))} placeholder="Location" />
+                <div className="flex justify-end gap-3 pt-2">
+                  <button onClick={() => setShowCreateEventModal(false)} disabled={creatingEvent} className="px-5 py-2.5 text-base text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">Cancel</button>
+                  <button onClick={handleCreateEvent} disabled={creatingEvent} className="px-5 py-2.5 bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black font-semibold rounded-lg text-base hover:opacity-90 disabled:opacity-50">
+                    {creatingEvent ? 'Creating...' : 'Create Event'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -342,7 +346,7 @@ function InputField({ label, value, onChange, placeholder }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
+        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]"
       />
     </div>
   );

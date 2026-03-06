@@ -98,13 +98,13 @@ export default function ActivityPage({ initialTab = 'events' }) {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6 sm:px-12 md:px-16 lg:px-20 xl:px-24">
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6">
       <div className="page-top-actions">
         <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
         <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
       </div>
 
-      <div className="w-full max-w-[1400px] mr-auto ml-6 sm:ml-10 md:ml-14 lg:ml-20 xl:ml-24 flex flex-col gap-7 pt-14 sm:pt-16">
+      <div className="flex flex-col gap-7" style={{ maxWidth: '1400px', marginLeft: '2rem', marginRight: '2rem', paddingTop: '2rem' }}>
         <div className="flex flex-col gap-2">
           <p className="text-xs tracking-widest uppercase text-[var(--color-purdue-gold)]">Activity</p>
           <h1 className="text-3xl font-bold">Campus Activity</h1>

@@ -126,7 +126,7 @@ export default function EventPage({ user }) {
   }
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6 sm:px-12 md:px-16 lg:px-20 xl:px-24">
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6">
       <div className="page-top-actions">
         <button onClick={() => navigate('/activity')} className={topActionClass}>Activity</button>
         <button onClick={() => navigate('/clubs')} className={topActionClass}>Clubs</button>
@@ -136,7 +136,7 @@ export default function EventPage({ user }) {
         <button onClick={handleCreateAnnouncementClick} className="profile-button-like profile-button-gold min-w-[130px] justify-center">Create Announcement</button>
       </div>
 
-      <div className="w-full max-w-[1200px] mx-auto flex flex-col gap-6 pt-14 sm:pt-16">
+     <div className="flex flex-col gap-7" style={{ maxWidth: '1500px', marginLeft: '2rem', paddingTop: '2rem', marginRight: '2rem' }}>
         {error && (
           <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
             {error}
@@ -191,40 +191,44 @@ export default function EventPage({ user }) {
       </div>
 
       {showCreateAnnouncementModal && (
-        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-6">
-          <div className="w-full max-w-2xl rounded-2xl bg-[var(--color-surface-light)] p-7 sm:p-8 flex flex-col gap-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Create Announcement</h2>
+        <div className="background-blur">
+          <div className="course-selector">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Create Announcement</h2>
               <button
                 onClick={() => !submitting && setShowCreateAnnouncementModal(false)}
-                className="profile-button-like"
+                className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors"
                 disabled={submitting}
               >
-                Close
+                <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
-              <textarea
-                rows={5}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Announcement message"
-                className="px-3 py-2 rounded-xl bg-[var(--color-surface)] border border-white/10 text-sm"
-              />
-              <div className="flex justify-end gap-3 pt-2">
-                <button onClick={() => setShowCreateAnnouncementModal(false)} disabled={submitting} className="profile-button-like">Cancel</button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const ok = await handlePostAnnouncement();
-                    if (ok) setShowCreateAnnouncementModal(false);
-                  }}
-                  disabled={submitting}
-                  className="px-4 py-2 bg-[var(--color-purdue-gold)] text-black rounded-xl text-sm font-semibold disabled:opacity-60"
-                >
-                  {submitting ? 'Posting...' : 'Post Announcement'}
-                </button>
+            <div className="mb-6">
+              <div className="grid grid-cols-1 gap-3">
+                <textarea
+                  rows={5}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Announcement message"
+                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]"
+                />
+                <div className="flex justify-end gap-3 pt-2">
+                  <button onClick={() => setShowCreateAnnouncementModal(false)} disabled={submitting} className="px-5 py-2.5 text-base text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">Cancel</button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const ok = await handlePostAnnouncement();
+                      if (ok) setShowCreateAnnouncementModal(false);
+                    }}
+                    disabled={submitting}
+                    className="px-5 py-2.5 bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black font-semibold rounded-lg text-base hover:opacity-90 disabled:opacity-50"
+                  >
+                    {submitting ? 'Posting...' : 'Post Announcement'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
