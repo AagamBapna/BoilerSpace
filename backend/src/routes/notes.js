@@ -176,4 +176,30 @@ router.post('/:noteId/vote', protect, async (req, res) => {
     }
 });
 
+// DELETE /api/notes/:noteId/vote, remove vote from a note
+router.delete('/:noteId/vote', protect, async (req, res) => {
+    try {
+        const note = await Note.findById(req.params.noteId);
+        if (!note) {
+            return res.status(404).json({ error: 'Note not found.' });
+        }
+        const existingVoteIndex = note.votes.findIndex(v => v.user.toString() === req.user._id.toString());
+        if (existingVoteIndex === -1) {
+            return res.status(400).json({ error: 'You have not voted this note.' });
+        }
+        const existingVote = note.votes[existingVoteIndex].vote;
+        note.votes.splice(existingVoteIndex, 1);
+        if (existingVote === 'up') {
+            note.voteCount -= 1;
+        } else {
+            note.voteCount += 1;
+        }
+        await note.save();
+        res.json({ message: 'Vote removed.', voteCount: note.voteCount, userVote: null });
+    } catch (error) {
+        console.error('Error removing vote:', error);
+        res.status(500).json({ error: 'Failed to remove vote.' });
+    }
+});
+
 module.exports = router;
