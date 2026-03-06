@@ -46,29 +46,38 @@ export default function ClubOrganizerDashboard({ user }) {
   };
 
   const loadData = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setError(null);
-      const [clubRes, eventsRes] = await Promise.all([
-        axios.get(`/api/clubs/${clubId}`),
-        axios.get(`/api/events?clubId=${clubId}`),
-      ]);
-
+      const clubRes = await axios.get(`/api/clubs/${clubId}`);
       setClub(clubRes.data);
-      setEvents(eventsRes.data || []);
 
       const organizerIds = Array.isArray(clubRes.data?.organizerIds) ? clubRes.data.organizerIds.map(String) : [];
       const viewerId = String(user?.id || user?._id || '');
-      if (viewerId && organizerIds.includes(viewerId)) {
-        await loadMembers();
-      } else {
+      const viewerIsOrganizer = Boolean(viewerId && organizerIds.includes(viewerId));
+
+      if (!viewerIsOrganizer) {
+        setEvents([]);
         setMembers([]);
+        return;
       }
 
-      if (!announcement.eventId && eventsRes.data?.length) {
-        setAnnouncement((prev) => ({ ...prev, eventId: eventsRes.data[0].id }));
+      try {
+        const eventsRes = await axios.get(`/api/events?clubId=${clubId}`);
+        const loadedEvents = eventsRes.data || [];
+        setEvents(loadedEvents);
+        if (!announcement.eventId && loadedEvents.length) {
+          setAnnouncement((prev) => ({ ...prev, eventId: loadedEvents[0].id }));
+        }
+      } catch (err) {
+        setEvents([]);
+        setError(err.response?.data?.error || 'Failed to load club events.');
       }
+
+      await loadMembers();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load organizer dashboard.');
+      setClub(null);
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load organizer dashboard.');
     } finally {
       setLoading(false);
     }
