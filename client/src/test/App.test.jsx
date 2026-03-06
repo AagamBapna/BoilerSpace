@@ -158,7 +158,15 @@ describe('App — Loading & Error States', () => {
     });
 
     test('renders sidebar and map after successful fetch', async () => {
+<<<<<<< HEAD
         mockAuthedGetRequests();
+=======
+        getToken.mockReturnValue('fake-token');
+        axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] });
+>>>>>>> 9aad4c9 (finalize features for sprint 1, submit pr)
         render(<App />);
         await waitFor(() => {
             expect(screen.getByText('BoilerSpace')).toBeInTheDocument();
@@ -171,7 +179,15 @@ describe('App — Building List Rendering', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         window.history.replaceState({}, '', '/');
+<<<<<<< HEAD
         mockAuthedGetRequests();
+=======
+        getToken.mockReturnValue('fake-token');
+        axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] });
+>>>>>>> 9aad4c9 (finalize features for sprint 1, submit pr)
     });
 
     test('displays all buildings in the sidebar list', async () => {
@@ -206,7 +222,15 @@ describe('App — Building Selection & Room Display', () => {
 
     test('clicking a building shows its detail view with rooms', async () => {
         const user = userEvent.setup();
+<<<<<<< HEAD
         mockAuthedGetRequests({ roomsByBuilding: { b001: sampleRooms } });
+=======
+        axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] })
+            .mockResolvedValueOnce({ data: sampleRooms });
+>>>>>>> 9aad4c9 (finalize features for sprint 1, submit pr)
 
         render(<App />);
 
@@ -235,7 +259,15 @@ describe('App — Building Selection & Room Display', () => {
 
     test('clicking "All Buildings" returns to the building list', async () => {
         const user = userEvent.setup();
+<<<<<<< HEAD
         mockAuthedGetRequests({ roomsByBuilding: { b001: sampleRooms } });
+=======
+        axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] })
+            .mockResolvedValueOnce({ data: sampleRooms });
+>>>>>>> 9aad4c9 (finalize features for sprint 1, submit pr)
 
         render(<App />);
         await waitFor(() => {
@@ -256,7 +288,15 @@ describe('App — Building Selection & Room Display', () => {
 
     test('shows room capacity and noise level', async () => {
         const user = userEvent.setup();
+<<<<<<< HEAD
         mockAuthedGetRequests({ roomsByBuilding: { b001: sampleRooms } });
+=======
+        axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] })
+            .mockResolvedValueOnce({ data: sampleRooms });
+>>>>>>> 9aad4c9 (finalize features for sprint 1, submit pr)
 
         render(<App />);
         await waitFor(() => {
@@ -274,7 +314,15 @@ describe('App — Building Selection & Room Display', () => {
 
     test('shows empty rooms message when a building has no rooms', async () => {
         const user = userEvent.setup();
+<<<<<<< HEAD
         mockAuthedGetRequests({ roomsByBuilding: { b001: [] } });
+=======
+        axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] })
+            .mockResolvedValueOnce({ data: [] });
+>>>>>>> 9aad4c9 (finalize features for sprint 1, submit pr)
 
         render(<App />);
         await waitFor(() => {
@@ -292,7 +340,15 @@ describe('App — Sidebar Search Filter', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         window.history.replaceState({}, '', '/');
+<<<<<<< HEAD
         mockAuthedGetRequests();
+=======
+        getToken.mockReturnValue('fake-token');
+        axios.get
+            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
+            .mockResolvedValueOnce({ data: sampleBuildings })
+            .mockResolvedValueOnce({ data: [] });
+>>>>>>> 9aad4c9 (finalize features for sprint 1, submit pr)
     });
 
     test('filters buildings by name', async () => {
