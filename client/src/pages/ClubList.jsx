@@ -62,6 +62,12 @@ export default function ClubList() {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-[var(--color-text-primary)] font-semibold text-sm rounded-lg transition-colors"
+          >
+            Map
+          </button>
+          <button
             onClick={() => navigate('/announcements')}
             className="px-4 py-2 bg-white/5 hover:bg-white/10 text-[var(--color-text-primary)] font-semibold text-sm rounded-lg transition-colors"
           >

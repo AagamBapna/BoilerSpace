@@ -52,12 +52,18 @@ export default function CreateClub({ user }) {
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-primary)]">
 
       {/* Header */}
-      <div className="flex items-center gap-4 px-8 py-6 border-b border-white/5 shrink-0">
+      <div className="flex items-center justify-between gap-4 px-8 py-6 border-b border-white/5 shrink-0">
         <button
           onClick={() => navigate('/clubs')}
           className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
         >
           ← Back to Clubs
+        </button>
+        <button
+          onClick={() => navigate('/')}
+          className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+        >
+          Map
         </button>
       </div>
 

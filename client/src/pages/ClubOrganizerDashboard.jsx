@@ -179,7 +179,10 @@ export default function ClubOrganizerDashboard({ user }) {
             <p className="text-xs tracking-widest uppercase text-[var(--color-purdue-gold)]">Organizer</p>
             <h1 className="text-3xl font-bold">{club?.name} Dashboard</h1>
           </div>
-          <button className="text-sm text-[var(--color-text-secondary)]" onClick={() => navigate(`/clubs/${clubId}`)}>Back to Club</button>
+          <div className="flex items-center gap-3">
+            <button className="text-sm text-[var(--color-text-secondary)]" onClick={() => navigate(`/clubs/${clubId}`)}>Back to Club</button>
+            <button className="text-sm text-[var(--color-text-secondary)]" onClick={() => navigate('/')}>Map</button>
+          </div>
         </div>
 
         {notice && <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm">{notice}</div>}
