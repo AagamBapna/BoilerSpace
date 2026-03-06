@@ -11,8 +11,6 @@ const noteSchema = new mongoose.Schema(
       userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
       voteType: { type: String, enum: ['upvote', 'downvote'], required: true },
     }],
-    eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
-    authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }
 );
