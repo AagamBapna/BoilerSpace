@@ -49,28 +49,16 @@ export default function CreateClub({ user }) {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-primary)]">
-
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 px-8 py-6 border-b border-white/5 shrink-0">
-        <button
-          onClick={() => navigate('/clubs')}
-          className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-        >
-          ← Back to Clubs
-        </button>
-        <button
-          onClick={() => navigate('/')}
-          className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-        >
-          Map
-        </button>
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 pr-4 pl-8 sm:pr-6 sm:pl-12 md:pr-8 md:pl-16 lg:pr-10 lg:pl-20 xl:pr-12 xl:pl-24">
+      <div className="page-top-actions">
+        <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
+        <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
+        <button onClick={() => navigate('/announcements')} className="profile-button-like">Announcements</button>
       </div>
 
-      {/* Form */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-xl mx-auto px-8 py-10">
-          <div className="mb-8">
+      <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7 pt-14 sm:pt-16">
+        <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+          <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-purdue-gold)] mb-2">New</p>
             <h1 className="text-4xl font-bold tracking-tight">Create a Club</h1>
           </div>

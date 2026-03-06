@@ -456,11 +456,13 @@ export default function App() {
   if (!inRouterContext) return mapExperience;
 
   return (
+  <div className="h-screen w-screen overflow-hidden">
     <Routes>
       <Route path="/clubs" element={<ClubList user={user} />} />
       <Route path="/clubs/new" element={<CreateClub user={user} />} />
       <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
       <Route path="*" element={mapExperience} />
     </Routes>
-  );
+  </div>
+);
 }

@@ -7,7 +7,9 @@ export default function ClubProfile({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [club, setClub] = useState(null);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [eventsLoading, setEventsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(location.state?.notice || null);
 
@@ -21,16 +23,31 @@ export default function ClubProfile({ user }) {
       .finally(() => setLoading(false));
   }, [id]);
 
+  useEffect(() => {
+    if (!id) return;
+    setEventsLoading(true);
+    axios.get(`/api/events?clubId=${id}`)
+      .then(res => setEvents(res.data || []))
+      .catch(err => {
+        console.error('Failed to load events:', err);
+        setEvents([]);
+      })
+      .finally(() => setEventsLoading(false));
+  }, [id]);
+
   const isOrganizer = Boolean(
     user?.id && Array.isArray(club?.organizerIds) && club.organizerIds.map(String).includes(String(user.id))
   );
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 pr-4 pl-8 sm:pr-6 sm:pl-12 md:pr-8 md:pl-16 lg:pr-10 lg:pl-20 xl:pr-12 xl:pl-24">
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6 sm:px-12 md:px-16 lg:px-20 xl:px-24">
       <div className="page-top-actions">
         <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
         <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
         <button onClick={() => navigate('/announcements')} className="profile-button-like">Announcements</button>
+        {isOrganizer && (
+          <button onClick={() => navigate(`/clubs/${id}/dashboard`)} className="profile-button-like profile-button-gold">Organizer Dashboard</button>
+        )}
       </div>
 
       <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7 pt-14 sm:pt-16">
@@ -54,8 +71,7 @@ export default function ClubProfile({ user }) {
         )}
 
         {!loading && !error && club && (
-          <div className="rounded-2xl bg-[var(--color-surface-light)] p-6 sm:p-7 ml-8 sm:ml-12 md:ml-16 lg:ml-20">
-          <div className="max-w-3xl mx-auto flex flex-col gap-6">
+          <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
 
             {notice && (
               <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm text-emerald-300">
@@ -105,18 +121,40 @@ export default function ClubProfile({ user }) {
               )}
             </div>
 
-            <div className="flex gap-3 pt-2">
-              {isOrganizer && (
-                <button
-                  onClick={() => navigate(`/clubs/${id}/dashboard`)}
-                  className="px-5 py-2.5 bg-[var(--color-purdue-gold)] hover:bg-[var(--color-purdue-gold-light)] text-black font-semibold text-sm rounded-lg transition-colors"
-                >
-                  Organizer Dashboard
-                </button>
+            <div className="h-px bg-white/5" />
+
+            {/* Events */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-white/20 mb-4">Events</p>
+              {eventsLoading && (
+                <p className="text-sm text-[var(--color-text-secondary)]">Loading events...</p>
+              )}
+              {!eventsLoading && events.length === 0 && (
+                <p className="text-sm text-[var(--color-text-secondary)]">No events yet.</p>
+              )}
+              {!eventsLoading && events.length > 0 && (
+                <div className="space-y-3">
+                  {events.map((event) => (
+                    <div key={event.id} className="rounded-lg bg-[var(--color-surface-hover)] hover:bg-[var(--color-surface)] transition-colors p-4 border border-white/10">
+                      <div className="flex flex-col gap-1">
+                        <h3 className="font-semibold text-[var(--color-text-primary)]">{event.title}</h3>
+                        {event.description && (
+                          <p className="text-xs text-[var(--color-text-secondary)]">{event.description}</p>
+                        )}
+                        <div className="flex flex-col gap-1 text-xs text-[var(--color-text-secondary)] mt-2">
+                          {event.date && (
+                            <span>📅 {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                          )}
+                          {event.time && <span>⏰ {event.time}</span>}
+                          {event.location && <span>📍 {event.location}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
-          </div>
           </div>
         )}
       </div>

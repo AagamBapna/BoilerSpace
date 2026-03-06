@@ -66,9 +66,6 @@ export default function ClubOrganizerDashboard({ user }) {
         const eventsRes = await axios.get(`/api/events?clubId=${clubId}`);
         const loadedEvents = eventsRes.data || [];
         setEvents(loadedEvents);
-        if (!announcement.eventId && loadedEvents.length) {
-          setAnnouncement((prev) => ({ ...prev, eventId: loadedEvents[0].id }));
-        }
       } catch (err) {
         setEvents([]);
         setError(err.response?.data?.error || 'Failed to load club events.');
@@ -135,7 +132,17 @@ export default function ClubOrganizerDashboard({ user }) {
   const handleCreateAnnouncement = async () => {
     try {
       setNotice(null);
-      await axios.post(`/api/events/${announcement.eventId}/announcements`, {
+      const message = String(announcement.message || '').trim();
+      if (!message) {
+        setError('Announcement message is required.');
+        return;
+      }
+
+      const endpoint = announcement.eventId
+        ? `/api/events/${announcement.eventId}/announcements`
+        : `/api/events/clubs/${clubId}/announcements`;
+
+      await axios.post(endpoint, {
         message: announcement.message,
       });
       setAnnouncement((prev) => ({ ...prev, message: '' }));
@@ -172,28 +179,24 @@ export default function ClubOrganizerDashboard({ user }) {
   }
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 pr-4 pl-8 sm:pr-6 sm:pl-12 md:pr-8 md:pl-16 lg:pr-10 lg:pl-20 xl:pr-12 xl:pl-24">
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6 sm:px-12 md:px-16 lg:px-20 xl:px-24">
       <div className="page-top-actions">
+        <button onClick={() => navigate(`/clubs/${clubId}`)} className="profile-button-like">Back to Club</button>
         <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
         <button onClick={() => navigate('/')} className="profile-button-like">Map</button>
         <button onClick={() => navigate('/announcements')} className="profile-button-like">Announcements</button>
       </div>
 
-      <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7">
-        <div className="rounded-2xl bg-[var(--color-surface-light)] p-7 sm:p-8">
-          <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs tracking-widest uppercase text-[var(--color-purdue-gold)]">Organizer</p>
-            <h1 className="text-3xl font-bold">{club?.name} Dashboard</h1>
-          </div>
-          <button className="profile-button-like" onClick={() => navigate(`/clubs/${clubId}`)}>Back to Club</button>
-          </div>
+      <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7 pt-14 sm:pt-16">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs tracking-widest uppercase text-[var(--color-purdue-gold)]">Organizer</p>
+          <h1 className="text-3xl font-bold">{club?.name} Dashboard</h1>
         </div>
 
         {notice && <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm">{notice}</div>}
         {error && <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-sm">{error}</div>}
 
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 ml-8 sm:ml-12 md:ml-16 lg:ml-20">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Panel title="Organizers">
             <p className="text-sm text-[var(--color-text-secondary)] mb-2">Current organizer IDs</p>
             <div className="flex flex-wrap gap-2 mb-4">
@@ -229,7 +232,7 @@ export default function ClubOrganizerDashboard({ user }) {
           </Panel>
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 ml-8 sm:ml-12 md:ml-16 lg:ml-20">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Panel title="Create Event">
             <div className="grid grid-cols-1 gap-2">
               <Input value={newEvent.title} onChange={(v) => setNewEvent((p) => ({ ...p, title: v }))} placeholder="Title" />
@@ -248,7 +251,7 @@ export default function ClubOrganizerDashboard({ user }) {
                 onChange={(e) => setAnnouncement((p) => ({ ...p, eventId: e.target.value }))}
                 className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
               >
-                <option value="">Select event</option>
+                <option value="">No event (club-wide)</option>
                 {events.map((e) => (
                   <option key={e.id} value={e.id}>{e.title}</option>
                 ))}

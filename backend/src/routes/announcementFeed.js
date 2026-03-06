@@ -11,6 +11,7 @@ router.get('/', protect, async (req, res) => {
   try {
     const announcements = await Announcement.find({})
       .populate({ path: 'authorId', select: 'displayName email' })
+      .populate({ path: 'clubId', select: 'name category' })
       .populate({
         path: 'eventId',
         select: 'title date time clubId',
@@ -19,18 +20,22 @@ router.get('/', protect, async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    const normalized = announcements
-      .filter((a) => a.eventId)
-      .map((a) => ({
+    const normalized = announcements.map((a) => {
+      const clubFromEvent = a.eventId?.clubId;
+      const fallbackClub = a.clubId;
+      const club = clubFromEvent || fallbackClub || null;
+
+      return {
         ...a,
         id: a._id.toString(),
         author: a.authorId,
         authorId: a.authorId?._id?.toString() ?? (a.authorId ? String(a.authorId) : undefined),
         event: a.eventId,
         eventId: a.eventId?._id?.toString(),
-        club: a.eventId?.clubId,
-        clubId: a.eventId?.clubId?._id?.toString(),
-      }));
+        club,
+        clubId: club?._id?.toString(),
+      };
+    });
 
     return res.json(normalized);
   } catch (err) {
