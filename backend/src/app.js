@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const passport = require('passport');
 
@@ -6,6 +7,7 @@ const buildingRoutes = require('./routes/buildings');
 const courseRoutes = require('./routes/courses');
 const checkinRoutes = require('./routes/checkins');
 const clubRoutes = require('./routes/clubs');
+const noteRoutes = require('./routes/notes');
 const authRoutes = require('./routes/auth');
 
 require('./config/passport');
@@ -24,6 +26,9 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/users', bookmarkRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/clubs', clubRoutes);
+app.use('/api/courses', noteRoutes);
+app.use('/api/notes', noteRoutes);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
