@@ -20,7 +20,7 @@ router.get('/', protect, async (req, res) => {
       .populate({
         path: 'clubId',
         select: 'id name category',
-        populate: { path: 'organizerId', select: 'id name' },
+        populate: { path: 'organizerIds', select: 'id name' },
       })
       .sort({ date: 1, time: 1 })
       .lean();
@@ -49,7 +49,7 @@ router.get('/:id', protect, async (req, res) => {
       .populate({
         path: 'clubId',
         select: 'id name category contactInfo',
-        populate: { path: 'organizerId', select: 'id name email' },
+        populate: { path: 'organizerIds', select: 'id name email' },
       })
       .lean();
 
@@ -88,7 +88,8 @@ router.post('/', protect, async (req, res) => {
 
     const club = await Club.findById(clubId);
     if (!club) return res.status(404).json({ error: 'Club not found' });
-    if (String(club.organizerId) !== req.user.id) // make sure user is organizer
+    // make sure user is one of the club organizers
+    if (!Array.isArray(club.organizerIds) || !club.organizerIds.map(String).includes(String(req.user.id)))
       return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to create events for this club.' });
 
     const event = await Event.create({
@@ -103,7 +104,7 @@ router.post('/', protect, async (req, res) => {
     await event.populate({
       path: 'clubId',
       select: 'id name category',
-      populate: { path: 'organizerId', select: 'id name' },
+      populate: { path: 'organizerIds', select: 'id name' },
     });
 
     const doc = event.toObject();

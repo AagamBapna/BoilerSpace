@@ -14,13 +14,14 @@ const clubSchema = new mongoose.Schema(
     // cateogry of club
     category: { type: String, default: '', trim: true },
     // unqiue id for club organizer
-    organizerId: { type: String, required: true },
+    // support multiple organizers
+    organizerIds: { type: [String], required: true, default: [] },
   },
   { timestamps: true }
 );
 
 // index for filtering clubs by organizer and by category.
-clubSchema.index({ organizerId: 1 });
+clubSchema.index({ organizerIds: 1 });
 clubSchema.index({ category: 1 });
 
 module.exports = mongoose.models.Club || mongoose.model('Club', clubSchema);

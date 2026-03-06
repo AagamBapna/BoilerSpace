@@ -58,6 +58,8 @@ const userSchema = new mongoose.Schema(
             type: Date,
             select: false,
         },
+        // list of club ids the user belongs to
+        clubIds: { type: [String], default: [] },
     },
     { timestamps: true }
 );

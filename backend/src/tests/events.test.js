@@ -44,7 +44,7 @@ describe('Events API', () => {
         description: 'Computer Science',
         contactInfo: 'cs@example.com',
         category: 'Academic',
-        organizerId: 'user-1', // matches mocked user
+        organizerIds: ['user-1'], // matches mocked user
       });
     });
 
@@ -68,7 +68,7 @@ describe('Events API', () => {
 
     it('returns 403 when user is not organizer', async () => {
       // Temporarily change club organizer to simulate forbidden
-      club.organizerId = 'other-user';
+      club.organizerIds = ['other-user'];
       await club.save();
 
       const res = await request(app)
@@ -79,7 +79,7 @@ describe('Events API', () => {
       assert.ok(res.body.message.includes('permission'));
 
       // Restore organizer for other tests
-      club.organizerId = 'user-1';
+      club.organizerIds = ['user-1'];
       await club.save();
     });
 

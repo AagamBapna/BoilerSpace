@@ -26,7 +26,7 @@ describe('Clubs API', () => {
     it('returns 400 when name is missing', async () => {
       const res = await request(app)
         .post('/api/clubs')
-        .send({ organizerId: 'user-1' })
+        .send({ organizerIds: ['user-1'] })
         .expect(400);
       assert.strictEqual(res.body.error, 'Validation failed');
       assert.ok(res.body.fields?.name);
@@ -38,7 +38,7 @@ describe('Clubs API', () => {
         .send({ name: 'Test Club' })
         .expect(400);
       assert.strictEqual(res.body.error, 'Validation failed');
-      assert.ok(res.body.fields?.organizerId);
+      assert.ok(res.body.fields?.organizerIds);
     });
 
     it('creates a club and returns 201 with club data', async () => {
@@ -49,12 +49,12 @@ describe('Clubs API', () => {
           description: 'Computer science',
           contactInfo: 'cs@example.com',
           category: 'Academic',
-          organizerId: 'user-1',
+          organizerIds: ['user-1'],
         })
         .expect(201);
       assert.strictEqual(res.body.name, 'CS Club');
       assert.strictEqual(res.body.description, 'Computer science');
-      assert.strictEqual(res.body.organizerId, 'user-1');
+      assert.deepStrictEqual(res.body.organizerIds, ['user-1']);
       assert.ok(res.body.id);
     });
   });

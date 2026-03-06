@@ -45,7 +45,7 @@ router.get('/:id', (req, res) => {
  * return 400 with a clear message and field names.
  */
 router.post('/', (req, res) => {
-  const { name, description, contactInfo, category, organizerId } = req.body;
+  const { name, description, contactInfo, category, organizerId, organizerIds } = req.body;
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({
       error: 'Validation failed',
@@ -53,11 +53,18 @@ router.post('/', (req, res) => {
       fields: { name: 'Name is required' },
     });
   }
-  if (!organizerId || typeof organizerId !== 'string' || !organizerId.trim()) {
+  // accept either a single `organizerId` (string) or `organizerIds` (array)
+  let finalOrganizerIds = [];
+  if (Array.isArray(organizerIds) && organizerIds.length > 0) {
+    finalOrganizerIds = organizerIds.map((s) => String(s).trim()).filter(Boolean);
+  } else if (organizerId && typeof organizerId === 'string' && organizerId.trim()) {
+    finalOrganizerIds = [organizerId.trim()];
+  }
+  if (finalOrganizerIds.length === 0) {
     return res.status(400).json({
       error: 'Validation failed',
       message: 'Organizer is required.',
-      fields: { organizerId: 'Organizer is required' },
+      fields: { organizerIds: 'Organizer is required' },
     });
   }
   Club.create({
@@ -65,7 +72,7 @@ router.post('/', (req, res) => {
     description: (description != null && String(description).trim()) || '',
     contactInfo: (contactInfo != null && String(contactInfo).trim()) || '',
     category: (category != null && String(category).trim()) || '',
-    organizerId: organizerId.trim(),
+    organizerIds: finalOrganizerIds,
   })
     .then((club) => {
       const doc = club.toObject();
@@ -91,7 +98,7 @@ router.patch('/:id', (req, res) => {
         res.status(404).json({ error: 'Club not found' });
         return null;
       }
-      if (requesterId !== undefined && String(club.organizerId) !== String(requesterId)) {
+      if (requesterId !== undefined && !Array.isArray(club.organizerIds) ? String(club.organizerIds) !== String(requesterId) : !club.organizerIds.map(String).includes(String(requesterId))) {
         res.status(403).json({
           error: 'Forbidden',
           message: 'You do not have permission to edit this club.',
