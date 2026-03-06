@@ -91,6 +91,22 @@ const sampleRooms = [
     { _id: 'r002', buildingId: 'b001', name: 'WALC 3087', floor: 3, capacity: 40, amenities: ['Projector'], noiseLevel: 'loud' },
 ];
 
+const authUser = { id: 'u1', email: 't@t.com', displayName: 'Test' };
+
+function mockAuthedGetRequests({ buildings = sampleBuildings, bookmarks = [], roomsByBuilding = {} } = {}) {
+    getToken.mockReturnValue('fake-token');
+    axios.get.mockImplementation((url) => {
+        if (url === '/api/auth/me') return Promise.resolve({ data: authUser });
+        if (url === '/api/users/bookmarks') return Promise.resolve({ data: bookmarks });
+        if (url === '/api/buildings') return Promise.resolve({ data: buildings });
+        if (url.startsWith('/api/buildings/') && url.endsWith('/rooms')) {
+            const buildingId = url.split('/')[3];
+            return Promise.resolve({ data: roomsByBuilding[buildingId] || [] });
+        }
+        return Promise.reject(new Error(`Unexpected GET request in test: ${url}`));
+    });
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('App — Loading & Error States', () => {
@@ -142,10 +158,7 @@ describe('App — Loading & Error States', () => {
     });
 
     test('renders sidebar and map after successful fetch', async () => {
-        getToken.mockReturnValue('fake-token');
-        axios.get
-            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: sampleBuildings });
+        mockAuthedGetRequests();
         render(<App />);
         await waitFor(() => {
             expect(screen.getByText('BoilerSpace')).toBeInTheDocument();
@@ -158,10 +171,7 @@ describe('App — Building List Rendering', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         window.history.replaceState({}, '', '/');
-        getToken.mockReturnValue('fake-token');
-        axios.get
-            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: sampleBuildings });
+        mockAuthedGetRequests();
     });
 
     test('displays all buildings in the sidebar list', async () => {
@@ -192,15 +202,11 @@ describe('App — Building Selection & Room Display', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         window.history.replaceState({}, '', '/');
-        getToken.mockReturnValue('fake-token');
     });
 
     test('clicking a building shows its detail view with rooms', async () => {
         const user = userEvent.setup();
-        axios.get
-            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: sampleBuildings })
-            .mockResolvedValueOnce({ data: sampleRooms });
+        mockAuthedGetRequests({ roomsByBuilding: { b001: sampleRooms } });
 
         render(<App />);
 
@@ -229,10 +235,7 @@ describe('App — Building Selection & Room Display', () => {
 
     test('clicking "All Buildings" returns to the building list', async () => {
         const user = userEvent.setup();
-        axios.get
-            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: sampleBuildings })
-            .mockResolvedValueOnce({ data: sampleRooms });
+        mockAuthedGetRequests({ roomsByBuilding: { b001: sampleRooms } });
 
         render(<App />);
         await waitFor(() => {
@@ -253,10 +256,7 @@ describe('App — Building Selection & Room Display', () => {
 
     test('shows room capacity and noise level', async () => {
         const user = userEvent.setup();
-        axios.get
-            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: sampleBuildings })
-            .mockResolvedValueOnce({ data: sampleRooms });
+        mockAuthedGetRequests({ roomsByBuilding: { b001: sampleRooms } });
 
         render(<App />);
         await waitFor(() => {
@@ -274,10 +274,7 @@ describe('App — Building Selection & Room Display', () => {
 
     test('shows empty rooms message when a building has no rooms', async () => {
         const user = userEvent.setup();
-        axios.get
-            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: sampleBuildings })
-            .mockResolvedValueOnce({ data: [] });
+        mockAuthedGetRequests({ roomsByBuilding: { b001: [] } });
 
         render(<App />);
         await waitFor(() => {
@@ -295,10 +292,7 @@ describe('App — Sidebar Search Filter', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         window.history.replaceState({}, '', '/');
-        getToken.mockReturnValue('fake-token');
-        axios.get
-            .mockResolvedValueOnce({ data: { id: 'u1', email: 't@t.com', displayName: 'Test' } })
-            .mockResolvedValueOnce({ data: sampleBuildings });
+        mockAuthedGetRequests();
     });
 
     test('filters buildings by name', async () => {

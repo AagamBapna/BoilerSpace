@@ -34,6 +34,8 @@ const testCourse = {
 // Path to a tiny test PDF we create on the fly
 const uploadsDir = path.join(__dirname, '../../uploads');
 const testFilePath = path.join(__dirname, 'test-note.pdf');
+const invalidFilePath = path.join(__dirname, 'test-note.txt');
+const largeFilePath = path.join(__dirname, 'test-large.pdf');
 
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
@@ -43,11 +45,15 @@ beforeAll(async () => {
 
     // Create a small test file
     fs.writeFileSync(testFilePath, '%PDF-1.4 test content');
+    fs.writeFileSync(invalidFilePath, 'not a pdf');
+    fs.writeFileSync(largeFilePath, Buffer.alloc(16 * 1024 * 1024 + 1, 0));
 });
 
 afterAll(async () => {
     // Clean up test file
     if (fs.existsSync(testFilePath)) fs.unlinkSync(testFilePath);
+    if (fs.existsSync(invalidFilePath)) fs.unlinkSync(invalidFilePath);
+    if (fs.existsSync(largeFilePath)) fs.unlinkSync(largeFilePath);
 
     // Clean up any uploaded files from tests
     const files = fs.readdirSync(uploadsDir);
@@ -175,6 +181,30 @@ describe('POST /api/courses/:id/notes', () => {
         expect(res.body.error).toBe('Course not found.');
     });
 
+    test('returns 400 for invalid file type', async () => {
+        const res = await request(app)
+            .post(`/api/courses/${course._id}/notes`)
+            .set('Authorization', `Bearer ${token}`)
+            .attach('file', invalidFilePath)
+            .field('title', 'Bad Type');
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Invalid file type. Only PDF, PNG, and JPEG files are allowed.');
+        expect(await Note.countDocuments()).toBe(0);
+    });
+
+    test('returns 400 when uploaded file exceeds 16MB', async () => {
+        const res = await request(app)
+            .post(`/api/courses/${course._id}/notes`)
+            .set('Authorization', `Bearer ${token}`)
+            .attach('file', largeFilePath)
+            .field('title', 'Too Large');
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('File size exceeds the 16MB limit.');
+        expect(await Note.countDocuments()).toBe(0);
+    });
+
     test('returns 400 when no file is attached', async () => {
         const res = await request(app)
             .post(`/api/courses/${course._id}/notes`)
@@ -223,6 +253,37 @@ describe('GET /api/courses/:id/notes', () => {
         // Populated fields
         expect(res.body[0].uploadedBy).toHaveProperty('displayName');
         expect(res.body[0].courseId).toHaveProperty('courseCode');
+    });
+
+    test('returns uploaded notes to another student in the same class', async () => {
+        await request(app)
+            .post(`/api/courses/${course._id}/notes`)
+            .set('Authorization', `Bearer ${token}`)
+            .attach('file', testFilePath)
+            .field('title', 'Shared Note');
+
+        const secondUser = {
+            email: 'second-noter@purdue.edu',
+            password: 'password123',
+            displayName: 'Second Student',
+            major: 'Computer Science',
+            year: 'Sophomore',
+        };
+
+        await request(app).post('/api/auth/register').send(secondUser);
+        const loginRes = await request(app)
+            .post('/api/auth/login')
+            .send({ email: secondUser.email, password: secondUser.password });
+
+        const secondToken = loginRes.body.token;
+        const res = await request(app)
+            .get(`/api/courses/${course._id}/notes`)
+            .set('Authorization', `Bearer ${secondToken}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveLength(1);
+        expect(res.body[0].title).toBe('Shared Note');
+        expect(res.body[0].uploadedBy).toHaveProperty('displayName', 'Note Tester');
     });
 
     test('returns empty array when course has no notes', async () => {

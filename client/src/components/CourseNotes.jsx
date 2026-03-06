@@ -49,9 +49,13 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric',
+  const formatTimestamp = (dateStr) => {
+    return new Date(dateStr).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
     });
   };
 
@@ -96,6 +100,7 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
             )}
             <button
               onClick={onClose}
+              aria-label="Close course notes"
               className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors"
             >
               <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,7 +170,7 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
                   <div className="flex items-center gap-3 mt-2 text-xs text-[var(--color-text-secondary)]">
                     <span>{note.uploadedBy?.displayName || 'Unknown'}</span>
                     <span>·</span>
-                    <span>{formatDate(note.createdAt)}</span>
+                    <span>{formatTimestamp(note.createdAt)}</span>
                     <span>·</span>
                     <span>{formatFileSize(note.fileSize)}</span>
                   </div>
