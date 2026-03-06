@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import NoteUploadForm from './NoteUploadForm';
 
 export default function CourseNotes({ courseId, courseName, onClose, userId }) {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showUploadForm, setShowUploadForm] = useState(false);
 
   useEffect(() => {
     if (!courseId) return;
@@ -20,6 +22,11 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
       })
       .finally(() => setLoading(false));
   }, [courseId]);
+
+  const handleUploadSuccess = (newNote) => {
+    setNotes(prev => [newNote, ...prev]);
+    setShowUploadForm(false);
+  };
 
   const handleDelete = async (noteId) => {
     if (!window.confirm('Are you sure you want to delete this note?')) return;
@@ -78,15 +85,37 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
               </p>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            {!showUploadForm && (
+              <button
+                onClick={() => setShowUploadForm(true)}
+                className="px-3 py-1.5 bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black font-semibold text-xs rounded-lg hover:opacity-90 transition-opacity"
+              >
+                + Upload
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* Upload Form */}
+        {showUploadForm && (
+          <div className="mb-6 p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)]">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">Upload a Note</h3>
+            <NoteUploadForm
+              courseId={courseId}
+              onUploadSuccess={handleUploadSuccess}
+              onCancel={() => setShowUploadForm(false)}
+            />
+          </div>
+        )}
 
         {/* Loading */}
         {loading && (
