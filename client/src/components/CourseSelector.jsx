@@ -216,6 +216,9 @@ export default function CourseSelector({ userId, onClose, embedded }) {
                     <p className="text-sm text-[var(--color-text-secondary)] mt-0.5 truncate">
                       {course.title}
                     </p>
+                    <p className="text-xs text-[var(--color-text-secondary)] mt-1">
+                      {course.semester}
+                    </p>
                   </div>
                 </div>
               </label>
