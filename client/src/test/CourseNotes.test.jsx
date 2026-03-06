@@ -164,6 +164,31 @@ describe('CourseNotes — Actions', () => {
         expect(downloadButtons).toHaveLength(2);
     });
 
+    test('downloads note file through authenticated API request', async () => {
+        const user = userEvent.setup();
+        const createObjectURLSpy = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:mock-url');
+        const revokeObjectURLSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+        axios.get
+            .mockResolvedValueOnce({ data: sampleNotes })
+            .mockResolvedValueOnce({ data: new Blob(['test']) });
+
+        render(<CourseNotes courseId="c001" courseName="CS 30700" onClose={vi.fn()} userId="u001" />);
+        await waitFor(() => {
+            expect(screen.getByText('Lecture 1 Notes')).toBeInTheDocument();
+        });
+
+        const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+        await user.click(screen.getAllByTitle('Download')[0]);
+
+        expect(axios.get).toHaveBeenLastCalledWith('/api/notes/n001/download', { responseType: 'blob' });
+        expect(createObjectURLSpy).toHaveBeenCalled();
+        expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url');
+
+        clickSpy.mockRestore();
+        createObjectURLSpy.mockRestore();
+        revokeObjectURLSpy.mockRestore();
+    });
+
     test('deletes a note after confirmation', async () => {
         const user = userEvent.setup();
         axios.get.mockResolvedValueOnce({ data: [sampleNotes[0]] });

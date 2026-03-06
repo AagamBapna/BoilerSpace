@@ -39,8 +39,24 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
     }
   };
 
-  const handleDownload = (noteId) => {
-    window.open(`/api/notes/${noteId}/download`, '_blank');
+  const handleDownload = async (note) => {
+    try {
+      const response = await axios.get(`/api/notes/${note._id}/download`, {
+        responseType: 'blob',
+      });
+
+      const blobUrl = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = note.fileName || 'download';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Failed to download note:', err);
+      alert(err.response?.data?.error || 'Failed to download note.');
+    }
   };
 
   const formatFileSize = (bytes) => {
@@ -177,7 +193,7 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => handleDownload(note._id)}
+                    onClick={() => handleDownload(note)}
                     className="p-2 hover:bg-[var(--color-surface)] rounded-lg transition-colors"
                     title="Download"
                   >
