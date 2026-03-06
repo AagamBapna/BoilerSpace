@@ -80,8 +80,12 @@ router.post('/', protect, async (req, res) => {
 
     if (!title || !title.trim())
       return res.status(400).json({ error: 'Validation failed', fields: { title: 'Title is required' } });
+    if (!description || !description.trim())
+      return res.status(400).json({ error: 'Validation failed', fields: { description: 'Description is required' } });
     if (!date || !date.trim())
       return res.status(400).json({ error: 'Validation failed', fields: { date: 'Date is required' } });
+    if (!time || !time.trim())
+      return res.status(400).json({ error: 'Validation failed', fields: { time: 'Time is required' } });
     if (!location || !location.trim())
       return res.status(400).json({ error: 'Validation failed', fields: { location: 'Location is required' } });
     if (!clubId || !clubId.trim())
@@ -95,9 +99,9 @@ router.post('/', protect, async (req, res) => {
 
     const event = await Event.create({
       title: title.trim(),
-      description: description?.trim() ?? undefined,
+      description: description.trim(),
       date: date.trim(),
-      time: time?.trim() ?? undefined,
+      time: time.trim(),
       location: location.trim(),
       clubId: club._id,
     });

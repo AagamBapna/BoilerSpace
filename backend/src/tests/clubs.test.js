@@ -45,7 +45,12 @@ describe('Clubs API', () => {
     it('returns 400 when organizerId is missing', async () => {
       const res = await request(app)
         .post('/api/clubs')
-        .send({ name: 'Test Club' })
+        .send({
+          name: 'Test Club',
+          description: 'Test description',
+          contactInfo: 'test@purdue.edu',
+          category: 'Academic',
+        })
         .expect(400);
       assert.strictEqual(res.body.error, 'Validation failed');
       assert.ok(res.body.fields?.organizerIds);

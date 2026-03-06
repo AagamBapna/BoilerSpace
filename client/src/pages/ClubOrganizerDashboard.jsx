@@ -27,6 +27,7 @@ export default function ClubOrganizerDashboard({ user }) {
     eventId: '',
     message: '',
   });
+  const [showDeleteClubConfirm, setShowDeleteClubConfirm] = useState(false);
 
   const isOrganizer = useMemo(() => {
     const viewerId = String(user?.id || user?._id || '');
@@ -124,6 +125,13 @@ export default function ClubOrganizerDashboard({ user }) {
   const handleCreateEvent = async () => {
     try {
       setNotice(null);
+      setError(null);
+      const requiredEventFields = ['title', 'description', 'date', 'time', 'location'];
+      const missingEventField = requiredEventFields.find((key) => !String(newEvent[key] || '').trim());
+      if (missingEventField) {
+        setError('All event fields are required.');
+        return;
+      }
       const res = await axios.post('/api/events', {
         ...newEvent,
         clubId,
@@ -191,8 +199,6 @@ export default function ClubOrganizerDashboard({ user }) {
   };
 
   const handleDeleteClub = async () => {
-    const confirmed = window.confirm('Delete this club? This will remove all events and announcements permanently.');
-    if (!confirmed) return;
     try {
       setNotice(null);
       setError(null);
@@ -350,19 +356,43 @@ export default function ClubOrganizerDashboard({ user }) {
             </div>
           </Panel>
         </section>
-
-        <section>
-          <Panel title="Danger Zone">
-            <div className="flex items-center justify-between gap-3 bg-red-500/5 border border-red-500/20 rounded-lg p-3">
-              <div>
-                <p className="text-sm font-semibold text-red-200">Delete Club</p>
-                <p className="text-xs text-[var(--color-text-secondary)]">Permanently removes this club and all related events and announcements.</p>
-              </div>
-              <button onClick={handleDeleteClub} className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded text-xs font-semibold transition-colors">Delete Club</button>
-            </div>
-          </Panel>
-        </section>
       </div>
+
+      <button
+        onClick={() => setShowDeleteClubConfirm(true)}
+        className="fixed bottom-6 right-6 z-30 profile-button-like profile-button-danger"
+      >
+        Delete Club
+      </button>
+
+      {showDeleteClubConfirm && (
+        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-6">
+          <div className="w-full max-w-2xl rounded-2xl bg-[var(--color-surface-light)] border border-red-500/30 p-7 sm:p-8 flex flex-col gap-5">
+            <h2 className="text-3xl font-bold text-red-200">Confirm Club Deletion</h2>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              This action is permanent. Deleting this club will remove all related events and announcements.
+              Members will also be removed from this club.
+            </p>
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                onClick={() => setShowDeleteClubConfirm(false)}
+                className="profile-button-like"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowDeleteClubConfirm(false);
+                  await handleDeleteClub();
+                }}
+                className="profile-button-like profile-button-danger"
+              >
+                Yes, Delete Club
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

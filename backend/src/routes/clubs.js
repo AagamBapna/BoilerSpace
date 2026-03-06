@@ -263,11 +263,36 @@ router.delete('/:id/announcements/:announcementId', protect, async (req, res) =>
  */
 router.post('/', (req, res) => {
   const { name, description, contactInfo, category, organizerId, organizerIds } = req.body;
+  const normalizedDescription = description != null ? String(description).trim() : '';
+  const normalizedContactInfo = contactInfo != null ? String(contactInfo).trim() : '';
+  const normalizedCategory = category != null ? String(category).trim() : '';
+
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({
       error: 'Validation failed',
       message: 'Club name is required.',
       fields: { name: 'Name is required' },
+    });
+  }
+  if (!normalizedDescription) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      message: 'Club description is required.',
+      fields: { description: 'Description is required' },
+    });
+  }
+  if (!normalizedContactInfo) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      message: 'Contact info is required.',
+      fields: { contactInfo: 'Contact info is required' },
+    });
+  }
+  if (!normalizedCategory) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      message: 'Category is required.',
+      fields: { category: 'Category is required' },
     });
   }
   // accept either a single `organizerId` (string) or `organizerIds` (array)
@@ -286,9 +311,9 @@ router.post('/', (req, res) => {
   }
   Club.create({
     name: name.trim(),
-    description: (description != null && String(description).trim()) || '',
-    contactInfo: (contactInfo != null && String(contactInfo).trim()) || '',
-    category: (category != null && String(category).trim()) || '',
+    description: normalizedDescription,
+    contactInfo: normalizedContactInfo,
+    category: normalizedCategory,
     organizerIds: finalOrganizerIds,
   })
     .then((club) => {

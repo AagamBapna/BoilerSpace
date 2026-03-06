@@ -38,14 +38,17 @@ describe('CreateClub page', () => {
     );
 
     await user.type(screen.getByPlaceholderText('e.g. Purdue Robotics Club'), 'Robotics Club');
+    await user.type(screen.getByPlaceholderText('What does your club do?'), 'We build robots.');
+    await user.type(screen.getByPlaceholderText('e.g. Engineering, Arts, Sports'), 'Engineering');
+    await user.type(screen.getByPlaceholderText('e.g. email@purdue.edu'), 'robotics@purdue.edu');
     await user.click(screen.getByRole('button', { name: 'Create Club' }));
 
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith('/api/clubs', {
         name: 'Robotics Club',
-        description: '',
-        contactInfo: '',
-        category: '',
+        description: 'We build robots.',
+        contactInfo: 'robotics@purdue.edu',
+        category: 'Engineering',
         organizerIds: ['user-1'],
       });
     });
@@ -70,6 +73,7 @@ describe('ClubProfile page', () => {
         organizerIds: ['owner-1'],
       },
     });
+    axios.get.mockResolvedValueOnce({ data: [] });
 
     render(
       <MemoryRouter initialEntries={['/clubs/club-1']}>
@@ -95,6 +99,7 @@ describe('ClubProfile page', () => {
         organizerIds: ['owner-1'],
       },
     });
+    axios.get.mockResolvedValueOnce({ data: [] });
 
     render(
       <MemoryRouter initialEntries={['/clubs/club-1']}>

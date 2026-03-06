@@ -23,6 +23,9 @@ export default function CreateClub({ user }) {
   const validate = () => {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Club name is required.';
+    if (!form.description.trim()) errs.description = 'Description is required.';
+    if (!form.category.trim()) errs.category = 'Category is required.';
+    if (!form.contactInfo.trim()) errs.contactInfo = 'Contact info is required.';
     if (!user?.id) errs.form = 'You must be logged in to create a club.';
     return errs;
   };
@@ -84,7 +87,9 @@ export default function CreateClub({ user }) {
               name="description"
               value={form.description}
               onChange={handleChange}
+              error={errors.description}
               placeholder="What does your club do?"
+              required
               multiline
             />
             <Field
@@ -92,14 +97,18 @@ export default function CreateClub({ user }) {
               name="category"
               value={form.category}
               onChange={handleChange}
+              error={errors.category}
               placeholder="e.g. Engineering, Arts, Sports"
+              required
             />
             <Field
               label="Contact Info"
               name="contactInfo"
               value={form.contactInfo}
               onChange={handleChange}
+              error={errors.contactInfo}
               placeholder="e.g. email@purdue.edu"
+              required
             />
             <Field
               label="Organizer ID"

@@ -60,10 +60,34 @@ describe('Events API', () => {
     it('returns 400 when date is missing', async () => {
       const res = await request(app)
         .post('/api/events')
-        .send({ title: 'Event1', location: 'Hall', clubId: club._id.toString() })
+        .send({
+          title: 'Event1',
+          description: 'Desc',
+          time: '10:00',
+          location: 'Hall',
+          clubId: club._id.toString(),
+        })
         .expect(400);
       assert.strictEqual(res.body.error, 'Validation failed');
       assert.ok(res.body.fields?.date);
+    });
+
+    it('returns 400 when description is missing', async () => {
+      const res = await request(app)
+        .post('/api/events')
+        .send({ title: 'Event1', date: '2026-03-01', time: '10:00', location: 'Hall', clubId: club._id.toString() })
+        .expect(400);
+      assert.strictEqual(res.body.error, 'Validation failed');
+      assert.ok(res.body.fields?.description);
+    });
+
+    it('returns 400 when time is missing', async () => {
+      const res = await request(app)
+        .post('/api/events')
+        .send({ title: 'Event1', description: 'Desc', date: '2026-03-01', location: 'Hall', clubId: club._id.toString() })
+        .expect(400);
+      assert.strictEqual(res.body.error, 'Validation failed');
+      assert.ok(res.body.fields?.time);
     });
 
     it('returns 403 when user is not organizer', async () => {
@@ -73,7 +97,14 @@ describe('Events API', () => {
 
       const res = await request(app)
         .post('/api/events')
-        .send({ title: 'Event1', date: '2026-03-01', location: 'Hall', clubId: club._id.toString() })
+        .send({
+          title: 'Event1',
+          description: 'Forbidden test event',
+          date: '2026-03-01',
+          time: '10:00',
+          location: 'Hall',
+          clubId: club._id.toString(),
+        })
         .expect(403);
       assert.strictEqual(res.body.error, 'Forbidden');
       assert.ok(res.body.message.includes('permission'));

@@ -104,7 +104,7 @@ export default function ActivityPage({ initialTab = 'events' }) {
         <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
       </div>
 
-      <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-7 pt-14 sm:pt-16">
+      <div className="w-full max-w-[1400px] mr-auto ml-6 sm:ml-10 md:ml-14 lg:ml-20 xl:ml-24 flex flex-col gap-7 pt-14 sm:pt-16">
         <div className="flex flex-col gap-2">
           <p className="text-xs tracking-widest uppercase text-[var(--color-purdue-gold)]">Activity</p>
           <h1 className="text-3xl font-bold">Campus Activity</h1>
