@@ -43,20 +43,16 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
   const handleDownload = async (note) => {
     try {
       const response = await axios.get(`/api/notes/${note._id}/download`, {
-        responseType: 'blob',
+        maxRedirects: 0,
+        validateStatus: (status) => status === 302,
       });
-
-      const blobUrl = window.URL.createObjectURL(response.data);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = note.fileName || 'download';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      window.open(response.headers.location, '_blank');
     } catch (err) {
-      console.error('Failed to download note:', err);
-      alert(err.response?.data?.error || 'Failed to download note.');
+      if (note.fileUrl) {
+        window.open(note.fileUrl, '_blank');
+      } else {
+        console.error('Failed to download note:', err);
+      }
     }
   };
 
