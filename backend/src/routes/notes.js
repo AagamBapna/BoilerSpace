@@ -1,12 +1,11 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const router = express.Router();
 const multer = require('multer');
 const Note = require('../models/Note');
 const Course = require('../models/Course');
 const upload = require('../middleware/upload');
 const { protect } = require('../middleware/auth');
+const { bucket } = require('../config/gcs');
 
 // POST /api/courses/:id/notes — upload a note to a course
 router.post('/:id/notes', protect, (req, res) => {
@@ -33,13 +32,20 @@ router.post('/:id/notes', protect, (req, res) => {
             if (!req.file) {
                 return res.status(400).json({ error: 'No file uploaded. Please attach a PDF or image file.' });
             }
-
+            const blob = bucket.file(`notes/${Date.now()}-${req.file.originalname}`);
+            await new Promise((resolve, reject) => {
+                const stream = blob.createWriteStream({ resumable: false, contentType: req.file.mimetype });
+                stream.on('error', reject);
+                stream.on('finish', resolve);
+                stream.end(req.file.buffer);
+            });
+            const fileUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
             const note = await Note.create({
                 courseId: course._id,
                 uploadedBy: req.user._id,
                 title: req.body.title || req.file.originalname,
                 description: req.body.description || '',
-                fileUrl: `/uploads/${req.file.filename}`,
+                fileUrl,
                 fileName: req.file.originalname,
                 fileSize: req.file.size,
                 fileType: req.file.mimetype,
@@ -90,14 +96,7 @@ router.get('/:noteId/download', protect, async (req, res) => {
         if (!note) {
             return res.status(404).json({ error: 'Note not found.' });
         }
-
-        const filePath = path.join(__dirname, '../../uploads', path.basename(note.fileUrl));
-
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ error: 'File not found on server.' });
-        }
-
-        res.download(filePath, note.fileName);
+        res.redirect(note.fileUrl);
     } catch (error) {
         if (error.name === 'CastError') {
             return res.status(404).json({ error: 'Note not found.' });
@@ -120,12 +119,8 @@ router.delete('/:noteId', protect, async (req, res) => {
             return res.status(403).json({ error: 'You can only delete notes you uploaded.' });
         }
 
-        // Delete the file from disk
-        const filePath = path.join(__dirname, '../../uploads', path.basename(note.fileUrl));
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
-
+        const fileName = note.fileUrl.replace(`https://storage.googleapis.com/${bucket.name}/`, '');
+        await bucket.file(fileName).delete().catch(() => {});
         await note.deleteOne();
 
         res.json({ message: 'Note deleted successfully.' });
