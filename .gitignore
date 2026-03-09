@@ -20,3 +20,6 @@ weekly_team_report.txt
 # Logs
 *.log
 npm-debug.log*
+
+# GCS key
+backend/src/config/gcsKey.json
