@@ -31,7 +31,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/clubs', clubRoutes);
 app.use('/api/courses', noteRoutes);
 app.use('/api/notes', noteRoutes);
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/events', announcementRoutes);
 app.use('/api/announcements', announcementFeedRoutes);
 

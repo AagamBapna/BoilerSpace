@@ -3,6 +3,21 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+jest.mock('../config/gcs', () => ({
+    bucket: {
+        name: 'boilerspace-uploads',
+        file: (name) => ({
+            name,
+            createWriteStream: () => {
+                const { PassThrough } = require('stream');
+                const stream = new PassThrough();
+                setTimeout(() => stream.emit('finish'), 10);
+                return stream;
+            },
+            delete: () => Promise.resolve(),
+        }),
+    },
+}));
 const app = require('../app');
 const User = require('../models/User');
 const Course = require('../models/Course');
@@ -326,10 +341,11 @@ describe('GET /api/notes/:noteId/download', () => {
 
         const res = await request(app)
             .get(`/api/notes/${noteId}/download`)
-            .set('Authorization', `Bearer ${token}`);
+            .set('Authorization', `Bearer ${token}`)
+            .redirects(0);
 
-        expect(res.status).toBe(200);
-        expect(res.headers['content-disposition']).toContain('test-note.pdf');
+        expect(res.status).toBe(302);
+        expect(res.headers['location']).toContain('storage.googleapis.com');
     });
 
     test('returns 404 for non-existent note', async () => {

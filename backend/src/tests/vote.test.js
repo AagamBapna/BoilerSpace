@@ -3,6 +3,21 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+jest.mock('../config/gcs', () => ({
+    bucket: {
+        name: 'boilerspace-uploads',
+        file: (name) => ({
+            name,
+            createWriteStream: () => {
+                const { PassThrough } = require('stream');
+                const stream = new PassThrough();
+                setTimeout(() => stream.emit('finish'), 10);
+                return stream;
+            },
+            delete: () => Promise.resolve(),
+        }),
+    },
+}));
 const app = require('../app');
 const User = require('../models/User');
 const Course = require('../models/Course');
