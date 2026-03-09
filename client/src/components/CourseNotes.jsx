@@ -46,7 +46,7 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
         maxRedirects: 0,
         validateStatus: (status) => status === 302,
       });
-      window.open(res.headers.location, '_blank');
+      window.open(response.headers.location, '_blank');
     } catch (err) {
       if (note.fileUrl) {
         window.open(note.fileUrl, '_blank');
