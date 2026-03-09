@@ -96,7 +96,7 @@ router.get('/:noteId/download', protect, async (req, res) => {
         if (!note) {
             return res.status(404).json({ error: 'Note not found.' });
         }
-        res.redirect(note.fileUrl);
+        res.json({ downloadUrl: note.fileUrl });
     } catch (error) {
         if (error.name === 'CastError') {
             return res.status(404).json({ error: 'Note not found.' });
