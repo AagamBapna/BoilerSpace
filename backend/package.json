@@ -13,6 +13,7 @@
   "author": "Jed Macapinlac",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",

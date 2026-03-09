@@ -1,9 +1,9 @@
-const { Storage } = require('@google-cloud/storage');
 const path = require('path');
 const fs = require('fs');
 const keyPath = path.join(__dirname, '../../gcs-key.json');
 let bucket;
 if (fs.existsSync(keyPath)) {
+    const { Storage } = require('@google-cloud/storage');
     const storage = new Storage({
         keyFilename: keyPath,
         projectId: 'boilerspace',
