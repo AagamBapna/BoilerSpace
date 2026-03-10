@@ -67,8 +67,8 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
     };
 
   return (
-    <div className="background-blur">
-      <div className="course-selector">
+    <div className="background-blur" onClick={onClose}>
+      <div className="course-selector" onClick={(e) => e.stopPropagation()}>
         {/* Close button */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
