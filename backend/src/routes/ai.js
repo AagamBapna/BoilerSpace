@@ -16,7 +16,7 @@ async function getCourseChunks(courseId) {
     const allChunks = [];
     for (const note of notes) {
         try {
-            const text = await extractTextFromPDF(note.filePath);
+            const text = await extractTextFromPDF(note.fileUrl);
             const chunks = chunkText(text);
             chunks.forEach(chunk => allChunks.push({ text: chunk, source: note.title }));
         } catch (err) {
@@ -42,7 +42,7 @@ router.post('/:id/study-guide', protect, async (req, res) => {
         }
         const context = chunks.slice(0, 30).map(c => c.text).join('\n---\n');
         const prompt = `You are a helpful assistant that creates study guides. You are tasked 
-        with creating a study guide for the course: "${course.department} ${course.courseCode}: ${course.name}"\n\n
+        with creating a study guide for the course: "${course.department} ${course.courseCode}: ${course.title}"\n\n
         Based ONLY on the following course materials and NOTHING ELSE, create a concise study guide that:
         1. Lists the key topics covered in the course
         2. Highlights important formulas, definitions, and concepts
@@ -52,7 +52,7 @@ router.post('/:id/study-guide', protect, async (req, res) => {
         Do NOT use any outside material to create the study guide, only use the provided course materials:${context}.
         Generate the study guide now.`;
         const response = await model.generateContent(prompt);
-        const answer = response.text;
+        const answer = response.response.text();
         res.json({ studyGuide: answer, notesUsed: chunks.length });
     } catch (err) {
         console.error('Error generating study guide:', err);

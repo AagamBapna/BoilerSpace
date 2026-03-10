@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import NoteUploadForm from './NoteUploadForm';
 import NoteVoter from './NoteVoter';
+import StudyGuide from './StudyGuide';
 
 export default function CourseNotes({ courseId, courseName, onClose, userId }) {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showUploadForm, setShowUploadForm] = useState(false);
+  const [showStudyGuide, setShowStudyGuide] = useState(false);
 
   useEffect(() => {
     if (!courseId) return;
@@ -104,12 +106,20 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
           </div>
           <div className="flex items-center gap-2">
             {!showUploadForm && (
-              <button
-                onClick={() => setShowUploadForm(true)}
-                className="px-3 py-1.5 bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black font-semibold text-xs rounded-lg hover:opacity-90 transition-opacity"
-              >
-                + Upload
-              </button>
+              <>
+                <button
+                  onClick={() => setShowStudyGuide(true)}
+                  className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold text-xs rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  🤖 Study Guide
+                </button>
+                <button
+                  onClick={() => setShowUploadForm(true)}
+                  className="px-3 py-1.5 bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black font-semibold text-xs rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  + Upload
+                </button>
+              </>
             )}
             <button
               onClick={onClose}
@@ -218,6 +228,13 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
               </div>
             ))}
           </div>
+        )}
+        {showStudyGuide && (
+          <StudyGuide
+            courseId={courseId}
+            courseName={courseName}
+            onClose={() => setShowStudyGuide(false)}
+          />
         )}
       </div>
     </div>
