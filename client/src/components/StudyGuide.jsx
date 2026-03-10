@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
 
 export default function StudyGuide({ courseId, courseName, onClose }) {
     const [studyGuide, setStudyGuide] = useState(null);
@@ -84,7 +85,7 @@ export default function StudyGuide({ courseId, courseName, onClose }) {
                 className="p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)] max-h-[60vh] overflow-y-auto"
                 style={{ whiteSpace: 'pre-wrap', fontSize: '0.875rem', lineHeight: '1.6', color: 'var(--color-text-primary)' }}
                 >
-                {studyGuide}
+                <ReactMarkdown>{studyGuide}</ReactMarkdown>
                 </div>
                 <button
                 onClick={handleGenerateStudyGuide}

@@ -50,6 +50,8 @@ router.post('/:id/study-guide', protect, async (req, res) => {
         4. Suggests what to focus on for exam preparation
         5. Best promotes understanding of the material\n\n
         Do NOT use any outside material to create the study guide, only use the provided course materials:${context}.
+        In your response, don't mention that you are an AI or that the study guide was generated. Just provide the study guide content as if you were a student who had read all the notes.
+        Title it with the course name and end with a motivational message for students preparing for exams.
         Generate the study guide now.`;
         const response = await model.generateContent(prompt);
         const answer = response.response.text();

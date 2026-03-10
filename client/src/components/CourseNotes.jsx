@@ -109,13 +109,38 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
               <>
                 <button
                   onClick={() => setShowStudyGuide(true)}
-                  className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold text-xs rounded-lg hover:opacity-90 transition-opacity"
+                  className="py-1.5 font-semibold text-xs rounded-lg hover:opacity-90 transition-opacity"
+                  style={{ 
+                    position: 'relative',
+                    overflow: 'visible',
+                    background: 'linear-gradient(135deg, #6ee7b7, #818cf8, #c084fc, #f472b6)',
+                    color: 'black',
+                    paddingLeft: '10px',
+                    paddingRight: '10px',
+                    whiteSpace: 'nowrap' }}
                 >
-                  🤖 Study Guide
+                  Generate Study Guide
+                  <span style={{
+                    color: 'white',
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-2px',
+                    fontSize: '12px',
+                    animation: 'sparkle 1.5s ease-in-out infinite',
+                  }}>✦</span>
+                  <span style={{
+                    color: 'white',
+                    position: 'absolute',
+                    bottom: '-6px',
+                    left: '0px',
+                    fontSize: '10px',
+                    animation: 'sparkle 1.5s ease-in-out infinite 0.75s',
+                  }}>✦</span>
                 </button>
                 <button
                   onClick={() => setShowUploadForm(true)}
-                  className="px-3 py-1.5 bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black font-semibold text-xs rounded-lg hover:opacity-90 transition-opacity"
+                  className="py-1.5 bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black font-semibold text-xs rounded-lg hover:opacity-90 transition-opacity"
+                  style={{ paddingLeft: '10px', paddingRight: '10px', whiteSpace: 'nowrap' }}
                 >
                   + Upload
                 </button>
