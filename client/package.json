@@ -14,9 +14,11 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.2.0",
     "axios": "^1.13.5",
+    "html2pdf.js": "^0.14.0",
     "mapbox-gl": "^3.18.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.13.1",
     "tailwindcss": "^4.2.0"
   },
