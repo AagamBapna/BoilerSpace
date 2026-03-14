@@ -66,6 +66,7 @@ router.put('/:id', protect, async (req, res) => {
                 displayName: user.displayName,
                 major: user.major,
                 year: user.year,
+                profilePictureUrl: user.profilePictureUrl,
             }
         });
     } catch (err) {
