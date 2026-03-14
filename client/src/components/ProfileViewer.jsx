@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import axios from 'axios';
 import CourseSelector from './CourseSelector';
 
@@ -7,10 +7,12 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
     const [displayName, setDisplayName] = useState(user.displayName || '');
     const [major, setMajor] = useState(user.major || '');
     const [year, setYear] = useState(user.year || '');
+    const [profilePictureUrl, setProfilePictureUrl] = useState(user.profilePictureUrl || '');
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
     const [saving, setSaving] = useState(false);
-
+    const [uploadingPicture, setUploadingPicture] = useState(false);
+    const fileInputRef = useRef(null);
 
     const handleSaveProfile = async () => {
         setSaving(true);
@@ -25,7 +27,7 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
             setSuccess(true);
             setEditing(false);
             if (onUserUpdate) {
-                onUserUpdate(res.data.user);
+                onUserUpdate({ ...res.data.user, profilePictureUrl });
             }
         } catch (err) {
             if (err.response?.status === 401) {
@@ -48,6 +50,66 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
         setError(null);
     };
 
+    const handlePictureSelect = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Client-side validation
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+        if (!allowedTypes.includes(file.type)) {
+            setError('Invalid file type. Only PNG and JPEG images are allowed.');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            setError('File size exceeds the 5MB limit.');
+            return;
+        }
+
+        setUploadingPicture(true);
+        setError(null);
+        try {
+            const formData = new FormData();
+            formData.append('profilePicture', file);
+            const res = await axios.put(`/api/users/${userId}/profile-picture`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            setProfilePictureUrl(res.data.user.profilePictureUrl);
+            if (onUserUpdate) {
+                onUserUpdate(res.data.user);
+            }
+        } catch (err) {
+            if (err.response?.data?.error) {
+                setError(err.response.data.error);
+            } else {
+                setError('Failed to upload profile picture. Please try again.');
+            }
+        } finally {
+            setUploadingPicture(false);
+            // Reset file input so the same file can be re-selected
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleRemovePicture = async () => {
+        setUploadingPicture(true);
+        setError(null);
+        try {
+            const res = await axios.delete(`/api/users/${userId}/profile-picture`);
+            setProfilePictureUrl('');
+            if (onUserUpdate) {
+                onUserUpdate(res.data.user);
+            }
+        } catch (err) {
+            if (err.response?.data?.error) {
+                setError(err.response.data.error);
+            } else {
+                setError('Failed to remove profile picture. Please try again.');
+            }
+        } finally {
+            setUploadingPicture(false);
+        }
+    };
+
     const getGradYear = (year) => {
         const currentYear = new Date().getFullYear();
         const currentMonth = new Date().getMonth() + 1;
@@ -61,10 +123,24 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
             'Freshman': academicYear + 3,
             'Sophomore': academicYear + 2,
             'Junior': academicYear + 1,
-            'Senior': academicYear   
+            'Senior': academicYear
         }
         return yearMap[year] || 'N/A';
     };
+
+    const letterAvatar = (
+        <div className="w-full h-full rounded-full bg-gradient-to-br from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] flex items-center justify-center text-black font-bold text-lg">
+            {displayName?.[0] || 'U'}
+        </div>
+    );
+
+    const avatarImage = profilePictureUrl ? (
+        <img
+            src={profilePictureUrl}
+            alt={`${displayName}'s profile picture`}
+            className="w-full h-full rounded-full object-cover"
+        />
+    ) : letterAvatar;
 
   return (
     <div className="background-blur" onClick={onClose}>
@@ -80,6 +156,14 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
             </svg>
           </button>
         </div>
+        {/* Hidden file input for profile picture */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg"
+          className="hidden"
+          onChange={handlePictureSelect}
+        />
         {/* ── Profile Section ── */}
         {error && (
           <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
@@ -95,6 +179,47 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
           {editing ? (
             /* ── Edit Mode ── */
             <div className="space-y-3">
+              {/* Profile picture upload area */}
+              <div className="flex items-center gap-4 mb-2">
+                <div
+                  className="relative w-16 h-16 rounded-full cursor-pointer group flex-shrink-0"
+                  onClick={() => !uploadingPicture && fileInputRef.current?.click()}
+                >
+                  {uploadingPicture ? (
+                    <div className="w-full h-full rounded-full bg-[var(--color-surface)] flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full border-2 border-[var(--color-purdue-gold)]/20 border-t-[var(--color-purdue-gold)] animate-spin" />
+                    </div>
+                  ) : (
+                    <>
+                      {avatarImage}
+                      <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingPicture}
+                    className="text-xs text-[var(--color-purdue-gold)] hover:underline disabled:opacity-50 text-left"
+                  >
+                    Change Photo
+                  </button>
+                  {profilePictureUrl && (
+                    <button
+                      onClick={handleRemovePicture}
+                      disabled={uploadingPicture}
+                      className="text-xs text-red-400 hover:underline disabled:opacity-50 text-left"
+                    >
+                      Remove Photo
+                    </button>
+                  )}
+                </div>
+              </div>
               <div>
                 <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Display Name</label>
                 <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)}
@@ -131,8 +256,8 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
             /* ── View Mode ── */
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] flex items-center justify-center text-black font-bold text-lg">
-                  {displayName?.[0] || 'U'}
+                <div className="w-12 h-12 flex-shrink-0">
+                  {avatarImage}
                 </div>
                 <div>
                   <p className="font-semibold text-[var(--color-text-primary)]">{displayName}</p>
