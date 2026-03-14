@@ -216,7 +216,16 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
                     </p>
                   )}
                   <div className="flex items-center gap-3 mt-2 text-xs text-[var(--color-text-secondary)]">
-                    <span>{note.uploadedBy?.displayName || 'Unknown'}</span>
+                    <span className="flex items-center gap-1.5">
+                      {note.uploadedBy?.profilePictureUrl ? (
+                        <img src={note.uploadedBy.profilePictureUrl} alt="" className="w-4 h-4 rounded-full object-cover" />
+                      ) : (
+                        <span className="w-4 h-4 rounded-full bg-gradient-to-br from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] flex items-center justify-center text-black font-bold" style={{ fontSize: '8px' }}>
+                          {note.uploadedBy?.displayName?.[0] || '?'}
+                        </span>
+                      )}
+                      {note.uploadedBy?.displayName || 'Unknown'}
+                    </span>
                     <span>·</span>
                     <span>{formatTimestamp(note.createdAt)}</span>
                     <span>·</span>
