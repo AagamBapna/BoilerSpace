@@ -58,6 +58,14 @@ const userSchema = new mongoose.Schema(
             type: Date,
             select: false,
         },
+        profilePictureUrl: {
+            type: String,
+            default: '',
+        },
+        profilePictureFileName: {
+            type: String,
+            default: '',
+        },
         // list of club ids the user belongs to
         clubIds: { type: [String], default: [] },
     },
