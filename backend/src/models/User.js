@@ -60,6 +60,16 @@ const userSchema = new mongoose.Schema(
         },
         // list of club ids the user belongs to
         clubIds: { type: [String], default: [] },
+        recentBuildings: [{
+            buildingId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Building',
+            },
+            visitedAt: {
+                type: Date,
+                default: Date.now,
+            },
+        }],
     },
     { timestamps: true }
 );
