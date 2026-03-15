@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import CourseSelector from './CourseSelector';
+import AvailabilityEditor from './AvailabilityEditor';
 
 export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
     const [editing, setEditing] = useState(false);
@@ -152,6 +153,12 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
 <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>My Courses</h3>
         {/* ── Course Selector Section (existing component) ── */}
         <CourseSelector userId={userId} embedded={true} />
+
+        {/* - Divider - */}
+        <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
+        <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Study Availability</h3>
+        {/* ── Availability Editor Section ── */}
+        <AvailabilityEditor />
       </div>
     </div>
   );
