@@ -36,6 +36,7 @@ export default function App() {
   const [userCourses, setUserCourses] = useState([]);
   const [bookmarkedRoomIds, setBookmarkedRoomIds] = useState(new Set());
   const [bookmarks, setBookmarks] = useState([]);
+  const [recentBuildings, setRecentBuildings] = useState([])
 
 
   useEffect(() => {
@@ -74,6 +75,14 @@ export default function App() {
               setBookmarkedRoomIds(new Set());
               setBookmarks([]);
             });
+          axios.get('/api/users/recentBuildings')
+            .then((recentRes) => {
+              setRecentBuildings(recentRes.data);
+            })
+            .catch((err) => {
+              console.error('Failed to fetch recent buildings:', err);
+              setRecentBuildings([]);
+          });
         })
         .catch(() => {
           clearToken();
