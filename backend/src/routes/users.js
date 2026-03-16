@@ -4,6 +4,22 @@ const User = require('../models/User');
 const Course = require('../models/Course');
 const { protect } = require('../middleware/auth');
 
+router.get('/recentBuildings', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).populate('recentBuildings.buildingId')
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(user.recentBuildings);
+    } catch (err) {
+         if (err.name === 'CastError') {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        console.error('Error fetching user recentBuildings:', err);
+        res.status(500).json({ error: 'Failed to fetch user recentBuildings' });
+    }
+});
+
 // GET /api/users/:id, get user by ID
 router.get('/:id', async (req, res) => {
     try {
@@ -91,23 +107,6 @@ router.get('/:id/courses', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch user courses' });
     }
 });
-
-router.get('/recentBuildings', protect, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id).populate('recentBuildings.buildingId')
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        res.json(user.recentBuildings);
-    } catch (err) {
-         if (err.name === 'CastError') {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        console.error('Error fetching user recentBuildings:', err);
-        res.status(500).json({ error: 'Failed to fetch user recentBuildings' });
-    }
-});
-
 
 async function handleCourseUpdate(req, res) {
     try {

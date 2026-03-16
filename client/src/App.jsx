@@ -306,7 +306,9 @@ export default function App() {
           bookmarkedRoomIds={bookmarkedRoomIds}
           onToggleBookmark={handleToggleBookmark}
           bookmarks={bookmarks}
+          recentBuildings={recentBuildings}
         />
+        
       </div>
 
       <CampusMap

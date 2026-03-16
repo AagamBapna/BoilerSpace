@@ -37,7 +37,11 @@ const roomSchema = new mongoose.Schema(
             type: Number,
             default: 0,
             min: [0, 'Capacity can not be negative'],
-        }
+        },
+        lastActivityAt: {
+            default: null,
+            type: Date,
+        },
     },
     { timestamps: true }
 );

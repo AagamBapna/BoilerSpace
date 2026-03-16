@@ -35,6 +35,10 @@ const buildingSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
+        lastActivityAt: {
+            default: null,
+            type: Date,
+        },
     },
     { timestamps: true }
 );
