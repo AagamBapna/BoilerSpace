@@ -6,6 +6,43 @@ const Course = require('../models/Course');
 const { protect } = require('../middleware/auth');
 const profileUpload = require('../middleware/profileUpload');
 const { bucket } = require('../config/gcs');
+const { validateAvailability } = require('../utils/timeValidation');
+
+// GET /api/users/me/availability — get cur user's study availability
+router.get('/me/availability', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        res.json(user.availability || []);
+    } catch (err) {
+        console.error('Error fetching availability:', err);
+        res.status(500).json({ error: 'Failed to fetch availability' });
+    }
+});
+
+// PUT /api/users/me/availability — update cur user's study availability
+router.put('/me/availability', protect, async (req, res) => {
+    try {
+        const { availability } = req.body;
+
+        const { valid, errors } = validateAvailability(availability);
+        if (!valid) {
+            return res.status(400).json({ error: 'Invalid availability', details: errors });
+        }
+
+        const user = await User.findById(req.user._id);
+        user.availability = availability;
+        await user.save();
+
+        res.json({ message: 'Availability updated', availability: user.availability });
+    } catch (err) {
+        if (err.name === 'ValidationError') {
+            const message = Object.values(err.errors).map(val => val.message).join(', ');
+            return res.status(400).json({ error: message });
+        }
+        console.error('Error updating availability:', err);
+        res.status(500).json({ error: 'Failed to update availability' });
+    }
+});
 
 // GET /api/users/:id, get user by ID
 router.get('/:id', async (req, res) => {
