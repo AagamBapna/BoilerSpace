@@ -53,7 +53,7 @@ router.post('/:id/notes', protect, (req, res) => {
             });
 
             // Populate uploader info before returning
-            await note.populate('uploadedBy', 'displayName email');
+            await note.populate('uploadedBy', 'displayName email profilePictureUrl');
             await note.populate('courseId', 'courseCode title');
 
             res.status(201).json(note);
@@ -76,7 +76,7 @@ router.get('/:id/notes', protect, async (req, res) => {
         }
 
         const notes = await Note.find({ courseId: course._id })
-            .populate('uploadedBy', 'displayName email')
+            .populate('uploadedBy', 'displayName email profilePictureUrl')
             .populate('courseId', 'courseCode title')
             .sort({ voteCount: -1, createdAt: -1 });
 

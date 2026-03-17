@@ -336,7 +336,11 @@ export default function App() {
       </div>
 
       <button onClick={() => setShowProfile(true)} className="profile-button">
-        <div className="profile-avatar">{user.displayName?.[0] || 'U'}</div>
+        {user.profilePictureUrl ? (
+          <img src={user.profilePictureUrl} alt="" className="profile-avatar" style={{ objectFit: 'cover' }} />
+        ) : (
+          <div className="profile-avatar">{user.displayName?.[0] || 'U'}</div>
+        )}
         <span>My Profile</span>
       </button>
 

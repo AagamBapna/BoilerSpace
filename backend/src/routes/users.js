@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const User = require('../models/User');
 const Course = require('../models/Course');
 const { protect } = require('../middleware/auth');
+const profileUpload = require('../middleware/profileUpload');
+const { bucket } = require('../config/gcs');
 const { validateAvailability } = require('../utils/timeValidation');
 
 // GET /api/users/me/availability — get cur user's study availability
@@ -100,6 +103,7 @@ router.put('/:id', protect, async (req, res) => {
                 displayName: user.displayName,
                 major: user.major,
                 year: user.year,
+                profilePictureUrl: user.profilePictureUrl,
             }
         });
     } catch (err) {
@@ -174,6 +178,109 @@ async function handleCourseUpdate(req, res) {
         res.status(500).json({ error: 'Failed to update courses' });
     }
 }
+
+// PUT /api/users/:id/profile-picture — upload or replace profile picture
+router.put('/:id/profile-picture', protect, (req, res) => {
+    profileUpload.single('profilePicture')(req, res, async (err) => {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ error: 'File size exceeds the 5MB limit.' });
+            }
+            return res.status(400).json({ error: err.message });
+        }
+        if (err) {
+            return res.status(400).json({ error: err.message });
+        }
+
+        try {
+            if (req.user._id.toString() !== req.params.id) {
+                return res.status(403).json({ error: 'You can only update your own profile picture' });
+            }
+
+            if (!req.file) {
+                return res.status(400).json({ error: 'No file uploaded. Please attach a PNG or JPEG image.' });
+            }
+
+            const user = await User.findById(req.params.id);
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            // Delete old profile picture from GCS if one exists
+            if (user.profilePictureFileName) {
+                await bucket.file(user.profilePictureFileName).delete().catch(() => {});
+            }
+
+            // Upload new picture to GCS
+            const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const gcsFileName = `profile-pictures/${user._id}-${Date.now()}-${sanitizedName}`;
+            const blob = bucket.file(gcsFileName);
+            await new Promise((resolve, reject) => {
+                const stream = blob.createWriteStream({ resumable: false, contentType: req.file.mimetype });
+                stream.on('error', reject);
+                stream.on('finish', resolve);
+                stream.end(req.file.buffer);
+            });
+
+            const fileUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+            user.profilePictureUrl = fileUrl;
+            user.profilePictureFileName = gcsFileName;
+            await user.save();
+
+            res.json({
+                message: 'Profile picture updated successfully',
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    displayName: user.displayName,
+                    major: user.major,
+                    year: user.year,
+                    profilePictureUrl: user.profilePictureUrl,
+                },
+            });
+        } catch (error) {
+            console.error('Error uploading profile picture:', error);
+            res.status(500).json({ error: 'Failed to upload profile picture.' });
+        }
+    });
+});
+
+// DELETE /api/users/:id/profile-picture — remove profile picture
+router.delete('/:id/profile-picture', protect, async (req, res) => {
+    try {
+        if (req.user._id.toString() !== req.params.id) {
+            return res.status(403).json({ error: 'You can only update your own profile picture' });
+        }
+
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (user.profilePictureFileName) {
+            await bucket.file(user.profilePictureFileName).delete().catch(() => {});
+        }
+
+        user.profilePictureUrl = '';
+        user.profilePictureFileName = '';
+        await user.save();
+
+        res.json({
+            message: 'Profile picture removed successfully',
+            user: {
+                id: user._id,
+                email: user.email,
+                displayName: user.displayName,
+                major: user.major,
+                year: user.year,
+                profilePictureUrl: user.profilePictureUrl,
+            },
+        });
+    } catch (error) {
+        console.error('Error removing profile picture:', error);
+        res.status(500).json({ error: 'Failed to remove profile picture.' });
+    }
+});
 
 // POST /api/users/:id/courses — set user's courses for the semester
 router.post('/:id/courses', protect, handleCourseUpdate);
