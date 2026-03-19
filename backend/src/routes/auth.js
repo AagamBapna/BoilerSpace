@@ -224,4 +224,72 @@ router.post('/verify-otp', async (req, res) => {
     }
 });
 
+const Note = require('../models/Note');
+const CheckIn = require('../models/CheckIn');
+const Club = require('../models/Club');
+
+router.post('/request-delete-otp', protect, async (req, res) => {
+    try {
+        const email = req.user.email;
+        const otp = await createOtp(email);
+
+        if (process.env.NODE_ENV !== 'test') {
+            await sendOtpEmail({ toEmail: email, code: otp.code });
+        }
+
+        res.status(200).json({ message: 'Deletion verification code sent to your email' });
+    } catch (err) {
+        console.error('Request delete OTP error:', err.message);
+        res.status(500).json({ error: 'Failed to send deletion verification code' });
+    }
+});
+
+router.post('/confirm-delete', protect, async (req, res) => {
+    const { code } = req.body;
+
+    if (!code) {
+        return res.status(400).json({ error: 'Verification code is required' });
+    }
+
+    try {
+        const userId = req.user._id;
+        const email = req.user.email;
+
+        const isValid = await verifyOtp(email, String(code));
+        if (!isValid) {
+            return res.status(400).json({ error: 'Invalid or expired verification code' });
+        }
+
+        await Note.deleteMany({ uploadedBy: userId });
+
+        await Note.updateMany(
+            { 'votes.user': userId },
+            { $pull: { votes: { user: userId } } }
+        );
+        const notesWithVotes = await Note.find({});
+        for (const note of notesWithVotes) {
+            const upvotes = note.votes.filter(v => v.vote === 'up').length;
+            const downvotes = note.votes.filter(v => v.vote === 'down').length;
+            note.voteCount = upvotes - downvotes;
+            await note.save();
+        }
+
+        await CheckIn.deleteMany({ userId });
+
+        await User_OTP.deleteMany({ email });
+
+        await Club.updateMany(
+            { organizerIds: userId.toString() },
+            { $pull: { organizerIds: userId.toString() } }
+        );
+
+        await User.findByIdAndDelete(userId);
+
+        res.status(200).json({ message: 'Account deleted successfully' });
+    } catch (err) {
+        console.error('Confirm delete error:', err.message);
+        res.status(500).json({ error: 'Failed to delete account' });
+    }
+});
+
 module.exports = router;
