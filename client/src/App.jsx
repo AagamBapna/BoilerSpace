@@ -417,6 +417,7 @@ export default function App() {
           user={user}
           onClose={() => setShowProfile(false)}
           onUserUpdate={(updatedUser) => setUser(prev => ({ ...prev, ...updatedUser }))}
+          onLogout={handleLogout}
         />
       )}
 

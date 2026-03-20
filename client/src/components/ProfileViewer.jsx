@@ -2,8 +2,9 @@ import { useState, useRef } from 'react';
 import axios from 'axios';
 import CourseSelector from './CourseSelector';
 import AvailabilityEditor from './AvailabilityEditor';
+import DeleteAccountModal from './DeleteAccountModal';
 
-export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
+export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onLogout }) {
     const [editing, setEditing] = useState(false);
     const [displayName, setDisplayName] = useState(user.displayName || '');
     const [major, setMajor] = useState(user.major || '');
@@ -13,6 +14,7 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
     const [success, setSuccess] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadingPicture, setUploadingPicture] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const fileInputRef = useRef(null);
 
     const handleSaveProfile = async () => {
@@ -282,9 +284,30 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate }) {
         {/* - Divider - */}
         <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
         <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Study Availability</h3>
-        {/* ── Availability Editor Section ── */}
         <AvailabilityEditor />
+
+        <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
+        <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Danger Zone</h3>
+        <button
+          id="delete-account-button"
+          onClick={() => setShowDeleteModal(true)}
+          className="w-full py-2.5 rounded-lg border border-red-500/30 text-red-400 text-sm font-semibold hover:bg-red-500/10 transition-colors"
+        >
+          Delete Account
+        </button>
       </div>
+
+      {showDeleteModal && (
+        <DeleteAccountModal
+          userEmail={user.email}
+          onDeleted={() => {
+            setShowDeleteModal(false);
+            onClose();
+            if (onLogout) onLogout();
+          }}
+          onClose={() => setShowDeleteModal(false)}
+        />
+      )}
     </div>
   );
 }
