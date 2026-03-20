@@ -30,14 +30,50 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
+        const otp = await createOtp(user.email);
+
+        if (process.env.NODE_ENV !== 'test') {
+            await sendOtpEmail({ toEmail: user.email, code: otp.code });
+        }
+
+        res.json({ requiresOtp: true, email: user.email, message: 'Verification code sent' });
+    } catch (err) {
+        console.error('Login error:', err.message);
+        res.status(500).json({ error: 'Login failed. Please try again.' });
+    }
+});
+
+router.post('/verify-login-otp', async (req, res) => {
+    const { email, code, password } = req.body;
+
+    if (!email || !code || !password) {
+        return res.status(400).json({ error: 'Email, password, and verification code are required' });
+    }
+
+    try {
+        const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        const isValid = await verifyOtp(user.email, String(code));
+        if (!isValid) {
+            return res.status(400).json({ error: 'Invalid or expired verification code' });
+        }
+
         const token = signToken(user);
         res.json({
             token,
             user: { id: user._id, email: user.email, displayName: user.displayName, major: user.major, year: user.year, emailVerified: user.emailVerified, profilePictureUrl: user.profilePictureUrl },
         });
     } catch (err) {
-        console.error('Login error:', err.message);
-        res.status(500).json({ error: 'Login failed. Please try again.' });
+        console.error('Verify login OTP error:', err.message);
+        res.status(500).json({ error: 'Verification failed. Please try again.' });
     }
 });
 
