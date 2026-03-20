@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../app');
 const User = require('../models/User');
+const Otp = require('../models/Otp');
 const bcrypt = require('bcrypt');
 const { hashResetToken } = require('../utils/passwordReset');
 
@@ -16,6 +17,20 @@ const validUser = {
     year: 'Senior'
 };
 
+async function loginWithOtp(email, password) {
+    const loginRes = await request(app)
+        .post('/api/auth/login')
+        .send({ email, password });
+
+    const otp = await Otp.findOne({ email: email.toLowerCase() });
+
+    const verifyRes = await request(app)
+        .post('/api/auth/verify-login-otp')
+        .send({ email, password, code: otp.code });
+
+    return verifyRes;
+}
+
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri());
@@ -28,6 +43,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
     await User.deleteMany({});
+    await Otp.deleteMany({});
 });
 
 describe('POST /api/auth/register', () => {
@@ -95,7 +111,7 @@ describe('POST /api/auth/register', () => {
 });
 
 describe('POST /api/auth/login', () => {
-    test('successful login returns token and user', async () => {
+    test('successful login returns requiresOtp', async () => {
         await User.create(validUser);
 
         const res = await request(app)
@@ -103,13 +119,9 @@ describe('POST /api/auth/login', () => {
             .send({ email: validUser.email, password: validUser.password });
 
         expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('token');
-        expect(typeof res.body.token).toBe('string');
-        expect(res.body.user).toMatchObject({
-            email: validUser.email,
-            displayName: validUser.displayName,
-        });
-        expect(res.body.user).toHaveProperty('id');
+        expect(res.body.requiresOtp).toBe(true);
+        expect(res.body.email).toBe(validUser.email);
+        expect(res.body.message).toBe('Verification code sent');
     });
 
     test('wrong password returns 401', async () => {
@@ -142,13 +154,77 @@ describe('POST /api/auth/login', () => {
     });
 });
 
+describe('POST /api/auth/verify-login-otp', () => {
+    test('returns token and user with correct OTP', async () => {
+        await User.create(validUser);
+
+        await request(app)
+            .post('/api/auth/login')
+            .send({ email: validUser.email, password: validUser.password });
+
+        const otp = await Otp.findOne({ email: validUser.email });
+
+        const res = await request(app)
+            .post('/api/auth/verify-login-otp')
+            .send({ email: validUser.email, password: validUser.password, code: otp.code });
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('token');
+        expect(typeof res.body.token).toBe('string');
+        expect(res.body.user).toMatchObject({
+            email: validUser.email,
+            displayName: validUser.displayName,
+        });
+        expect(res.body.user).toHaveProperty('id');
+    });
+
+    test('rejects wrong OTP code', async () => {
+        await User.create(validUser);
+
+        await request(app)
+            .post('/api/auth/login')
+            .send({ email: validUser.email, password: validUser.password });
+
+        const res = await request(app)
+            .post('/api/auth/verify-login-otp')
+            .send({ email: validUser.email, password: validUser.password, code: '000000' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Invalid or expired verification code');
+    });
+
+    test('rejects wrong password', async () => {
+        await User.create(validUser);
+
+        await request(app)
+            .post('/api/auth/login')
+            .send({ email: validUser.email, password: validUser.password });
+
+        const otp = await Otp.findOne({ email: validUser.email });
+
+        const res = await request(app)
+            .post('/api/auth/verify-login-otp')
+            .send({ email: validUser.email, password: 'wrongpassword', code: otp.code });
+
+        expect(res.status).toBe(401);
+        expect(res.body.error).toBe('Invalid email or password');
+    });
+
+    test('rejects missing fields', async () => {
+        const res = await request(app)
+            .post('/api/auth/verify-login-otp')
+            .send({ email: 'test@purdue.edu' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Email, password, and verification code are required');
+    });
+});
+
 describe('GET /api/auth/me', () => {
     test('returns user when valid token provided', async () => {
         await User.create(validUser);
-        const loginRes = await request(app)
-            .post('/api/auth/login')
-            .send({ email: validUser.email, password: validUser.password });
-        const token = loginRes.body.token;
+        const verifyRes = await loginWithOtp(validUser.email, validUser.password);
+        const token = verifyRes.body.token;
 
         const res = await request(app)
             .get('/api/auth/me')
@@ -311,6 +387,6 @@ describe('POST /api/auth/reset-password', () => {
             .post('/api/auth/login')
             .send({ email: validUser.email, password: 'brandnewpass123' });
         expect(newLoginRes.status).toBe(200);
-        expect(newLoginRes.body).toHaveProperty('token');
+        expect(newLoginRes.body.requiresOtp).toBe(true);
     });
 });
