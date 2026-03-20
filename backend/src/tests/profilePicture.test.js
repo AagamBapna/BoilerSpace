@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../app');
 const User = require('../models/User');
+const Otp = require('../models/Otp');
 
 // Mock GCS bucket
 jest.mock('../config/gcs', () => {
@@ -73,14 +74,19 @@ afterAll(async () => {
 
 beforeEach(async () => {
     await User.deleteMany({});
+    await Otp.deleteMany({});
     __mockDelete.mockClear();
 
     await request(app).post('/api/auth/register').send(validUser);
-    const loginRes = await request(app)
+    await request(app)
         .post('/api/auth/login')
         .send({ email: validUser.email, password: validUser.password });
-    token = loginRes.body.token;
-    testUser = loginRes.body.user;
+    const otp = await Otp.findOne({ email: validUser.email });
+    const verifyRes = await request(app)
+        .post('/api/auth/verify-login-otp')
+        .send({ email: validUser.email, password: validUser.password, code: otp.code });
+    token = verifyRes.body.token;
+    testUser = verifyRes.body.user;
 });
 
 describe('PUT /api/users/:id/profile-picture', () => {

@@ -22,6 +22,7 @@ const app = require('../app');
 const User = require('../models/User');
 const Course = require('../models/Course');
 const Note = require('../models/Note');
+const Otp = require('../models/Otp');
 
 jest.setTimeout(30000);
 
@@ -86,16 +87,19 @@ beforeEach(async () => {
     await User.deleteMany({});
     await Course.deleteMany({});
     await Note.deleteMany({});
+    await Otp.deleteMany({});
 
-    // Register and login to get a token
     await request(app).post('/api/auth/register').send(testUser);
-    const loginRes = await request(app)
+    await request(app)
         .post('/api/auth/login')
         .send({ email: testUser.email, password: testUser.password });
-    token = loginRes.body.token;
-    userId = loginRes.body.user.id;
+    const otp = await Otp.findOne({ email: testUser.email });
+    const verifyRes = await request(app)
+        .post('/api/auth/verify-login-otp')
+        .send({ email: testUser.email, password: testUser.password, code: otp.code });
+    token = verifyRes.body.token;
+    userId = verifyRes.body.user.id;
 
-    // Create a test course
     course = await Course.create(testCourse);
 });
 
@@ -285,11 +289,14 @@ describe('GET /api/courses/:id/notes', () => {
         };
 
         await request(app).post('/api/auth/register').send(secondUser);
-        const loginRes = await request(app)
+        await request(app)
             .post('/api/auth/login')
             .send({ email: secondUser.email, password: secondUser.password });
-
-        const secondToken = loginRes.body.token;
+        const otp2 = await Otp.findOne({ email: secondUser.email });
+        const verifyRes2 = await request(app)
+            .post('/api/auth/verify-login-otp')
+            .send({ email: secondUser.email, password: secondUser.password, code: otp2.code });
+        const secondToken = verifyRes2.body.token;
         const res = await request(app)
             .get(`/api/courses/${course._id}/notes`)
             .set('Authorization', `Bearer ${secondToken}`);
@@ -408,10 +415,14 @@ describe('DELETE /api/notes/:noteId', () => {
             major: 'Math',
             year: 'Senior',
         });
-        const otherLogin = await request(app)
+        await request(app)
             .post('/api/auth/login')
             .send({ email: 'other@purdue.edu', password: 'password123' });
-        const otherToken = otherLogin.body.token;
+        const otherOtp = await Otp.findOne({ email: 'other@purdue.edu' });
+        const otherVerify = await request(app)
+            .post('/api/auth/verify-login-otp')
+            .send({ email: 'other@purdue.edu', password: 'password123', code: otherOtp.code });
+        const otherToken = otherVerify.body.token;
 
         const res = await request(app)
             .delete(`/api/notes/${noteId}`)
