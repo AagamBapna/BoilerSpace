@@ -29,7 +29,7 @@ router.get('/:id/rooms/:roomId/checkins', async (req, res) => {
 });
 
 // POST /api/buildings/:id/rooms/:roomId/checkins - create a checkin for a room
-router.post('/:id/rooms/:roomId/checkins',protect,  async (req, res) => {
+router.post('/:id/rooms/:roomId/checkins', protect,  async (req, res) => {
     try {
         const building = await Building.findById(req.params.id);
         if (!building) {
@@ -43,7 +43,19 @@ router.post('/:id/rooms/:roomId/checkins',protect,  async (req, res) => {
         if (!checkin) {
             const new_checkin = new CheckIn({buildingId: req.params.id, roomId: req.params.roomId, expiresAt: new Date(Date.now() + 10 * 1000) ,userId: req.user._id});
             await new_checkin.save();
+            // Update recent buildings
+            const user = await User.findById(req.user._id);
+            user.recentBuildings = user.recentBuildings.filter(
+                (entry) => entry.buildingId.toString() !== req.params.id
+            );
+            user.recentBuildings.unshift({
+                buildingId: req.params.id,
+                visitedAt: new Date(),
+            });
+            user.recentBuildings = user.recentBuildings.slice(0, 5);
+            await user.save();
             room.currentOccupancy++;
+            room.lastActivityAt = new Date();
             await room.save();
             return res.status(201).json(new_checkin);
         }
@@ -74,6 +86,7 @@ router.delete('/:id/rooms/:roomId/checkins/:checkinID', async (req, res) => {
         }
         await checkin.deleteOne();
         room.currentOccupancy--;
+        room.lastActivityAt = new Date()
         await room.save()
         res.status(204).send();
     } catch (err) {

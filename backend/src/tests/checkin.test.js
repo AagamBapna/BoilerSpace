@@ -285,3 +285,82 @@ describe('DELETE /api/buildings/:id/rooms/:roomId/checkins/:checkinID', () => {
         expect(res.status).toBe(404);
     });
 });
+
+// Recent Buildings + Last Activity
+
+describe('POST checkin updates recentBuildings and lastActivityAt', () => {
+    test('adds building to user recentBuildings after checkin', async () => {
+        await request(app)
+            .post(`/api/buildings/${building._id}/rooms/${room._id}/checkins`)
+            .set('Authorization', `Bearer ${token}`);
+
+        const updatedUser = await User.findById(user._id);
+        expect(updatedUser.recentBuildings).toHaveLength(1);
+        expect(updatedUser.recentBuildings[0].buildingId.toString()).toBe(building._id.toString());
+        expect(updatedUser.recentBuildings[0].visitedAt).toBeDefined();
+    });
+
+    test('does not duplicate building in recentBuildings on repeat checkin', async () => {
+        // First checkin
+        await request(app)
+            .post(`/api/buildings/${building._id}/rooms/${room._id}/checkins`)
+            .set('Authorization', `Bearer ${token}`);
+
+        // Wait for checkin to expire, then checkin again
+        await CheckIn.deleteMany({});
+        await request(app)
+            .post(`/api/buildings/${building._id}/rooms/${room._id}/checkins`)
+            .set('Authorization', `Bearer ${token}`);
+
+        const updatedUser = await User.findById(user._id);
+        expect(updatedUser.recentBuildings).toHaveLength(1);
+    });
+
+    test('caps recentBuildings at 5 entries', async () => {
+        // Create 6 buildings and check into each
+        for (let i = 0; i < 6; i++) {
+            const b = await Building.create({
+                name: `Building ${i}`,
+                abbreviation: `B${i}`,
+                latitude: 40 + i,
+                longitude: -86 + i,
+            });
+            const r = await Room.create({
+                buildingId: b._id,
+                name: `Room ${i}`,
+                floor: 1,
+                capacity: 10,
+                noiseLevel: 'quiet',
+            });
+            await CheckIn.deleteMany({ userId: user._id });
+            await request(app)
+                .post(`/api/buildings/${b._id}/rooms/${r._id}/checkins`)
+                .set('Authorization', `Bearer ${token}`);
+        }
+
+        const updatedUser = await User.findById(user._id);
+        expect(updatedUser.recentBuildings.length).toBeLessThanOrEqual(5);
+    });
+
+    test('sets lastActivityAt on room after checkin', async () => {
+        await request(app)
+            .post(`/api/buildings/${building._id}/rooms/${room._id}/checkins`)
+            .set('Authorization', `Bearer ${token}`);
+
+        const updatedRoom = await Room.findById(room._id);
+        expect(updatedRoom.lastActivityAt).toBeDefined();
+        expect(updatedRoom.lastActivityAt).toBeInstanceOf(Date);
+    });
+
+    test('sets lastActivityAt on room after checkout', async () => {
+        const res = await request(app)
+            .post(`/api/buildings/${building._id}/rooms/${room._id}/checkins`)
+            .set('Authorization', `Bearer ${token}`);
+
+        await request(app)
+            .delete(`/api/buildings/${building._id}/rooms/${room._id}/checkins/${res.body._id}`);
+
+        const updatedRoom = await Room.findById(room._id);
+        expect(updatedRoom.lastActivityAt).toBeDefined();
+    });
+});

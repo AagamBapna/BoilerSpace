@@ -3,7 +3,7 @@ import axios from 'axios';
 import SearchBar from './SearchBar';
 import BookmarkedRooms from './BookmarkedRooms';
 
-export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [] }) {
+export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [], recentBuildings = [] }) {
     const [rooms, setRooms] = useState([]);
     const [loadingRooms, setLoadingRooms] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -53,6 +53,25 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
         loud: '📢',
     };
 
+    const amenityIcons = {
+        'Whiteboard': '🖊️',
+        'Outlets': '🔌',
+        'Projector': '📽️',
+        'Printers': '🖨️',
+        'Cafe': '☕',
+        'Lab': '🔬',
+    };
+    const timeAgo = (date) => {
+        if (!date) return null;
+        const seconds = Math.floor((Date.now() - new Date(date)) / 1000);
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes} min ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        return `${days}d ago`;
+    };
     return (
         <aside
             className="w-[360px] h-full border-r border-white/5 flex flex-col overflow-hidden shrink-0"
@@ -216,10 +235,16 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                                         className="text-[var(--color-text-secondary)]"
                                                         style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)' }}
                                                     >
-                                                        {a}
+                                                        {amenityIcons[a] || '•'} {a}
                                                     </span>
                                                 ))}
                                             </div>
+                                            
+                                        )}
+                                        {room.lastActivityAt && (
+                                            <p className="text-xs text-[var(--color-text-secondary)]" style={{ marginTop: '8px', opacity: 0.6 }}>
+                                                🕐 Last activity {timeAgo(room.lastActivityAt)}
+                                            </p>
                                         )}
                                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
                                             <button
@@ -301,6 +326,44 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                     </div>
 
                     <div style={{ padding: '12px' }}>
+                        {recentBuildings.length > 0 && (
+                            <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <p className="text-xs text-[var(--color-text-secondary)] font-medium uppercase"
+                                style={{ padding: '0 8px', marginBottom: '8px', letterSpacing: '0.05em' }}>
+                                    🕐 Recently Visited
+                                </p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {recentBuildings.filter((entry) => entry.buildingId).map((entry) => (
+                                        <button
+                                            key={entry.buildingId._id}
+                                            onClick={() => onSelectBuilding(entry.buildingId)}
+                                            className="w-full text-left rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group flex items-center"
+                                            style={{ padding: '12px', gap: '12px' }}
+                                        >
+                                            <div className="w-10 h-10 rounded-lg bg-[var(--color-purdue-gold)]/10 flex items-center justify-center shrink-0 group-hover:bg-[var(--color-purdue-gold)]/20 transition-colors">
+                                                <span className="text-xs font-bold text-[var(--color-purdue-gold)]">
+                                                    {entry.buildingId.abbreviation}
+                                                </span>
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium truncate">{entry.buildingId.name}</p>
+                                                <p className="text-xs text-[var(--color-text-secondary)] truncate">
+                                                    {(entry.buildingId.amenities || []).slice(0, 3).join(' · ')}
+                                                </p>
+                                            </div>
+                                            <svg
+                                                className="w-4 h-4 text-[var(--color-text-secondary)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         <p className="text-xs text-[var(--color-text-secondary)]" style={{ padding: '0 8px', marginBottom: '8px' }}>
                             {filteredBuildings.length} building{filteredBuildings.length !== 1 ? 's' : ''}
                         </p>
