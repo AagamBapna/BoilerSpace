@@ -42,6 +42,10 @@ const roomSchema = new mongoose.Schema(
             default: null,
             type: Date,
         },
+        lastStatusUpdate: {
+            type: Date,
+            default: null,
+        },
     },
     { timestamps: true }
 );
