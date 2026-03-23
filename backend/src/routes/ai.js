@@ -40,9 +40,14 @@ function parseModelJson(text) {
 
 function sanitizeQuestionItem(item, index) {
     const question = typeof item?.question === 'string' ? item.question.trim() : '';
-    const answer = typeof item?.answer === 'string' ? item.answer.trim() : '';
+    let answer = typeof item?.answer === 'string' ? item.answer.trim() : '';
     if (!question || !answer) {
         return null;
+    }
+
+    const fullSolutionPattern = /(step\s*\d+|final answer\s*(is|:)|full\s+derivation|therefore,?\s+the\s+answer\s+is)/i;
+    if (fullSolutionPattern.test(answer)) {
+        answer = 'Use the core concept in the question to outline your own steps, then compare your reasoning to definitions and examples from your notes.';
     }
 
     // Keep answers concise so the UI reveals guidance, not full worked solutions.
