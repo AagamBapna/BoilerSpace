@@ -3,12 +3,15 @@ import axios from 'axios';
 import SearchBar from './SearchBar';
 import BookmarkedRooms from './BookmarkedRooms';
 
+
 export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [], recentBuildings = [] }) {
     const [rooms, setRooms] = useState([]);
     const [loadingRooms, setLoadingRooms] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [sidebarView, setSidebarView] = useState('buildings');
     const [activeCheckIn, setActiveCheckIn] = useState(null);
+    const [thresholdRoom, setThresholdRoom] = useState(null);
+    const [thresholdValue, setThresholdValue] = useState(50);
 
     const fetchRooms = async () => {
         if (!selectedBuilding) return;
@@ -245,6 +248,52 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                             <p className="text-xs text-[var(--color-text-secondary)]" style={{ marginTop: '8px', opacity: 0.6 }}>
                                                 🕐 Last activity {timeAgo(room.lastActivityAt)}
                                             </p>
+                                        )}
+                                        {thresholdRoom === room._id ? (
+                                            <div className="flex items-center" style={{ gap: '8px', marginTop: '8px' }}>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="100"
+                                                    value={thresholdValue}
+                                                    onChange={(e) => setThresholdValue(Number(e.target.value))}
+                                                    className="text-xs bg-[var(--color-surface)] border border-white/10 rounded px-2 py-1 text-white"
+                                                    style={{ width: '60px' }}
+                                                />
+                                                <span className="text-xs text-[var(--color-text-secondary)]">%</span>
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            await axios.post('/api/notifications/preferences', {
+                                                                roomId: room._id,
+                                                                threshold: thresholdValue,
+                                                            });
+                                                            setThresholdRoom(null);
+                                                            alert('Alert saved!');
+                                                        } catch (err) {
+                                                            alert(err.response?.data?.error || 'Failed to save alert');
+                                                        }
+                                                    }}
+                                                    className="text-xs px-2 py-1 rounded"
+                                                    style={{ background: 'var(--color-purdue-gold)', color: 'black', fontWeight: '600' }}
+                                                >
+                                                    Save
+                                                </button>
+                                                <button
+                                                    onClick={() => setThresholdRoom(null)}
+                                                    className="text-xs text-[var(--color-text-secondary)] hover:text-white"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => { setThresholdRoom(room._id); setThresholdValue(50); }}
+                                                className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-purdue-gold)] transition-colors"
+                                                style={{ marginTop: '8px' }}
+                                            >
+                                                🔔 Set capacity alert
+                                            </button>
                                         )}
                                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
                                             <button
