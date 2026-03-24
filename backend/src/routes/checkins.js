@@ -56,6 +56,7 @@ router.post('/:id/rooms/:roomId/checkins', protect,  async (req, res) => {
             await user.save();
             room.currentOccupancy++;
             room.lastActivityAt = new Date();
+            room.lastStatusUpdate = new Date();
             await room.save();
             return res.status(201).json(new_checkin);
         }
@@ -87,6 +88,7 @@ router.delete('/:id/rooms/:roomId/checkins/:checkinID', async (req, res) => {
         await checkin.deleteOne();
         room.currentOccupancy--;
         room.lastActivityAt = new Date()
+        room.lastStatusUpdate = new Date();
         await room.save()
         res.status(204).send();
     } catch (err) {
