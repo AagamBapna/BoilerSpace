@@ -13,6 +13,7 @@ const eventRoutes = require('./routes/events');
 const announcementRoutes = require('./routes/announcements');
 const announcementFeedRoutes = require('./routes/announcementFeed');
 const aiRoutes = require('./routes/ai');
+const roomRoutes = require('./routes/rooms');
 
 require('./config/passport');
 const userRoutes = require('./routes/users');
@@ -35,6 +36,7 @@ app.use('/api/notes', noteRoutes);
 app.use('/api/events', announcementRoutes);
 app.use('/api/announcements', announcementFeedRoutes);
 app.use('/api/courses', aiRoutes);
+app.use('/api/rooms', roomRoutes);
 
 app.use('/api/events', eventRoutes);
 app.get('/api/health', (req, res) => {
