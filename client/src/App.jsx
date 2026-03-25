@@ -10,12 +10,14 @@ import LoginForm from './components/LoginForm';
 import ForgotPasswordForm from './components/ForgotPasswordForm';
 import ResetPasswordForm from './components/ResetPasswordForm';
 import EmailVerification from './components/EmailVerification';
+import DMInbox from './components/DMInbox';
 import ClubList from './pages/ClubList';
 import ClubProfile from './pages/ClubProfile';
 import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
 import ActivityPage from './pages/ActivityPage';
 import EventPage from './pages/EventPage';
 import { getToken, setToken, clearToken } from './lib/auth';
+import { useSocket } from './lib/useSocket';
 import './index.css';
 
 export default function App() {
@@ -37,6 +39,8 @@ export default function App() {
   const [bookmarkedRoomIds, setBookmarkedRoomIds] = useState(new Set());
   const [bookmarks, setBookmarks] = useState([]);
   const [recentBuildings, setRecentBuildings] = useState([])
+  const [showDM, setShowDM] = useState(false);
+  const socketRef = useSocket(user);
 
 
   useEffect(() => {
@@ -82,7 +86,7 @@ export default function App() {
             .catch((err) => {
               console.error('Failed to fetch recent buildings:', err);
               setRecentBuildings([]);
-          });
+            });
         })
         .catch(() => {
           clearToken();
@@ -308,7 +312,7 @@ export default function App() {
           bookmarks={bookmarks}
           recentBuildings={recentBuildings}
         />
-        
+
       </div>
 
       <CampusMap
@@ -343,6 +347,16 @@ export default function App() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <span>Course Notes</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowDM(true)}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
+          <span>Messages</span>
         </button>
       </div>
 
@@ -429,6 +443,14 @@ export default function App() {
           onClose={() => setShowProfile(false)}
           onUserUpdate={(updatedUser) => setUser(prev => ({ ...prev, ...updatedUser }))}
           onLogout={handleLogout}
+        />
+      )}
+
+      {showDM && (
+        <DMInbox
+          currentUserId={user.id}
+          socket={socketRef}
+          onClose={() => setShowDM(false)}
         />
       )}
 

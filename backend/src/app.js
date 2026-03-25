@@ -17,6 +17,7 @@ const aiRoutes = require('./routes/ai');
 require('./config/passport');
 const userRoutes = require('./routes/users');
 const bookmarkRoutes = require('./routes/bookmarks');
+const messageRoutes = require('./routes/messages');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/announcements', announcementFeedRoutes);
 app.use('/api/courses', aiRoutes);
 
 app.use('/api/events', eventRoutes);
+app.use('/api/conversations', messageRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

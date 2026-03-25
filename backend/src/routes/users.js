@@ -60,6 +60,31 @@ router.get('/recentBuildings', protect, async (req, res) => {
     }
 });
 
+router.get('/search', protect, async (req, res) => {
+    const { q } = req.query;
+    if (!q || q.trim().length < 2) {
+        return res.status(400).json({ error: 'Search query must be at least 2 characters' });
+    }
+
+    try {
+        const regex = new RegExp(q.trim(), 'i');
+        const users = await User.find({
+            _id: { $ne: req.user._id },
+            $or: [
+                { displayName: regex },
+                { email: regex },
+            ],
+        })
+            .select('displayName email profilePictureUrl')
+            .limit(10);
+
+        res.json(users);
+    } catch (err) {
+        console.error('User search error:', err.message);
+        res.status(500).json({ error: 'Search failed' });
+    }
+});
+
 // GET /api/users/:id, get user by ID
 router.get('/:id', async (req, res) => {
     try {
