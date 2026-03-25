@@ -86,7 +86,7 @@ export default function App() {
             .catch((err) => {
               console.error('Failed to fetch recent buildings:', err);
               setRecentBuildings([]);
-          });
+            });
         })
         .catch(() => {
           clearToken();
@@ -312,7 +312,7 @@ export default function App() {
           bookmarks={bookmarks}
           recentBuildings={recentBuildings}
         />
-        
+
       </div>
 
       <CampusMap

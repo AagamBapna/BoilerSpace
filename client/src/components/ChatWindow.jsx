@@ -93,7 +93,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                 socket.current.emit('markRead', { conversationId: conversation._id });
             }
             onMessagesRead?.(conversation._id);
-        } catch {}
+        } catch { }
     };
 
     const handleSend = async (e) => {
@@ -115,7 +115,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                 setMessages(prev => [...prev, res.data]);
                 setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
             }
-        } catch {}
+        } catch { }
         setSending(false);
     };
 
@@ -184,11 +184,10 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                                 )}
                                 <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                                     <div
-                                        className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm break-words ${
-                                            isMine
+                                        className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm break-words ${isMine
                                                 ? 'bg-gradient-to-r from-[#CEB888] to-[#C28E0E] text-black rounded-br-md'
                                                 : 'bg-[#1e1e1e] text-[#f5f5f5] border border-[#ffffff08] rounded-bl-md'
-                                        }`}
+                                            }`}
                                     >
                                         {msg.text}
                                     </div>

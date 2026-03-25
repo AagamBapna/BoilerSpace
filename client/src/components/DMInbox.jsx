@@ -75,7 +75,7 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
         try {
             const res = await axios.get('/api/conversations');
             setConversations(res.data);
-        } catch {}
+        } catch { }
         setLoading(false);
     };
 
@@ -87,7 +87,7 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
             setSearchResults([]);
             setActiveConversation(res.data);
             await loadConversations();
-        } catch {}
+        } catch { }
     };
 
     const handleSearch = async (q) => {

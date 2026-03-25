@@ -23,8 +23,8 @@ export function useSocket(user) {
             transports: ['websocket', 'polling'],
         });
 
-        socket.on('connect', () => {});
-        socket.on('connect_error', () => {});
+        socket.on('connect', () => { });
+        socket.on('connect_error', () => { });
 
         socketInstance = socket;
         socketRef.current = socket;
