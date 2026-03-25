@@ -42,7 +42,7 @@ export default function StudyGuide({ courseId, courseName, onClose }) {
             <div className="flex items-center justify-between mb-6">
             <div>
                 <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
-                🤖 AI Study Guide
+                    AI Study Guide
                 </h2>
                 {courseName && (
                 <p className="text-sm text-[var(--color-text-secondary)]">
