@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
+import html2pdf from 'html2pdf.js';
 
 export default function StudyGuide({ courseId, courseName, onClose }) {
     const [studyGuide, setStudyGuide] = useState(null);
@@ -33,7 +34,48 @@ export default function StudyGuide({ courseId, courseName, onClose }) {
     const loadStudyGuides = async (guide) => {
         setStudyGuide(guide.content);
         setShowHistory(false);
-    }
+    };
+
+    const handleDownloadPDF = () => {
+        if (!studyGuide) {
+            return;
+        }
+
+        const element = document.createElement('div');
+        element.style.padding = '20px';
+        element.style.fontFamily = 'Arial, sans-serif';
+        element.style.lineHeight = '1.6';
+
+        const title = document.createElement('h1');
+        title.textContent = `Study Guide: ${courseName}`;
+        title.style.marginBottom = '10px';
+        title.style.color = '#333';
+
+        const timestamp = document.createElement('p');
+        timestamp.textContent = `Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+        timestamp.style.color = '#666';
+        timestamp.style.marginBottom = '20px';
+        timestamp.style.fontSize = '0.9rem';
+
+        const content = document.createElement('div');
+        content.style.whiteSpace = 'pre-wrap';
+        content.style.color = '#333';
+        content.textContent = studyGuide;
+
+        element.appendChild(title);
+        element.appendChild(timestamp);
+        element.appendChild(content);
+
+        const options = {
+            margin: 10,
+            filename: `${courseName?.replace(/\s+/g, '_')}_Study_Guide.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
+        };
+
+        html2pdf().set(options).from(element).save();
+    };
 
     return (
       <div className="background-blur" onClick={onClose}>
@@ -119,12 +161,23 @@ export default function StudyGuide({ courseId, courseName, onClose }) {
                 >
                 <ReactMarkdown>{studyGuide}</ReactMarkdown>
                 </div>
+                <div className="flex items-center justify-center gap-3">
+                <button
+                onClick={handleDownloadPDF}
+                className="px-4 py-2 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                </svg>
+                Download as PDF
+                </button>
                 <button
                 onClick={handleGenerateStudyGuide}
-                className="self-center px-4 py-2 text-xs font-semibold text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-elevated)] transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-elevated)] transition-colors"
                 >
                 ↻ Regenerate
                 </button>
+                </div>
             </div>
             )}
         </div>
