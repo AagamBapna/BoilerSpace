@@ -90,15 +90,11 @@ beforeEach(async () => {
     await Otp.deleteMany({});
 
     await request(app).post('/api/auth/register').send(testUser);
-    await request(app)
+    const loginRes = await request(app)
         .post('/api/auth/login')
         .send({ email: testUser.email, password: testUser.password });
-    const otp = await Otp.findOne({ email: testUser.email });
-    const verifyRes = await request(app)
-        .post('/api/auth/verify-login-otp')
-        .send({ email: testUser.email, password: testUser.password, code: otp.code });
-    token = verifyRes.body.token;
-    userId = verifyRes.body.user.id;
+    token = loginRes.body.token;
+    userId = loginRes.body.user.id;
 
     course = await Course.create(testCourse);
 });
@@ -289,14 +285,10 @@ describe('GET /api/courses/:id/notes', () => {
         };
 
         await request(app).post('/api/auth/register').send(secondUser);
-        await request(app)
+        const loginRes2 = await request(app)
             .post('/api/auth/login')
             .send({ email: secondUser.email, password: secondUser.password });
-        const otp2 = await Otp.findOne({ email: secondUser.email });
-        const verifyRes2 = await request(app)
-            .post('/api/auth/verify-login-otp')
-            .send({ email: secondUser.email, password: secondUser.password, code: otp2.code });
-        const secondToken = verifyRes2.body.token;
+        const secondToken = loginRes2.body.token;
         const res = await request(app)
             .get(`/api/courses/${course._id}/notes`)
             .set('Authorization', `Bearer ${secondToken}`);
@@ -415,14 +407,10 @@ describe('DELETE /api/notes/:noteId', () => {
             major: 'Math',
             year: 'Senior',
         });
-        await request(app)
+        const otherLoginRes = await request(app)
             .post('/api/auth/login')
             .send({ email: 'other@purdue.edu', password: 'password123' });
-        const otherOtp = await Otp.findOne({ email: 'other@purdue.edu' });
-        const otherVerify = await request(app)
-            .post('/api/auth/verify-login-otp')
-            .send({ email: 'other@purdue.edu', password: 'password123', code: otherOtp.code });
-        const otherToken = otherVerify.body.token;
+        const otherToken = otherLoginRes.body.token;
 
         const res = await request(app)
             .delete(`/api/notes/${noteId}`)
