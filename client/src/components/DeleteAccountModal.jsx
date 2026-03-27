@@ -106,7 +106,7 @@ export default function DeleteAccountModal({ userEmail, onDeleted, onClose }) {
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-red-500/10 flex items-center justify-center">
-                    <span className="text-2xl">⚠️</span>
+                    <span className="text-2xl">!</span>
                 </div>
 
                 {step === 'confirm' && (

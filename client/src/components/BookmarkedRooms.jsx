@@ -1,17 +1,18 @@
 import { useState } from 'react';
+import { formatRelative, formatAbsolute } from '../utils/formatRelative';
 
 export default function BookmarkedRooms({ bookmarks = [], onToggleBookmark, onSelectBuilding, buildings }) {
     const noiseLevelIcon = {
-        quiet: '🤫',
-        moderate: '💬',
-        loud: '📢',
+        quiet: 'Quiet',
+        moderate: 'Moderate',
+        loud: 'Loud',
     };
 
     const getOccupancyStatus = (room) => {
         const ratio = (room.currentOccupancy || 0) / (room.capacity || 1);
-        if (ratio < 0.4) return { label: 'Quiet', color: 'var(--color-status-open)', icon: '🟢' };
-        if (ratio < 0.7) return { label: 'Moderate', color: 'var(--color-status-moderate)', icon: '🟡' };
-        return { label: 'Busy', color: 'var(--color-status-busy)', icon: '🔴' };
+        if (ratio < 0.4) return { label: 'Quiet', color: 'var(--color-status-open)' };
+        if (ratio < 0.7) return { label: 'Moderate', color: 'var(--color-status-moderate)' };
+        return { label: 'Busy', color: 'var(--color-status-busy)' };
     };
 
     if (bookmarks.length === 0) {
@@ -82,8 +83,8 @@ export default function BookmarkedRooms({ bookmarks = [], onToggleBookmark, onSe
 
                             {/* Room details */}
                             <div className="flex items-center gap-3 text-xs text-[var(--color-text-secondary)] mb-2">
-                                <span>👥 {room.capacity} seats</span>
-                                <span>{noiseLevelIcon[room.noiseLevel] || '💬'} {room.noiseLevel}</span>
+                                <span>{room.capacity} seats</span>
+                                <span>{noiseLevelIcon[room.noiseLevel] || 'Moderate'} {room.noiseLevel}</span>
                                 <span>Floor {room.floor}</span>
                             </div>
 
@@ -98,6 +99,13 @@ export default function BookmarkedRooms({ bookmarks = [], onToggleBookmark, onSe
                                 </span>
                                 <span className="text-xs text-[var(--color-text-secondary)]">
                                     — {room.currentOccupancy || 0}/{room.capacity} checked in
+                                </span>
+                            </div>
+
+                            {/* Last status update */}
+                            <div className="text-xs text-[var(--color-text-secondary)] mb-2">
+                                <span title={formatAbsolute(room.lastStatusUpdate)}>
+                                    Last updated: {formatRelative(room.lastStatusUpdate)}
                                 </span>
                             </div>
 

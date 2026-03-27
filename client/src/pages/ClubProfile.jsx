@@ -273,10 +273,10 @@ export default function ClubProfile({ user }) {
                         )}
                         <div className="flex flex-col gap-1 text-xs text-[var(--color-text-secondary)] mt-2">
                           {event.date && (
-                            <span>📅 {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            <span>{new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                           )}
-                          {event.time && <span>⏰ {event.time}</span>}
-                          {event.location && <span>📍 {event.location}</span>}
+                          {event.time && <span>{event.time}</span>}
+                          {event.location && <span>{event.location}</span>}
                         </div>
                       </div>
                     </button>

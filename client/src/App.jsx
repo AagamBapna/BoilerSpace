@@ -227,7 +227,7 @@ export default function App() {
       <div className="flex items-center justify-center h-screen w-screen bg-[var(--color-surface)]">
         <div className="text-center max-w-md px-6">
           <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-red-500/10 flex items-center justify-center">
-            <span className="text-2xl">⚠️</span>
+            <span className="text-2xl">!</span>
           </div>
           <h2 className="text-lg font-bold mb-2">Connection Error</h2>
           <p className="text-sm text-[var(--color-text-secondary)] mb-4">{error}</p>
