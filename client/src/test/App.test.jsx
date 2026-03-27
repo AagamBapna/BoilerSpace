@@ -268,8 +268,8 @@ describe('App — Building Selection & Room Display', () => {
             expect(screen.getByText('WALC 1018')).toBeInTheDocument();
         });
 
-        expect(screen.getByText('👥 30 seats')).toBeInTheDocument();
-        expect(screen.getByText('💬 moderate')).toBeInTheDocument();
+        expect(screen.getByText('30 seats')).toBeInTheDocument();
+        expect(screen.getByText('Moderate moderate')).toBeInTheDocument();
     });
 
     test('shows empty rooms message when a building has no rooms', async () => {
