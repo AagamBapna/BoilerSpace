@@ -85,8 +85,8 @@ router.get('/search', protect, async (req, res) => {
     }
 });
 
-// GET /api/users/:id, get user by ID
-router.get('/:id', async (req, res) => {
+// GET /api/users/:id, get user by ID (with privacy guard)
+router.get('/:id', protect, async (req, res) => {
     try {
         const user = await User.findById(req.params.id)
             .select('-password')
@@ -94,6 +94,27 @@ router.get('/:id', async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
+
+        // If user is private and viewer is not their friend, return limited info
+        if (user.profileVisibility === 'private' && req.user._id.toString() !== user._id.toString()) {
+            const Friendship = require('../models/Friendship');
+            const friendship = await Friendship.findOne({
+                $or: [
+                    { requester: req.user._id, recipient: user._id, status: 'accepted' },
+                    { requester: user._id, recipient: req.user._id, status: 'accepted' },
+                ],
+            });
+
+            if (!friendship) {
+                return res.json({
+                    _id: user._id,
+                    displayName: user.displayName,
+                    profilePictureUrl: user.profilePictureUrl,
+                    profileVisibility: user.profileVisibility,
+                });
+            }
+        }
+
         res.json(user);
     } catch (err) {
         if (err.name === 'CastError') {
