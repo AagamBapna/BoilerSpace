@@ -230,7 +230,7 @@ describe('DELETE /api/users/:id/profile-picture', () => {
             .delete(`/api/users/${testUser.id}/profile-picture`)
             .set('Authorization', `Bearer ${token}`);
 
-        const res = await request(app).get(`/api/users/${testUser.id}`);
+        const res = await request(app).get(`/api/users/${testUser.id}`).set('Authorization', `Bearer ${token}`);
         expect(res.status).toBe(200);
         expect(res.body.profilePictureUrl).toBe('');
     });

@@ -105,7 +105,8 @@ describe('PUT /api/users/:id', () => {
             .send({ displayName: 'New Name', major: 'Math', year: 'Junior' });
 
         const res = await request(app)
-            .get(`/api/users/${testUser.id}`);
+            .get(`/api/users/${testUser.id}`)
+            .set('Authorization', `Bearer ${token}`);
 
         expect(res.status).toBe(200);
         expect(res.body.displayName).toBe('New Name');

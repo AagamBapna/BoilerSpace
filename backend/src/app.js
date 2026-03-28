@@ -13,6 +13,7 @@ const eventRoutes = require('./routes/events');
 const announcementRoutes = require('./routes/announcements');
 const announcementFeedRoutes = require('./routes/announcementFeed');
 const aiRoutes = require('./routes/ai');
+const friendshipRoutes = require('./routes/friendships');
 
 require('./config/passport');
 const userRoutes = require('./routes/users');
@@ -37,6 +38,7 @@ app.use('/api/events', announcementRoutes);
 app.use('/api/announcements', announcementFeedRoutes);
 app.use('/api/courses', aiRoutes);
 
+app.use('/api/friendships', friendshipRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/conversations', messageRoutes);
 app.get('/api/health', (req, res) => {
