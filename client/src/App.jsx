@@ -11,6 +11,10 @@ import ForgotPasswordForm from './components/ForgotPasswordForm';
 import ResetPasswordForm from './components/ResetPasswordForm';
 import EmailVerification from './components/EmailVerification';
 import DMInbox from './components/DMInbox';
+import ClassmateDiscovery from './components/ClassmateDiscovery';
+import FriendRequests from './components/FriendRequests';
+import FriendsList from './components/FriendsList';
+import ClassmateProfile from './components/ClassmateProfile';
 import ClubList from './pages/ClubList';
 import ClubProfile from './pages/ClubProfile';
 import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
@@ -40,6 +44,11 @@ export default function App() {
   const [bookmarks, setBookmarks] = useState([]);
   const [recentBuildings, setRecentBuildings] = useState([])
   const [showDM, setShowDM] = useState(false);
+  const [showClassmates, setShowClassmates] = useState(false);
+  const [showFriendRequests, setShowFriendRequests] = useState(false);
+  const [showFriendsList, setShowFriendsList] = useState(false);
+  const [viewingClassmateId, setViewingClassmateId] = useState(null);
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const socketRef = useSocket(user);
 
 
@@ -87,6 +96,11 @@ export default function App() {
               console.error('Failed to fetch recent buildings:', err);
               setRecentBuildings([]);
             });
+          axios.get('/api/friendships/pending')
+            .then((pendingRes) => {
+              setPendingRequestCount(pendingRes.data.incoming.length);
+            })
+            .catch(() => setPendingRequestCount(0));
         })
         .catch(() => {
           clearToken();
@@ -144,6 +158,7 @@ export default function App() {
     setUser(null);
     setBookmarkedRoomIds(new Set());
     setBookmarks([]);
+    setPendingRequestCount(0);
   }, []);
 
   const handleToggleBookmark = useCallback(async (roomId, isBookmarked) => {
@@ -178,6 +193,9 @@ export default function App() {
     } catch (err) {
       console.error('Failed to fetch bookmarks after login:', err);
     }
+    axios.get('/api/friendships/pending')
+      .then((pendingRes) => setPendingRequestCount(pendingRes.data.incoming.length))
+      .catch(() => setPendingRequestCount(0));
   }, []);
 
   const navigateAuthMode = useCallback((mode, options = {}) => {
@@ -358,6 +376,42 @@ export default function App() {
           </svg>
           <span>Messages</span>
         </button>
+        <button
+          type="button"
+          onClick={() => setShowClassmates(true)}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span>Classmates</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowFriendsList(true)}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <span>Friends</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowFriendRequests(true)}
+          className="profile-button-like"
+          style={{ position: 'relative' }}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+          </svg>
+          <span>Requests</span>
+          {pendingRequestCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              {pendingRequestCount}
+            </span>
+          )}
+        </button>
       </div>
 
       <button onClick={() => setShowProfile(true)} className="profile-button">
@@ -451,6 +505,34 @@ export default function App() {
           currentUserId={user.id}
           socket={socketRef}
           onClose={() => setShowDM(false)}
+        />
+      )}
+
+      {showClassmates && (
+        <ClassmateDiscovery
+          onClose={() => setShowClassmates(false)}
+          onViewProfile={(id) => { setShowClassmates(false); setViewingClassmateId(id); }}
+        />
+      )}
+
+      {showFriendRequests && (
+        <FriendRequests
+          onClose={() => { setShowFriendRequests(false); axios.get('/api/friendships/pending').then(r => setPendingRequestCount(r.data.incoming.length)).catch(() => {}); }}
+          onViewProfile={(id) => { setShowFriendRequests(false); setViewingClassmateId(id); }}
+        />
+      )}
+
+      {showFriendsList && (
+        <FriendsList
+          onClose={() => setShowFriendsList(false)}
+          onViewProfile={(id) => { setShowFriendsList(false); setViewingClassmateId(id); }}
+        />
+      )}
+
+      {viewingClassmateId && (
+        <ClassmateProfile
+          userId={viewingClassmateId}
+          onClose={() => setViewingClassmateId(null)}
         />
       )}
 
