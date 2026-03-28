@@ -104,7 +104,7 @@ export default function BookmarkedRooms({ bookmarks = [], onToggleBookmark, onSe
 
                             {/* Last status update */}
                             <div className="text-xs text-[var(--color-text-secondary)] mb-2">
-                                <span title={formatAbsolute(room.lastStatusUpdate)}>
+                                <span className="timestamp-tooltip" data-tooltip={formatAbsolute(room.lastStatusUpdate)} tabIndex={0}>
                                     Last updated: {formatRelative(room.lastStatusUpdate)}
                                 </span>
                             </div>

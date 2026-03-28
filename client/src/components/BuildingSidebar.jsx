@@ -227,7 +227,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                             <span>{room.capacity} seats</span>
                                             <span>{noiseLevelIcon[room.noiseLevel] || 'Moderate'} {room.noiseLevel}</span>
                                             <span>Current occupancy: {room.currentOccupancy}</span>
-                                            <span title={formatAbsolute(room.lastStatusUpdate)}>
+                                            <span className="timestamp-tooltip" data-tooltip={formatAbsolute(room.lastStatusUpdate)} tabIndex={0}>
                                                 Last updated: {formatRelative(room.lastStatusUpdate)}
                                             </span>
                                         </div>
