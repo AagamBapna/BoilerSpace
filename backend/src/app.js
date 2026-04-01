@@ -13,6 +13,7 @@ const eventRoutes = require('./routes/events');
 const announcementRoutes = require('./routes/announcements');
 const announcementFeedRoutes = require('./routes/announcementFeed');
 const aiRoutes = require('./routes/ai');
+const notificationRoutes = require('./routes/notifications');
 
 require('./config/passport');
 const userRoutes = require('./routes/users');
@@ -35,7 +36,7 @@ app.use('/api/notes', noteRoutes);
 app.use('/api/events', announcementRoutes);
 app.use('/api/announcements', announcementFeedRoutes);
 app.use('/api/courses', aiRoutes);
-
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/events', eventRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

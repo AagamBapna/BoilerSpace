@@ -16,6 +16,7 @@ import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
 import ActivityPage from './pages/ActivityPage';
 import EventPage from './pages/EventPage';
 import { getToken, setToken, clearToken } from './lib/auth';
+import NotificationBell from './components/NotificationBell';
 import './index.css';
 
 export default function App() {
@@ -344,6 +345,7 @@ export default function App() {
           </svg>
           <span>Course Notes</span>
         </button>
+        <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} />
       </div>
 
       <button onClick={() => setShowProfile(true)} className="profile-button">

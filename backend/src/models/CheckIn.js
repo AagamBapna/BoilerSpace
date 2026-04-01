@@ -24,6 +24,5 @@ const checkInSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-checkInSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
-3
+
 module.exports = mongoose.model('CheckIn', checkInSchema);
