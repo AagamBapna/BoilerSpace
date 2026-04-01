@@ -6,6 +6,9 @@ const Course = require('../models/Course');
 const upload = require('../middleware/upload');
 const { protect } = require('../middleware/auth');
 const { bucket } = require('../config/gcs');
+const { extractTextFromPDF, chunkText, generateEmbeddings } = require('../utils/pdfExtractor');
+const { embeddingModel } = require('../config/gemini');
+const Embedding = require('../models/Embedding');
 
 // POST /api/courses/:id/notes — upload a note to a course
 router.post('/:id/notes', protect, (req, res) => {
@@ -55,7 +58,27 @@ router.post('/:id/notes', protect, (req, res) => {
             // Populate uploader info before returning
             await note.populate('uploadedBy', 'displayName email profilePictureUrl');
             await note.populate('courseId', 'courseCode title');
-
+            if (note.fileType === 'application/pdf' && embeddingModel) {
+                (async () => {
+                    try {
+                        const text = await extractTextFromPDF(note.fileUrl);
+                        const chunks = chunkText(text);
+                        const embeddings = await generateEmbeddings(chunks, embeddingModel);
+                        const docs = chunks.map((chunk, index) => ({
+                            courseId: note.courseId,
+                            noteId: note._id,
+                            chunkIndex: index,
+                            text: chunk,
+                            embedding: embeddings[index],
+                            source: note.title,
+                        }));
+                        await Embedding.insertMany(docs);
+                        console.log(`Generated and stored ${docs.length} embeddings for note ${note.title}`);
+                    } catch (error) {
+                        console.error('Error generating embeddings:', error.message);
+                    }
+                })();
+            }
             res.status(201).json(note);
         } catch (error) {
             if (error.name === 'CastError') {

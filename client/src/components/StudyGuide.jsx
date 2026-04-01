@@ -1,11 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
 export default function StudyGuide({ courseId, courseName, onClose }) {
     const [studyGuide, setStudyGuide] = useState(null);
     const [error, setError] = useState(null);
+    const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
+    useEffect(() => {
+        axios.get(`/api/courses/${courseId}/study-guides`)
+            .then(res => setHistory(res.data))
+            .catch(err => console.error('Error fetching study guide history:', err));
+    }, [courseId]);
 
     const handleGenerateStudyGuide = async () => {
         setError(null);
@@ -14,12 +21,19 @@ export default function StudyGuide({ courseId, courseName, onClose }) {
         try {
             const response = await axios.post(`/api/courses/${courseId}/study-guide`);
             setStudyGuide(response.data.studyGuide);
+            const historyResponse = await axios.get(`/api/courses/${courseId}/study-guides`);
+            setHistory(historyResponse.data);
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to generate study guide');
         } finally {
             setLoading(false);
         }
     };
+
+    const loadStudyGuides = async (guide) => {
+        setStudyGuide(guide.content);
+        setShowHistory(false);
+    }
 
     return (
       <div className="background-blur" onClick={onClose}>
@@ -36,16 +50,34 @@ export default function StudyGuide({ courseId, courseName, onClose }) {
                 </p>
                 )}
             </div>
-            <button
-                onClick={onClose}
-                aria-label="Close study guide"
-                className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors"
-            >
+            <div className='flex items-center gap-2'>
+                {history.length > 0 && (
+                <button
+                    onClick={() => setShowHistory(!showHistory)}
+                    className="px-3 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-elevated)] transition-colors">
+                  📋 History ({history.length})
+                </button>
+              )}
+              <button onClick={onClose} aria-label="Close study guide"
+                className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors">
                 <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-            </button>
+              </button>
             </div>
+            </div>
+            {/* History Dropdown */}
+            {showHistory && (
+              <div className="mb-4 p-3 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)] max-h-[200px] overflow-y-auto">
+                <p className="text-xs text-[var(--color-text-secondary)] mb-2 font-semibold">Previous Study Guides</p>
+                {history.map((guide) => (
+                  <button key={guide._id} onClick={() => loadStudyGuides(guide)}
+                    className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-surface)] rounded-lg transition-colors mb-1">
+                    {new Date(guide.createdAt).toLocaleString()} — {guide.notesUsed} chunks used
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Generate button */}
             {!studyGuide && !loading && (
             <div className="flex flex-col items-center justify-center py-12 gap-4">
@@ -79,7 +111,7 @@ export default function StudyGuide({ courseId, courseName, onClose }) {
             </div>
             )}
             {/* Study Guide Result */}
-            {studyGuide && (
+            {studyGuide && !showHistory && (
             <div className="flex flex-col gap-4">
                 <div
                 className="p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)] max-h-[60vh] overflow-y-auto"
