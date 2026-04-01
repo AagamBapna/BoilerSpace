@@ -76,14 +76,7 @@ export default function App() {
               setBookmarkedRoomIds(new Set());
               setBookmarks([]);
             });
-          axios.get('/api/users/recentBuildings')
-            .then((recentRes) => {
-              setRecentBuildings(recentRes.data);
-            })
-            .catch((err) => {
-              console.error('Failed to fetch recent buildings:', err);
-              setRecentBuildings([]);
-          });
+          refreshRecentBuildings();
         })
         .catch(() => {
           clearToken();
@@ -141,6 +134,15 @@ export default function App() {
     setUser(null);
     setBookmarkedRoomIds(new Set());
     setBookmarks([]);
+  }, []);
+
+  const refreshRecentBuildings = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/users/recentBuildings');
+      setRecentBuildings(res.data);
+    } catch (err) {
+      console.error('Failed to fetch recent buildings:', err);
+    }
   }, []);
 
   const handleToggleBookmark = useCallback(async (roomId, isBookmarked) => {
@@ -308,6 +310,7 @@ export default function App() {
           onToggleBookmark={handleToggleBookmark}
           bookmarks={bookmarks}
           recentBuildings={recentBuildings}
+          onRefreshRecentBuildings={refreshRecentBuildings}
         />
         
       </div>

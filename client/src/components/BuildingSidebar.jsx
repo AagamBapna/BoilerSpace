@@ -4,7 +4,7 @@ import SearchBar from './SearchBar';
 import BookmarkedRooms from './BookmarkedRooms';
 
 
-export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [], recentBuildings = [] }) {
+export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [], recentBuildings = [], onRefreshRecentBuildings }) {
     const [rooms, setRooms] = useState([]);
     const [loadingRooms, setLoadingRooms] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -308,6 +308,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                                             }
                                                             const res = await axios.post(`/api/buildings/${selectedBuilding._id}/rooms/${room._id}/checkins`);
                                                             setActiveCheckIn(res.data);
+                                                            if (onRefreshRecentBuildings) onRefreshRecentBuildings();
                                                         }
                                                         await fetchRooms();
                                                     } catch (err) {
