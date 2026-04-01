@@ -1,13 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const Note = require('../models/Note');
 const NoteComment = require('../models/NoteComment');
 const Course = require('../models/Course');
 const User = require('../models/User');
 const upload = require('../middleware/upload');
 const { protect } = require('../middleware/auth');
-const { bucket } = require('../config/gcs');
+const { bucket, isGcsConfigured } = require('../config/gcs');
 const { extractTextFromPDF, chunkText, generateEmbeddings } = require('../utils/pdfExtractor');
 const { embeddingModel } = require('../config/gemini');
 const Embedding = require('../models/Embedding');
@@ -37,15 +39,26 @@ router.post('/:id/notes', protect, (req, res) => {
             if (!req.file) {
                 return res.status(400).json({ error: 'No file uploaded. Please attach a PDF or image file.' });
             }
-            // Upload to GCS
-            const blob = bucket.file(`notes/${Date.now()}-${req.file.originalname}`);
-            await new Promise((resolve, reject) => {
-                const stream = blob.createWriteStream({ resumable: false, contentType: req.file.mimetype });
-                stream.on('error', reject);
-                stream.on('finish', resolve);
-                stream.end(req.file.buffer);
-            });
-            const fileUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+            const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const storedFileName = `notes/${Date.now()}-${sanitizedName}`;
+            let fileUrl;
+
+            if (isGcsConfigured) {
+                const blob = bucket.file(storedFileName);
+                await new Promise((resolve, reject) => {
+                    const stream = blob.createWriteStream({ resumable: false, contentType: req.file.mimetype });
+                    stream.on('error', reject);
+                    stream.on('finish', resolve);
+                    stream.end(req.file.buffer);
+                });
+                fileUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+            } else {
+                const uploadPath = path.join(__dirname, '../../uploads', storedFileName);
+                fs.mkdirSync(path.dirname(uploadPath), { recursive: true });
+                fs.writeFileSync(uploadPath, req.file.buffer);
+                fileUrl = `/uploads/${storedFileName}`;
+            }
+
             const note = await Note.create({
                 courseId: course._id,
                 uploadedBy: req.user._id,
@@ -146,9 +159,13 @@ router.delete('/:noteId', protect, async (req, res) => {
             return res.status(403).json({ error: 'You can only delete notes you uploaded.' });
         }
 
-        // Delete from GCS
-        const fileName = note.fileUrl.replace(`https://storage.googleapis.com/${bucket.name}/`, '');
-        await bucket.file(fileName).delete().catch(() => {});
+        if (note.fileUrl.startsWith('/uploads/')) {
+            const localPath = path.join(__dirname, '../../', note.fileUrl);
+            fs.unlink(localPath, () => {});
+        } else {
+            const fileName = note.fileUrl.replace(`https://storage.googleapis.com/${bucket.name}/`, '');
+            await bucket.file(fileName).delete().catch(() => {});
+        }
 
         // Cascade delete all comments for this note
         await NoteComment.deleteMany({ noteId: note._id });

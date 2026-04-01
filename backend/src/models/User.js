@@ -87,19 +87,10 @@ const userSchema = new mongoose.Schema(
                 default: Date.now,
             },
         }],
-        notificationPreferences: [{
-             roomId: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'Room',
-            },
-            threshold: {
-                type: Number, // e.g., 50 means "notify me when under 50% full"
-            },
-            enabled: {
-                type: Boolean,
-                default: true,
-            },
-        }]
+        // clubs the user has requested to join but not yet approved
+        pendingClubIds: { type: [String], default: [] },
+        // clubs the user was removed from or rejected from
+        removedClubIds: { type: [String], default: [] },
     },
     { timestamps: true }
 );

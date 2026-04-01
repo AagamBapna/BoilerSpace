@@ -1,81 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const Course = require('../models/Course');
-const Embedding = require('../models/Embedding');
-const StudyGuide = require('../models/StudyGuide');
-const { protect } = require('../middleware/auth');
-const { model, embeddingModel } = require('../config/gemini');
-const { cosineSimilarity } = require('../utils/pdfExtractor');
-
-<<<<<<< HEAD
-// get top relevant chunks for a course based using cosine similarity to determine relevance
-async function getRelevantChunks(courseId, query, topK = 30) {
-    const stored = await Embedding.find({ courseId });
-    if (stored.length === 0) {
-=======
-function normalizeDifficulty(value) {
-    const difficulty = (value || 'mixed').toString().toLowerCase();
-    if (['easy', 'medium', 'hard', 'mixed'].includes(difficulty)) {
-        return difficulty;
-    }
-    return 'mixed';
-}
-
-function parseModelJson(text) {
-    const cleaned = text
-        .replace(/^```json\s*/i, '')
-        .replace(/^```\s*/i, '')
-        .replace(/```$/i, '')
-        .trim();
-
-    const parsed = JSON.parse(cleaned);
-    if (Array.isArray(parsed)) {
-        return parsed;
-    }
-    if (parsed && Array.isArray(parsed.questions)) {
-        return parsed.questions;
-    }
-    return [];
-}
-
-function sanitizeQuestionItem(item, index) {
-    const question = typeof item?.question === 'string' ? item.question.trim() : '';
-    let answer = typeof item?.answer === 'string' ? item.answer.trim() : '';
-    if (!question || !answer) {
-        return null;
-    }
-
-    const fullSolutionPattern = /(step\s*\d+|final answer\s*(is|:)|full\s+derivation|therefore,?\s+the\s+answer\s+is)/i;
-    if (fullSolutionPattern.test(answer)) {
-        answer = 'Use the core concept in the question to outline your own steps, then compare your reasoning to definitions and examples from your notes.';
-    }
-
-    // Keep answers concise so the UI reveals guidance, not full worked solutions.
-    const conciseAnswer = answer.length > 650 ? `${answer.slice(0, 647).trim()}...` : answer;
-
-    return {
-        id: item.id || `q${index + 1}`,
-        question,
-        answer: conciseAnswer,
-    };
-}
-
-function buildPracticePrompt({ course, count, focus, difficulty, context }) {
-    return `You are creating practice questions for students.
-Use ONLY the provided course note excerpts.
-
-Return valid JSON only with this shape:
-{
-  "questions": [
-    { "id": "q1", "question": "...", "answer": "..." }
-  ]
-}
-
-Rules:
-- Generate exactly ${count} questions.
-- Questions must test understanding of ${course.department} ${course.courseCode}: ${course.title}.
-const express = require('express');
-const router = express.Router();
 const Note = require('../models/Note');
 const Course = require('../models/Course');
 const Embedding = require('../models/Embedding');
@@ -216,15 +140,18 @@ router.post('/:id/study-guide', protect, async (req, res) => {
         if (!model || !embeddingModel) {
             return res.status(500).json({ error: 'AI model not configured' });
         }
+
         const course = await Course.findById(req.params.id);
         if (!course) {
             return res.status(404).json({ error: 'Course not found' });
         }
+
         const query = 'key topics, important concepts, formulas, and exam preparation tips for this course';
         const chunks = await getRelevantChunks(course._id, query);
         if (chunks.length === 0) {
             return res.status(404).json({ error: 'No PDF notes found for this course' });
         }
+
         const context = chunks.map((c) => c.text).join('\n---\n');
         const prompt = `You are a helpful assistant that creates study guides. You are tasked 
         with creating a study guide for the course: "${course.department} ${course.courseCode}: ${course.title}"\n\n

@@ -1,10 +1,19 @@
 const pdfParse = require('pdf-parse');
+const fs = require('fs');
+const path = require('path');
+const http = require('http');
 const https = require('https');
 
 // Download a file from a URL and return it as a buffer
 function downloadBuffer(url) {
+    if (url.startsWith('/uploads/')) {
+        const localPath = path.join(__dirname, '../../', url);
+        return fs.promises.readFile(localPath);
+    }
+
+    const client = url.startsWith('http://') ? http : https;
     return new Promise((resolve, reject) => {
-        https.get(url, (response) => {
+        client.get(url, (response) => {
             const chunks = [];
             response.on('data', (chunk) => chunks.push(chunk));
             response.on('end', () => resolve(Buffer.concat(chunks)));

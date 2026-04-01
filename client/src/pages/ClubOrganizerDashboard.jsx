@@ -10,6 +10,7 @@ export default function ClubOrganizerDashboard({ user }) {
   const [events, setEvents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [members, setMembers] = useState([]);
+  const [pendingMembers, setPendingMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -31,10 +32,15 @@ export default function ClubOrganizerDashboard({ user }) {
   const loadMembers = async () => {
     try {
       setMembersLoading(true);
-      const membersRes = await axios.get(`/api/clubs/${clubId}/members`);
+      const [membersRes, pendingRes] = await Promise.all([
+        axios.get(`/api/clubs/${clubId}/members`),
+        axios.get(`/api/clubs/${clubId}/pending-members`),
+      ]);
       setMembers(membersRes.data || []);
+      setPendingMembers(pendingRes.data || []);
     } catch (err) {
       setMembers([]);
+      setPendingMembers([]);
       setError(err.response?.data?.message || 'Failed to load members.');
     } finally {
       setMembersLoading(false);
@@ -113,6 +119,42 @@ export default function ClubOrganizerDashboard({ user }) {
       await loadData();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to promote member.');
+    }
+  };
+
+  const handleApproveMember = async (memberId) => {
+    try {
+      setNotice(null);
+      setError(null);
+      await axios.post(`/api/clubs/${clubId}/members/${memberId}/approve`);
+      setNotice('Membership request approved.');
+      await loadData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to approve member.');
+    }
+  };
+
+  const handleRemovePendingRequest = async (memberId) => {
+    try {
+      setNotice(null);
+      setError(null);
+      await axios.delete(`/api/clubs/${clubId}/members/${memberId}`);
+      setNotice('Request removed.');
+      await loadData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to remove request.');
+    }
+  };
+
+  const handleDemoteOrganizer = async (memberId) => {
+    try {
+      setNotice(null);
+      setError(null);
+      await axios.delete(`/api/clubs/${clubId}/organizers/${memberId}`);
+      setNotice('Organizer demoted to member.');
+      await loadData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to demote organizer.');
     }
   };
 
@@ -238,6 +280,37 @@ export default function ClubOrganizerDashboard({ user }) {
         {error && <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-sm">{error}</div>}
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Panel title="Pending Requests">
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+              {membersLoading && <p className="text-sm text-[var(--color-text-secondary)]">Loading requests...</p>}
+              {!membersLoading && pendingMembers.length === 0 && (
+                <p className="text-sm text-[var(--color-text-secondary)]">No pending requests.</p>
+              )}
+              {pendingMembers.map((m) => (
+                <div key={m.id} className="flex items-center justify-between bg-white/5 rounded px-3 py-2 gap-3">
+                  <div>
+                    <p className="text-sm font-medium">{m.displayName || m.email}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)]">{m.email}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleApproveMember(m.id)}
+                      className="text-xs text-emerald-300 hover:text-emerald-200"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleRemovePendingRequest(m.id)}
+                      className="text-xs text-red-300 hover:text-red-200"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
           <Panel title="Organizers">
             <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
               {membersLoading && <p className="text-sm text-[var(--color-text-secondary)]">Loading organizers...</p>}
@@ -252,7 +325,17 @@ export default function ClubOrganizerDashboard({ user }) {
                       <p className="text-sm font-medium">{m.displayName || m.email}</p>
                       <p className="text-xs text-[var(--color-text-secondary)]">{m.email}</p>
                     </div>
-                    <span className="text-xs text-emerald-300">Organizer</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-emerald-300">Organizer</span>
+                      {String(m.id) !== String(user?.id || user?._id || '') && (
+                        <button
+                          onClick={() => handleDemoteOrganizer(m.id)}
+                          className="text-xs text-amber-300 hover:text-amber-200"
+                        >
+                          Demote
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
             </div>

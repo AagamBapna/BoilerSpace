@@ -182,6 +182,62 @@ describe('Clubs API', () => {
       assert.ok(updatedClub.organizerIds.map(String).includes(organizerCandidate._id.toString()));
     });
 
+    it('demotes an organizer to member', async () => {
+      mockedUserId = 'user-1';
+
+      await request(app)
+        .post(`/api/clubs/${club._id}/organizers`)
+        .send({ userId: organizerCandidate._id.toString() })
+        .expect(201);
+
+      const res = await request(app)
+        .delete(`/api/clubs/${club._id}/organizers/${organizerCandidate._id}`)
+        .expect(200);
+
+      assert.strictEqual(res.body.success, true);
+
+      const updatedClub = await Club.findById(club._id);
+      assert.ok(!updatedClub.organizerIds.map(String).includes(organizerCandidate._id.toString()));
+    });
+
+    it('shows and approves pending requests', async () => {
+      const pendingUser = await User.create({
+        email: 'pending@example.com',
+        password: 'password123',
+        displayName: 'Pending User',
+        major: 'CS',
+        year: 'Sophomore',
+        pendingClubIds: [club._id.toString()],
+      });
+
+      mockedUserId = 'user-1';
+      const pendingRes = await request(app)
+        .get(`/api/clubs/${club._id}/pending-members`)
+        .expect(200);
+
+      assert.ok(pendingRes.body.find((u) => u.id === pendingUser._id.toString()));
+
+      const approveRes = await request(app)
+        .post(`/api/clubs/${club._id}/members/${pendingUser._id}/approve`)
+        .expect(200);
+
+      assert.strictEqual(approveRes.body.success, true);
+
+      const updatedUser = await User.findById(pendingUser._id);
+      assert.ok(updatedUser.clubIds.map(String).includes(club._id.toString()));
+      assert.ok(!updatedUser.pendingClubIds.map(String).includes(club._id.toString()));
+    });
+
+    it('prevents demoting the last organizer', async () => {
+      mockedUserId = 'user-1';
+      const res = await request(app)
+        .delete(`/api/clubs/${club._id}/organizers/user-1`)
+        .expect(400);
+
+      assert.strictEqual(res.body.error, 'Validation failed');
+      assert.ok(res.body.message.includes('At least one organizer'));
+    });
+
     it('prevents non-organizers from using organizer APIs', async () => {
       mockedUserId = member._id.toString();
       const res = await request(app)
@@ -228,9 +284,11 @@ describe('Clubs API', () => {
 
       assert.strictEqual(res.body.success, true);
       assert.strictEqual(res.body.alreadyMember, false);
+      assert.strictEqual(res.body.pendingRequest, true);
 
       const updated = await User.findById(joiner._id);
-      assert.ok(updated.clubIds.map(String).includes(club._id.toString()));
+      assert.ok(updated.pendingClubIds.map(String).includes(club._id.toString()));
+      assert.ok(!updated.clubIds.map(String).includes(club._id.toString()));
     });
 
     it('is idempotent when user already joined', async () => {
@@ -241,11 +299,27 @@ describe('Clubs API', () => {
         .expect(200);
 
       assert.strictEqual(res.body.success, true);
-      assert.strictEqual(res.body.alreadyMember, true);
+      assert.strictEqual(res.body.alreadyPending, true);
+    });
+
+    it('cancels a pending request when leaving', async () => {
+      mockedUserId = joiner._id.toString();
+
+      const res = await request(app)
+        .post(`/api/clubs/${club._id}/leave`)
+        .expect(200);
+
+      assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.cancelledRequest, true);
+
+      const updated = await User.findById(joiner._id);
+      assert.ok(!updated.pendingClubIds.map(String).includes(club._id.toString()));
     });
 
     it('removes club from memberships when leaving', async () => {
       mockedUserId = joiner._id.toString();
+
+      await User.findByIdAndUpdate(joiner._id, { clubIds: [club._id.toString()] });
 
       const res = await request(app)
         .post(`/api/clubs/${club._id}/leave`)

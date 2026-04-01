@@ -4,6 +4,7 @@ import NoteUploadForm from './NoteUploadForm';
 import NoteVoter from './NoteVoter';
 import StudyGuide from './StudyGuide';
 import PracticeQuestions from './PracticeQuestions';
+import CourseQA from './CourseQA';
 
 export default function CourseNotes({ courseId, courseName, onClose, userId }) {
   const [notes, setNotes] = useState([]);
@@ -12,6 +13,7 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [showStudyGuide, setShowStudyGuide] = useState(false);
   const [showPracticeQuestions, setShowPracticeQuestions] = useState(false);
+  const [showCourseQA, setShowCourseQA] = useState(false);
 
   useEffect(() => {
     if (!courseId) return;
@@ -115,6 +117,13 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
                   style={{ paddingLeft: '10px', paddingRight: '10px', whiteSpace: 'nowrap' }}
                 >
                   Practice Questions
+                </button>
+                <button
+                  onClick={() => setShowCourseQA(true)}
+                  className="py-1.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text-primary)] font-semibold text-xs rounded-lg hover:opacity-90 transition-opacity"
+                  style={{ paddingLeft: '10px', paddingRight: '10px', whiteSpace: 'nowrap' }}
+                >
+                  Ask AI
                 </button>
                 <button
                   onClick={() => setShowStudyGuide(true)}
@@ -284,6 +293,13 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
             courseId={courseId}
             courseName={courseName}
             onClose={() => setShowPracticeQuestions(false)}
+          />
+        )}
+        {showCourseQA && (
+          <CourseQA
+            courseId={courseId}
+            courseName={courseName}
+            onClose={() => setShowCourseQA(false)}
           />
         )}
       </div>

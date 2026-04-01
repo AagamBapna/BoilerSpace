@@ -84,14 +84,34 @@ router.post('/:id/join', protect, async (req, res) => {
 
     const clubIdStr = club._id.toString();
     const existingClubIds = Array.isArray(user.clubIds) ? user.clubIds.map(String) : [];
+    const pendingClubIds = Array.isArray(user.pendingClubIds) ? user.pendingClubIds.map(String) : [];
+    const removedClubIds = Array.isArray(user.removedClubIds) ? user.removedClubIds.map(String) : [];
     if (existingClubIds.includes(clubIdStr)) {
       return res.json({ success: true, alreadyMember: true, clubId: clubIdStr });
     }
 
-    user.clubIds = [...existingClubIds, clubIdStr];
-    await user.save();
+    if (pendingClubIds.includes(clubIdStr)) {
+      return res.json({ success: true, alreadyPending: true, clubId: clubIdStr });
+    }
 
-    return res.status(201).json({ success: true, alreadyMember: false, clubId: clubIdStr });
+    if (removedClubIds.includes(clubIdStr)) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'You have been removed from this club and cannot request to join again.',
+      });
+    }
+
+    user.pendingClubIds = [...pendingClubIds, clubIdStr];
+    if (Array.isArray(club.pendingMemberIds)) {
+      const clubPendingIds = club.pendingMemberIds.map(String);
+      if (!clubPendingIds.includes(String(userId))) {
+        club.pendingMemberIds = [...clubPendingIds, String(userId)];
+      }
+    }
+    await user.save();
+    await club.save();
+
+    return res.status(201).json({ success: true, alreadyMember: false, alreadyPending: false, pendingRequest: true, clubId: clubIdStr });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Failed to join club' });
@@ -119,11 +139,20 @@ router.post('/:id/leave', protect, async (req, res) => {
 
     const clubIdStr = club._id.toString();
     const existingClubIds = Array.isArray(user.clubIds) ? user.clubIds.map(String) : [];
+    const pendingClubIds = Array.isArray(user.pendingClubIds) ? user.pendingClubIds.map(String) : [];
     if (!existingClubIds.includes(clubIdStr)) {
+      const hadPending = pendingClubIds.includes(clubIdStr);
+      if (hadPending) {
+        user.pendingClubIds = pendingClubIds.filter((id) => id !== clubIdStr);
+        club.pendingMemberIds = (club.pendingMemberIds || []).map(String).filter((id) => id !== String(userId));
+        await Promise.all([user.save(), club.save()]);
+        return res.json({ success: true, alreadyLeft: false, cancelledRequest: true, clubId: clubIdStr });
+      }
       return res.json({ success: true, alreadyLeft: true, clubId: clubIdStr });
     }
 
     user.clubIds = existingClubIds.filter((id) => id !== clubIdStr);
+    user.removedClubIds = Array.from(new Set([...(Array.isArray(user.removedClubIds) ? user.removedClubIds.map(String) : []), clubIdStr]));
     await user.save();
 
     return res.json({ success: true, alreadyLeft: false, clubId: clubIdStr });
@@ -155,6 +184,68 @@ router.get('/:id/members', protect, async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Failed to fetch members' });
+  }
+});
+
+/**
+ * GET /api/clubs/:id/pending-members
+ * Organizer-only: list pending join requests for the club.
+ */
+router.get('/:id/pending-members', protect, async (req, res) => {
+  try {
+    const club = await getOrganizerClub(req, res);
+    if (!club) return;
+
+    const members = await User.find({ pendingClubIds: club._id.toString() })
+      .select('_id displayName email major year')
+      .lean();
+
+    const normalized = members.map((m) => ({
+      ...m,
+      id: m._id.toString(),
+    }));
+
+    return res.json(normalized);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to fetch pending members' });
+  }
+});
+
+/**
+ * POST /api/clubs/:id/members/:userId/approve
+ * Organizer-only: approve a pending member request.
+ */
+router.post('/:id/members/:userId/approve', protect, async (req, res) => {
+  try {
+    const club = await getOrganizerClub(req, res);
+    if (!club) return;
+
+    const targetUser = await User.findById(req.params.userId);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const clubIdStr = club._id.toString();
+    const targetId = targetUser._id.toString();
+    const pendingClubIds = Array.isArray(targetUser.pendingClubIds) ? targetUser.pendingClubIds.map(String) : [];
+    if (!pendingClubIds.includes(clubIdStr)) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Selected user does not have a pending request for this club.',
+      });
+    }
+
+    targetUser.pendingClubIds = pendingClubIds.filter((id) => id !== clubIdStr);
+    targetUser.clubIds = Array.from(new Set([...(Array.isArray(targetUser.clubIds) ? targetUser.clubIds.map(String) : []), clubIdStr]));
+    targetUser.removedClubIds = (Array.isArray(targetUser.removedClubIds) ? targetUser.removedClubIds.map(String) : []).filter((id) => id !== clubIdStr);
+    club.pendingMemberIds = (club.pendingMemberIds || []).map(String).filter((id) => id !== targetId);
+
+    await Promise.all([targetUser.save(), club.save()]);
+    return res.json({ success: true, memberIds: targetUser.clubIds });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to approve member' });
   }
 });
 
@@ -199,6 +290,48 @@ router.post('/:id/organizers', protect, async (req, res) => {
 });
 
 /**
+ * DELETE /api/clubs/:id/organizers/:userId
+ * Organizer-only: demote an organizer to a regular member.
+ */
+router.delete('/:id/organizers/:userId', protect, async (req, res) => {
+  try {
+    const club = await getOrganizerClub(req, res);
+    if (!club) return;
+
+    const targetId = String(req.params.userId || '').trim();
+    if (!targetId) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'User ID is required.',
+      });
+    }
+
+    const organizerIds = (club.organizerIds || []).map(String);
+    if (!organizerIds.includes(targetId)) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Selected user is not an organizer.',
+      });
+    }
+
+    if (organizerIds.length <= 1) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'At least one organizer is required.',
+      });
+    }
+
+    club.organizerIds = organizerIds.filter((id) => id !== targetId);
+    await club.save();
+
+    return res.json({ success: true, organizerIds: club.organizerIds });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to remove organizer' });
+  }
+});
+
+/**
  * DELETE /api/clubs/:id/members/:userId
  * Organizer-only: remove a member from club membership.
  */
@@ -220,8 +353,13 @@ router.delete('/:id/members/:userId', protect, async (req, res) => {
       });
     }
 
-    targetUser.clubIds = (targetUser.clubIds || []).map(String).filter((clubId) => clubId !== club._id.toString());
+    const clubIdStr = club._id.toString();
+    targetUser.clubIds = (targetUser.clubIds || []).map(String).filter((clubId) => clubId !== clubIdStr);
+    targetUser.pendingClubIds = (targetUser.pendingClubIds || []).map(String).filter((clubId) => clubId !== clubIdStr);
+    targetUser.removedClubIds = Array.from(new Set([...(Array.isArray(targetUser.removedClubIds) ? targetUser.removedClubIds.map(String) : []), clubIdStr]));
+    club.pendingMemberIds = (club.pendingMemberIds || []).map(String).filter((clubId) => clubId !== targetId);
     await targetUser.save();
+    await club.save();
 
     return res.json({ success: true });
   } catch (err) {
@@ -467,8 +605,8 @@ router.delete('/:id', protect, async (req, res) => {
       Announcement.deleteMany({ clubId: club._id }),
       Event.deleteMany({ clubId: club._id }),
       User.updateMany(
-        { clubIds: clubIdStr },
-        { $pull: { clubIds: clubIdStr } }
+        { $or: [{ clubIds: clubIdStr }, { pendingClubIds: clubIdStr }] },
+        { $pull: { clubIds: clubIdStr, pendingClubIds: clubIdStr } }
       ),
       Club.deleteOne({ _id: club._id }),
     ]);
