@@ -141,7 +141,7 @@ export default function AvailabilityEditor() {
                                                 aria-label={`Remove time slot for ${day}`}
                                                 title="Remove slot"
                                             >
-                                                ✕
+                                                x
                                             </button>
                                         </div>
                                     ))}

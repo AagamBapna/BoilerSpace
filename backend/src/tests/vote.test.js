@@ -67,16 +67,11 @@ beforeEach(async () => {
     await Note.deleteMany({});
     await Otp.deleteMany({});
     await request(app).post('/api/auth/register').send(testUser);
-    await request(app).post('/api/auth/login').send({
-        email: testUser.email,
-        password: testUser.password,
-    });
-    const otp = await Otp.findOne({ email: testUser.email });
-    const verifyRes = await request(app)
-        .post('/api/auth/verify-login-otp')
-        .send({ email: testUser.email, password: testUser.password, code: otp.code });
-    token = verifyRes.body.token;
-    const loggedInUser = verifyRes.body.user;
+    const loginRes = await request(app)
+        .post('/api/auth/login')
+        .send({ email: testUser.email, password: testUser.password });
+    token = loginRes.body.token;
+    const loggedInUser = loginRes.body.user;
     const createdCourse = await Course.create(testCourse);
     testNote = await Note.create({
         courseId: createdCourse._id,

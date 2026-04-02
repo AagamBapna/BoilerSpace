@@ -20,18 +20,11 @@ const validUser = {
     year: 'Senior'
 };
 
-async function loginWithOtp(email, password) {
-    await request(app)
+async function loginUser(email, password) {
+    const res = await request(app)
         .post('/api/auth/login')
         .send({ email, password });
-
-    const otp = await Otp.findOne({ email: email.toLowerCase() });
-
-    const verifyRes = await request(app)
-        .post('/api/auth/verify-login-otp')
-        .send({ email, password, code: otp.code });
-
-    return verifyRes.body.token;
+    return res.body.token;
 }
 
 beforeAll(async () => {
@@ -54,7 +47,7 @@ beforeEach(async () => {
 describe('POST /api/auth/request-delete-otp', () => {
     test('sends OTP to authenticated user', async () => {
         await User.create(validUser);
-        const token = await loginWithOtp(validUser.email, validUser.password);
+        const token = await loginUser(validUser.email, validUser.password);
 
         await Otp.deleteMany({ email: validUser.email });
 
@@ -81,7 +74,7 @@ describe('POST /api/auth/request-delete-otp', () => {
 describe('POST /api/auth/confirm-delete', () => {
     test('deletes user with valid OTP', async () => {
         await User.create(validUser);
-        const token = await loginWithOtp(validUser.email, validUser.password);
+        const token = await loginUser(validUser.email, validUser.password);
 
         await request(app)
             .post('/api/auth/request-delete-otp')
@@ -103,7 +96,7 @@ describe('POST /api/auth/confirm-delete', () => {
 
     test('rejects wrong OTP and user still exists', async () => {
         await User.create(validUser);
-        const token = await loginWithOtp(validUser.email, validUser.password);
+        const token = await loginUser(validUser.email, validUser.password);
 
         await request(app)
             .post('/api/auth/request-delete-otp')
@@ -123,7 +116,7 @@ describe('POST /api/auth/confirm-delete', () => {
 
     test('rejects missing code', async () => {
         await User.create(validUser);
-        const token = await loginWithOtp(validUser.email, validUser.password);
+        const token = await loginUser(validUser.email, validUser.password);
 
         const res = await request(app)
             .post('/api/auth/confirm-delete')
@@ -136,7 +129,7 @@ describe('POST /api/auth/confirm-delete', () => {
 
     test('old JWT returns 401 after deletion', async () => {
         await User.create(validUser);
-        const token = await loginWithOtp(validUser.email, validUser.password);
+        const token = await loginUser(validUser.email, validUser.password);
 
         await request(app)
             .post('/api/auth/request-delete-otp')
@@ -158,7 +151,7 @@ describe('POST /api/auth/confirm-delete', () => {
 
     test('deleted user can re-register with same email', async () => {
         await User.create(validUser);
-        const token = await loginWithOtp(validUser.email, validUser.password);
+        const token = await loginUser(validUser.email, validUser.password);
 
         await request(app)
             .post('/api/auth/request-delete-otp')
@@ -181,7 +174,7 @@ describe('POST /api/auth/confirm-delete', () => {
 
     test('login returns 401 for deleted user', async () => {
         await User.create(validUser);
-        const token = await loginWithOtp(validUser.email, validUser.password);
+        const token = await loginUser(validUser.email, validUser.password);
 
         await request(app)
             .post('/api/auth/request-delete-otp')
@@ -244,7 +237,7 @@ describe('POST /api/auth/confirm-delete', () => {
             expiresAt: new Date(Date.now() + 60 * 60 * 1000),
         });
 
-        const token = await loginWithOtp(validUser.email, validUser.password);
+        const token = await loginUser(validUser.email, validUser.password);
 
         await request(app)
             .post('/api/auth/request-delete-otp')
@@ -299,7 +292,7 @@ describe('POST /api/auth/confirm-delete', () => {
             voteCount: 2,
         });
 
-        const token = await loginWithOtp(validUser.email, validUser.password);
+        const token = await loginUser(validUser.email, validUser.password);
 
         await request(app)
             .post('/api/auth/request-delete-otp')

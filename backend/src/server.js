@@ -1,9 +1,15 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const http = require('http');
 const mongoose = require('mongoose');
 const app = require('./app');
 const startExpirationJob = require('./jobs/expirationJob');
 const CheckIn = require('./models/CheckIn');
+const { initSocket } = require('./config/socket');
+
 const PORT = process.env.PORT || 3000;
+
+const server = http.createServer(app);
+initSocket(server);
 
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
@@ -16,7 +22,8 @@ mongoose.connect(process.env.MONGO_URI)
         
         startExpirationJob();
 
-        app.listen(PORT, () => {
+        server.listen(PORT, () => {
+        server.listen(PORT, () => {
             console.log(`Server running on http://localhost:${PORT}`);
         });
     })

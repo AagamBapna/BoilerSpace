@@ -78,15 +78,11 @@ beforeEach(async () => {
     __mockDelete.mockClear();
 
     await request(app).post('/api/auth/register').send(validUser);
-    await request(app)
+    const loginRes = await request(app)
         .post('/api/auth/login')
         .send({ email: validUser.email, password: validUser.password });
-    const otp = await Otp.findOne({ email: validUser.email });
-    const verifyRes = await request(app)
-        .post('/api/auth/verify-login-otp')
-        .send({ email: validUser.email, password: validUser.password, code: otp.code });
-    token = verifyRes.body.token;
-    testUser = verifyRes.body.user;
+    token = loginRes.body.token;
+    testUser = loginRes.body.user;
 });
 
 describe('PUT /api/users/:id/profile-picture', () => {
@@ -234,7 +230,7 @@ describe('DELETE /api/users/:id/profile-picture', () => {
             .delete(`/api/users/${testUser.id}/profile-picture`)
             .set('Authorization', `Bearer ${token}`);
 
-        const res = await request(app).get(`/api/users/${testUser.id}`);
+        const res = await request(app).get(`/api/users/${testUser.id}`).set('Authorization', `Bearer ${token}`);
         expect(res.status).toBe(200);
         expect(res.body.profilePictureUrl).toBe('');
     });

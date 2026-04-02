@@ -30,15 +30,30 @@ function chunkText(text, maxLength = 1000, overlap = 200) {
     return chunks;
 }
 
-// Find the most relevant chunks of text based on a query
-function findRelevantChunks(chunks, query, topK = 5) {
-    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-    const scoredChunks = chunks.map((chunk, i) => {
-        const lower = chunk.toLowerCase();
-        const score = queryWords.reduce((sum, word) => sum + (lower.includes(word) ? 1 : 0), 0);
-        return { chunk, score, index: i };
-    });
-    scoredChunks.sort((a, b) => b.score - a.score);
-    return scoredChunks.slice(0, topK).map(c => c.chunk);
+// Generate embeddings for an array of text chunks using Gemini embedding model
+async function generateEmbeddings(chunks, embeddingModel) {
+    const embeddings = [];
+    for (const chunk of chunks) {
+        const response = await embeddingModel.embedContent({ content: { parts: [{ text: chunk }] } });
+        embeddings.push(response.embedding.values);
+    }
+    return embeddings;
 }
-module.exports = { extractTextFromPDF, chunkText, findRelevantChunks };
+
+// Find consine similarity between two vectors
+function cosineSimilarity(a, b) {
+    let dot = 0;
+    let magnitudeA = 0;
+    let magnitudeB = 0;
+    for (let i = 0; i < a.length; i++) {
+        dot += a[i] * b[i];
+        magnitudeA += a[i] * a[i];
+        magnitudeB += b[i] * b[i];
+    }
+    if (magnitudeA === 0 || magnitudeB === 0) {
+        return 0;
+    }
+    return dot / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
+}
+
+module.exports = { extractTextFromPDF, chunkText, generateEmbeddings, cosineSimilarity };

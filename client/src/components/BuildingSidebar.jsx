@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import SearchBar from './SearchBar';
 import BookmarkedRooms from './BookmarkedRooms';
+import { formatRelative, formatAbsolute } from '../utils/formatRelative';
 
 
 export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [], recentBuildings = [], onRefreshRecentBuildings }) {
@@ -51,18 +52,18 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
         : [];
 
     const noiseLevelIcon = {
-        quiet: '🤫',
-        moderate: '💬',
-        loud: '📢',
+        quiet: 'Quiet',
+        moderate: 'Moderate',
+        loud: 'Loud',
     };
 
     const amenityIcons = {
-        'Whiteboard': '🖊️',
-        'Outlets': '🔌',
-        'Projector': '📽️',
-        'Printers': '🖨️',
-        'Cafe': '☕',
-        'Lab': '🔬',
+        'Whiteboard': 'WB',
+        'Outlets': 'Outlet',
+        'Projector': 'Proj',
+        'Printers': 'Print',
+        'Cafe': 'Cafe',
+        'Lab': 'Lab',
     };
     const timeAgo = (date) => {
         if (!date) return null;
@@ -176,7 +177,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                     {/* Rooms list */}
                     <div style={{ padding: '16px 20px 20px', background: '#111111' }}>
                         <p className="text-xs text-[var(--color-text-secondary)]" style={{ marginBottom: '8px' }}>
-                            👥 {rooms.reduce((sum, room) => sum + (room.currentOccupancy || 0), 0)} checked in across all rooms
+                            {rooms.reduce((sum, room) => sum + (room.currentOccupancy || 0), 0)} checked in across all rooms
                         </p>
                         <h3 className="text-sm font-semibold text-[var(--color-text-secondary)] uppercase" style={{ letterSpacing: '0.05em', marginBottom: '12px' }}>
                             Rooms ({rooms.length})
@@ -226,9 +227,12 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                             </div>
                                         </div>
                                         <div className="flex items-center text-xs text-[var(--color-text-secondary)]" style={{ gap: '12px' }}>
-                                            <span>👥 {room.capacity} seats</span>
-                                            <span>{noiseLevelIcon[room.noiseLevel] || '💬'} {room.noiseLevel}</span>
+                                            <span>{room.capacity} seats</span>
+                                            <span>{noiseLevelIcon[room.noiseLevel] || 'Moderate'} {room.noiseLevel}</span>
                                             <span>Current occupancy: {room.currentOccupancy}</span>
+                                            <span className="timestamp-tooltip" data-tooltip={formatAbsolute(room.lastStatusUpdate)} tabIndex={0}>
+                                                Last updated: {formatRelative(room.lastStatusUpdate)}
+                                            </span>
                                         </div>
                                         {room.amenities?.length > 0 && (
                                             <div className="flex flex-wrap" style={{ gap: '4px', marginTop: '8px' }}>
@@ -246,7 +250,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                         )}
                                         {room.lastActivityAt && (
                                             <p className="text-xs text-[var(--color-text-secondary)]" style={{ marginTop: '8px', opacity: 0.6 }}>
-                                                🕐 Last activity {timeAgo(room.lastActivityAt)}
+                                                Last activity {timeAgo(room.lastActivityAt)}
                                             </p>
                                         )}
                                         {thresholdRoom === room._id ? (
@@ -380,7 +384,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                             <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                 <p className="text-xs text-[var(--color-text-secondary)] font-medium uppercase"
                                 style={{ padding: '0 8px', marginBottom: '8px', letterSpacing: '0.05em' }}>
-                                    🕐 Recently Visited
+                                    Recently Visited
                                 </p>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     {recentBuildings.filter((entry) => entry.buildingId).map((entry) => (

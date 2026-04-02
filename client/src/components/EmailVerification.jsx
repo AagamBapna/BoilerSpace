@@ -97,7 +97,7 @@ export default function EmailVerification({ email, onVerified, onBackToLogin }) 
                 style={{ background: '#1e1e1e', border: '1px solid rgba(206,184,136,0.15)' }}
             >
                 <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#CEB888]/10 flex items-center justify-center">
-                    <span className="text-2xl">✉️</span>
+                    <span className="text-2xl">Verify</span>
                 </div>
 
                 <h1 className="text-xl font-bold text-[#f5f5f5] text-center">Verify your email</h1>
