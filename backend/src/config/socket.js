@@ -6,6 +6,16 @@ const Message = require('../models/Message');
 
 let io;
 
+function emitMessageDeleted({ conversationId, message, participantIds }) {
+    if (!io) return;
+    participantIds.forEach((participantId) => {
+        io.to(participantId.toString()).emit('messageDeleted', {
+            conversationId,
+            message,
+        });
+    });
+}
+
 function emitMessageDisappeared({ conversationId, messageId, participantIds }) {
     if (!io) return;
     participantIds.forEach((participantId) => {
@@ -148,4 +158,4 @@ function getIO() {
     return io;
 }
 
-module.exports = { initSocket, getIO, emitMessageDisappeared };
+module.exports = { initSocket, getIO, emitMessageDeleted, emitMessageDisappeared };

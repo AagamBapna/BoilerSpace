@@ -4,6 +4,7 @@ const { protect } = require('../middleware/auth');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const { emitMessageDeleted } = require('../config/socket');
 const DELETED_MESSAGE_PLACEHOLDER = 'This message was deleted';
 
 router.post('/', protect, async (req, res) => {
@@ -211,6 +212,12 @@ router.delete('/:conversationId/messages/:messageId', protect, async (req, res) 
         const populated = await Message.findById(message._id)
             .populate('sender', 'displayName email profilePictureUrl')
             .populate('deletedBy', 'displayName email profilePictureUrl');
+
+        emitMessageDeleted({
+            conversationId: conversation._id.toString(),
+            message: populated.toObject(),
+            participantIds: conversation.participants,
+        });
 
         res.json(populated);
     } catch (err) {

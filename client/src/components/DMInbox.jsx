@@ -62,12 +62,24 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
             });
         };
 
+        const handleDeleted = () => {
+            loadConversations();
+        };
+
+        const handleDisappeared = () => {
+            loadConversations();
+        };
+
         s.on('newMessage', handleNewMessage);
         s.on('messageSent', handleSent);
+        s.on('messageDeleted', handleDeleted);
+        s.on('messageDisappeared', handleDisappeared);
 
         return () => {
             s.off('newMessage', handleNewMessage);
             s.off('messageSent', handleSent);
+            s.off('messageDeleted', handleDeleted);
+            s.off('messageDisappeared', handleDisappeared);
         };
     }, [socket, activeConversation]);
 
