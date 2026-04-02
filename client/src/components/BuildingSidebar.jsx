@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import SearchBar from './SearchBar';
 import BookmarkedRooms from './BookmarkedRooms';
+import SnackIndicator from './SnackIndicator';
+import SnackReporter from './SnackReporter';
 import { formatRelative, formatAbsolute } from '../utils/formatRelative';
 
 
@@ -13,6 +15,8 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     const [activeCheckIn, setActiveCheckIn] = useState(null);
     const [thresholdRoom, setThresholdRoom] = useState(null);
     const [thresholdValue, setThresholdValue] = useState(50);
+    const [snackData, setSnackData] = useState(null);
+    const [showSnackReporter, setShowSnackReporter] = useState(false);
 
     const fetchRooms = async () => {
         if (!selectedBuilding) return;
@@ -27,9 +31,15 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     useEffect(() => {
         if (!selectedBuilding) {
             setRooms([]);
+            setSnackData(null);
+            setShowSnackReporter(false);
             return;
         }
         fetchRooms();
+        // Fetch snack data for selected building
+        axios.get(`/api/buildings/${selectedBuilding._id}/snacks`)
+            .then(res => setSnackData(res.data))
+            .catch(() => setSnackData(null));
         const interval = setInterval(fetchRooms, 5000);
         return () => clearInterval(interval);
     }, [selectedBuilding]);
@@ -157,7 +167,10 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
 
                     {/* Building info */}
                     <div style={{ padding: '16px 20px', background: '#161616', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                        <h2 className="text-xl font-bold" style={{ marginBottom: '4px' }}>{selectedBuilding.name}</h2>
+                        <div className="flex items-center" style={{ gap: '10px', marginBottom: '4px' }}>
+                            <h2 className="text-xl font-bold">{selectedBuilding.name}</h2>
+                            <SnackIndicator snackData={snackData} onOpenReporter={() => setShowSnackReporter(prev => !prev)} />
+                        </div>
                         <p className="text-sm text-[var(--color-text-secondary)]" style={{ marginBottom: '12px' }}>
                             {selectedBuilding.abbreviation} · {selectedBuilding.address || 'Purdue University'}
                         </p>
@@ -172,6 +185,15 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                 </span>
                             ))}
                         </div>
+                        {showSnackReporter && (
+                            <SnackReporter
+                                buildingId={selectedBuilding._id}
+                                snackData={snackData}
+                                user={user}
+                                onUpdate={(updated) => setSnackData(prev => ({ ...prev, ...updated }))}
+                                onClose={() => setShowSnackReporter(false)}
+                            />
+                        )}
                     </div>
 
                     {/* Rooms list */}
