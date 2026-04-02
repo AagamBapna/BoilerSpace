@@ -466,3 +466,114 @@ describe('PUT /api/conversations/:id/read', () => {
         expect(res.status).toBe(401);
     });
 });
+
+describe('Message schema deletion and expiry metadata', () => {
+    test('sets deletion and disappearing defaults', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const message = await Message.create({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Defaults check',
+            readBy: [userAId],
+        });
+
+        expect(message.isDeleted).toBe(false);
+        expect(message.deletedAt).toBeNull();
+        expect(message.deletedBy).toBeNull();
+        expect(message.isDisappearing).toBe(false);
+        expect(message.expiresAt).toBeNull();
+    });
+
+    test('requires expiresAt when isDisappearing is true', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const message = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Should fail',
+            readBy: [userAId],
+            isDisappearing: true,
+        });
+
+        await expect(message.validate()).rejects.toThrow('expiresAt must be set only for disappearing messages');
+    });
+
+    test('rejects expiresAt when isDisappearing is false', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const message = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Should fail',
+            readBy: [userAId],
+            isDisappearing: false,
+            expiresAt: new Date(Date.now() + 60000),
+        });
+
+        await expect(message.validate()).rejects.toThrow('expiresAt must be set only for disappearing messages');
+    });
+
+    test('requires deletedAt and deletedBy when isDeleted is true', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const missingDeletedAt = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Should fail',
+            readBy: [userAId],
+            isDeleted: true,
+            deletedBy: userAId,
+        });
+
+        await expect(missingDeletedAt.validate()).rejects.toThrow('deletedAt must be set only for deleted messages');
+
+        const missingDeletedBy = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Should fail',
+            readBy: [userAId],
+            isDeleted: true,
+            deletedAt: new Date(),
+        });
+
+        await expect(missingDeletedBy.validate()).rejects.toThrow('deletedBy must be set only for deleted messages');
+    });
+
+    test('accepts valid disappearing and deleted metadata combinations', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const disappearingMessage = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Will disappear',
+            readBy: [userAId],
+            isDisappearing: true,
+            expiresAt: new Date(Date.now() + 60000),
+        });
+
+        await expect(disappearingMessage.validate()).resolves.toBeUndefined();
+
+        const deletedMessage = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Deleted marker',
+            readBy: [userAId],
+            isDeleted: true,
+            deletedAt: new Date(),
+            deletedBy: userAId,
+        });
+
+        await expect(deletedMessage.validate()).resolves.toBeUndefined();
+    });
+});
