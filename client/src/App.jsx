@@ -21,6 +21,7 @@ import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
 import ActivityPage from './pages/ActivityPage';
 import EventPage from './pages/EventPage';
 import { getToken, setToken, clearToken } from './lib/auth';
+import NotificationBell from './components/NotificationBell';
 import { useSocket } from './lib/useSocket';
 import './index.css';
 
@@ -88,6 +89,7 @@ export default function App() {
               setBookmarkedRoomIds(new Set());
               setBookmarks([]);
             });
+          refreshRecentBuildings();
           axios.get('/api/users/recentBuildings')
             .then((recentRes) => {
               setRecentBuildings(recentRes.data);
@@ -159,6 +161,15 @@ export default function App() {
     setBookmarkedRoomIds(new Set());
     setBookmarks([]);
     setPendingRequestCount(0);
+  }, []);
+
+  const refreshRecentBuildings = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/users/recentBuildings');
+      setRecentBuildings(res.data);
+    } catch (err) {
+      console.error('Failed to fetch recent buildings:', err);
+    }
   }, []);
 
   const handleToggleBookmark = useCallback(async (roomId, isBookmarked) => {
@@ -329,6 +340,7 @@ export default function App() {
           onToggleBookmark={handleToggleBookmark}
           bookmarks={bookmarks}
           recentBuildings={recentBuildings}
+          onRefreshRecentBuildings={refreshRecentBuildings}
         />
 
       </div>
@@ -366,6 +378,7 @@ export default function App() {
           </svg>
           <span>Course Notes</span>
         </button>
+        <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} />
         <button
           type="button"
           onClick={() => setShowDM(true)}

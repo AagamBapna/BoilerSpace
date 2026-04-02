@@ -5,6 +5,8 @@ const Room = require('../models/Room');
 const CheckIn = require('../models/CheckIn');
 const { protect } = require('../middleware/auth');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
+const { handleCheckout } = require('../utils/checkoutHandler');
 
 // GET /api/buildings/:id/rooms/:roomId/checkins — all checkins for a room in a building
 router.get('/:id/rooms/:roomId/checkins', async (req, res) => {
@@ -85,11 +87,7 @@ router.delete('/:id/rooms/:roomId/checkins/:checkinID', async (req, res) => {
         if (!checkin) {
             return res.status(404).json({ error: 'Checkin not found' });
         }
-        await checkin.deleteOne();
-        room.currentOccupancy--;
-        room.lastActivityAt = new Date()
-        room.lastStatusUpdate = new Date();
-        await room.save()
+        await handleCheckout(checkin._id);
         res.status(204).send();
     } catch (err) {
         if (err.name === 'CastError') {
@@ -101,4 +99,3 @@ router.delete('/:id/rooms/:roomId/checkins/:checkinID', async (req, res) => {
 });
 
 module.exports = router;
-

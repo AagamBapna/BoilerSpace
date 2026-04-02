@@ -87,6 +87,19 @@ const userSchema = new mongoose.Schema(
                 default: Date.now,
             },
         }],
+        notificationPreferences: [{
+             roomId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Room',
+            },
+            threshold: {
+                type: Number, // e.g., 50 means "notify me when under 50% full"
+            },
+            enabled: {
+                type: Boolean,
+                default: true,
+            },
+        }]
     },
     { timestamps: true }
 );
