@@ -14,15 +14,14 @@ initSocket(server);
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
         console.log('MongoDB connected');
-        
+
         // Drop the old TTL index so MongoDB doesn't silently delete our documents
         CheckIn.collection.dropIndex('expiresAt_1').catch((err) => {
-             // Ignore if index doesn't exist
+            // Ignore if index doesn't exist
         });
-        
+
         startExpirationJob();
 
-        server.listen(PORT, () => {
         server.listen(PORT, () => {
             console.log(`Server running on http://localhost:${PORT}`);
         });
