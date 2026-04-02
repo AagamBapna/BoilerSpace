@@ -6,6 +6,16 @@ const Message = require('../models/Message');
 
 let io;
 
+function emitMessageDisappeared({ conversationId, messageId, participantIds }) {
+    if (!io) return;
+    participantIds.forEach((participantId) => {
+        io.to(participantId.toString()).emit('messageDisappeared', {
+            conversationId,
+            messageId: messageId.toString(),
+        });
+    });
+}
+
 function initSocket(httpServer) {
     io = new Server(httpServer, {
         cors: {
@@ -37,10 +47,21 @@ function initSocket(httpServer) {
         socket.join(socket.userId);
 
         socket.on('sendMessage', async (data) => {
-            const { conversationId, text } = data;
+            const {
+                conversationId,
+                text,
+                isDisappearing = false,
+                disappearingDurationSeconds,
+            } = data;
 
             if (!conversationId || !text || !text.trim()) return;
             if (text.length > 2000) return;
+            if (typeof isDisappearing !== 'boolean') return;
+            if (isDisappearing) {
+                if (!Number.isInteger(disappearingDurationSeconds) || disappearingDurationSeconds <= 0) return;
+            } else if (disappearingDurationSeconds !== undefined) {
+                return;
+            }
 
             try {
                 const conversation = await Conversation.findById(conversationId);
@@ -53,6 +74,8 @@ function initSocket(httpServer) {
                     sender: socket.userId,
                     text: text.trim(),
                     readBy: [socket.userId],
+                    isDisappearing,
+                    expiresAt: isDisappearing ? new Date(Date.now() + (disappearingDurationSeconds * 1000)) : null,
                 });
 
                 conversation.lastMessage = {
@@ -125,4 +148,4 @@ function getIO() {
     return io;
 }
 
-module.exports = { initSocket, getIO };
+module.exports = { initSocket, getIO, emitMessageDisappeared };

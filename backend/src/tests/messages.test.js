@@ -294,6 +294,52 @@ describe('POST /api/conversations/:id/messages', () => {
 
         expect(res.status).toBe(401);
     });
+
+    test('stores expiresAt when sending disappearing message', async () => {
+        const beforeSend = Date.now();
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({
+                text: 'Sensitive message',
+                isDisappearing: true,
+                disappearingDurationSeconds: 120,
+            });
+
+        expect(res.status).toBe(201);
+        expect(res.body.isDisappearing).toBe(true);
+        expect(res.body.expiresAt).toBeTruthy();
+        const expiresAtMs = new Date(res.body.expiresAt).getTime();
+        expect(expiresAtMs).toBeGreaterThanOrEqual(beforeSend + 119000);
+        expect(expiresAtMs).toBeLessThanOrEqual(beforeSend + 121000);
+    });
+
+    test('rejects disappearing message without duration', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({
+                text: 'Sensitive message',
+                isDisappearing: true,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('disappearingDurationSeconds must be a positive integer');
+    });
+
+    test('rejects duration when message is not disappearing', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({
+                text: 'Normal message',
+                isDisappearing: false,
+                disappearingDurationSeconds: 120,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('disappearingDurationSeconds is only allowed for disappearing messages');
+    });
 });
 
 describe('GET /api/conversations/:id/messages', () => {

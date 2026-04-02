@@ -106,7 +106,7 @@ router.get('/:id/messages', protect, async (req, res) => {
 
 router.post('/:id/messages', protect, async (req, res) => {
     const { id } = req.params;
-    const { text } = req.body;
+    const { text, isDisappearing = false, disappearingDurationSeconds } = req.body;
 
     if (!text || !text.trim()) {
         return res.status(400).json({ error: 'Message text is required' });
@@ -114,6 +114,18 @@ router.post('/:id/messages', protect, async (req, res) => {
 
     if (text.length > 2000) {
         return res.status(400).json({ error: 'Message cannot exceed 2000 characters' });
+    }
+
+    if (typeof isDisappearing !== 'boolean') {
+        return res.status(400).json({ error: 'isDisappearing must be a boolean' });
+    }
+
+    if (isDisappearing) {
+        if (!Number.isInteger(disappearingDurationSeconds) || disappearingDurationSeconds <= 0) {
+            return res.status(400).json({ error: 'disappearingDurationSeconds must be a positive integer' });
+        }
+    } else if (disappearingDurationSeconds !== undefined) {
+        return res.status(400).json({ error: 'disappearingDurationSeconds is only allowed for disappearing messages' });
     }
 
     try {
@@ -131,6 +143,8 @@ router.post('/:id/messages', protect, async (req, res) => {
             sender: req.user._id,
             text: text.trim(),
             readBy: [req.user._id],
+            isDisappearing,
+            expiresAt: isDisappearing ? new Date(Date.now() + (disappearingDurationSeconds * 1000)) : null,
         });
 
         conversation.lastMessage = {
