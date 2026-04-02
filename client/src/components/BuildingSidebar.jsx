@@ -276,49 +276,59 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                             
                                         )}
                                         {thresholdRoom === room._id ? (
-                                            <div className="flex items-center" style={{ gap: '8px', marginTop: '8px' }}>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max="100"
-                                                    value={thresholdValue}
-                                                    onChange={(e) => setThresholdValue(Number(e.target.value))}
-                                                    className="text-xs bg-[var(--color-surface)] border border-white/10 rounded px-2 py-1 text-white"
-                                                    style={{ width: '60px' }}
-                                                />
-                                                <span className="text-xs text-[var(--color-text-secondary)]">%</span>
-                                                <button
-                                                    onClick={async () => {
-                                                        try {
-                                                            await axios.post('/api/notifications/preferences', {
-                                                                roomId: room._id,
-                                                                threshold: thresholdValue,
-                                                            });
-                                                            setThresholdRoom(null);
-                                                            alert('Alert saved!');
-                                                        } catch (err) {
-                                                            alert(err.response?.data?.error || 'Failed to save alert');
-                                                        }
-                                                    }}
-                                                    className="text-xs px-2 py-1 rounded"
-                                                    style={{ background: 'var(--color-purdue-gold)', color: 'black', fontWeight: '600' }}
-                                                >
-                                                    Save
-                                                </button>
-                                                <button
-                                                    onClick={() => setThresholdRoom(null)}
-                                                    className="text-xs text-[var(--color-text-secondary)] hover:text-white"
-                                                >
-                                                    Cancel
-                                                </button>
+                                            <div className="flex items-center justify-between" style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <div className="flex items-center" style={{ gap: '8px' }}>
+                                                    <span className="text-xs text-[var(--color-text-secondary)] font-medium">Alert me at:</span>
+                                                    <div className="flex items-center relative">
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            max="100"
+                                                            value={thresholdValue}
+                                                            onChange={(e) => setThresholdValue(Number(e.target.value))}
+                                                            className="text-sm font-semibold rounded-md text-white focus:outline-none focus:border-[var(--color-purdue-gold)] transition-colors"
+                                                            style={{ width: '64px', padding: '4px 8px', paddingRight: '20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                                        />
+                                                        <span className="absolute right-2 text-xs text-[var(--color-text-secondary)] pointer-events-none">%</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center" style={{ gap: '6px' }}>
+                                                    <button
+                                                        onClick={() => setThresholdRoom(null)}
+                                                        className="text-xs font-medium px-3 py-1.5 rounded-md text-[var(--color-text-secondary)] hover:text-white hover:bg-white/5 transition-colors"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                await axios.post('/api/notifications/preferences', {
+                                                                    roomId: room._id,
+                                                                    threshold: thresholdValue,
+                                                                });
+                                                                setThresholdRoom(null);
+                                                                alert('Alert saved!');
+                                                            } catch (err) {
+                                                                alert(err.response?.data?.error || 'Failed to save alert');
+                                                            }
+                                                        }}
+                                                        className="text-xs font-bold px-4 py-1.5 rounded-md text-black transition-transform hover:scale-105"
+                                                        style={{ background: 'var(--color-purdue-gold)' }}
+                                                    >
+                                                        Save
+                                                    </button>
+                                                </div>
                                             </div>
                                         ) : (
                                             <button
                                                 onClick={() => { setThresholdRoom(room._id); setThresholdValue(50); }}
-                                                className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-purdue-gold)] transition-colors"
-                                                style={{ marginTop: '8px' }}
+                                                className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-purdue-gold)] transition-colors flex items-center gap-1.5"
+                                                style={{ marginTop: '12px' }}
                                             >
-                                                🔔 Set capacity alert
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                                </svg>
+                                                Set capacity alert
                                             </button>
                                         )}
                                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
