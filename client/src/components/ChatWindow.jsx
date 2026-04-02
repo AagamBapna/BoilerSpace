@@ -4,6 +4,8 @@ import axios from 'axios';
 export default function ChatWindow({ conversation, currentUserId, socket, onBack, onMessagesRead }) {
     const [messages, setMessages] = useState([]);
     const [text, setText] = useState('');
+    const [isDisappearing, setIsDisappearing] = useState(false);
+    const [disappearingDurationSeconds, setDisappearingDurationSeconds] = useState(300);
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [page, setPage] = useState(1);
@@ -43,12 +45,33 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
             }
         };
 
+        const handleDeleted = (data) => {
+            if (data.conversationId === conversation._id) {
+                setMessages(prev => prev.map((msg) => {
+                    if (msg._id === data.message._id) {
+                        return data.message;
+                    }
+                    return msg;
+                }));
+            }
+        };
+
+        const handleDisappeared = (data) => {
+            if (data.conversationId === conversation._id) {
+                setMessages(prev => prev.filter(msg => msg._id !== data.messageId));
+            }
+        };
+
         s.on('newMessage', handleNewMessage);
         s.on('messageSent', handleSent);
+        s.on('messageDeleted', handleDeleted);
+        s.on('messageDisappeared', handleDisappeared);
 
         return () => {
             s.off('newMessage', handleNewMessage);
             s.off('messageSent', handleSent);
+            s.off('messageDeleted', handleDeleted);
+            s.off('messageDisappeared', handleDisappeared);
         };
     }, [socket, conversation._id]);
 
@@ -103,20 +126,37 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
         const trimmed = text.trim();
         setText('');
         setSending(true);
+        const payload = {
+            text: trimmed,
+            isDisappearing,
+            ...(isDisappearing ? { disappearingDurationSeconds } : {}),
+        };
 
         try {
             if (socket?.current?.connected) {
                 socket.current.emit('sendMessage', {
                     conversationId: conversation._id,
-                    text: trimmed,
+                    ...payload,
                 });
             } else {
-                const res = await axios.post(`/api/conversations/${conversation._id}/messages`, { text: trimmed });
+                const res = await axios.post(`/api/conversations/${conversation._id}/messages`, payload);
                 setMessages(prev => [...prev, res.data]);
                 setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
             }
         } catch { }
         setSending(false);
+    };
+
+    const handleDeleteMessage = async (messageId) => {
+        try {
+            const res = await axios.delete(`/api/conversations/${conversation._id}/messages/${messageId}`);
+            setMessages(prev => prev.map((msg) => {
+                if (msg._id === messageId) {
+                    return res.data;
+                }
+                return msg;
+            }));
+        } catch { }
     };
 
     const handleScroll = () => {
@@ -176,6 +216,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                 ) : (
                     messages.map((msg, i) => {
                         const isMine = msg.sender?._id === currentUserId || msg.sender === currentUserId;
+                        const isDeleted = msg.isDeleted;
                         const showTime = i === 0 || (new Date(msg.createdAt) - new Date(messages[i - 1]?.createdAt)) > 300000;
                         return (
                             <div key={msg._id}>
@@ -184,13 +225,26 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                                 )}
                                 <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                                     <div
-                                        className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm break-words ${isMine
-                                                ? 'bg-gradient-to-r from-[#CEB888] to-[#C28E0E] text-black rounded-br-md'
-                                                : 'bg-[#1e1e1e] text-[#f5f5f5] border border-[#ffffff08] rounded-bl-md'
+                                        className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm break-words ${isDeleted
+                                                ? 'bg-[#202020] text-[#8f8f8f] border border-[#ffffff10] italic'
+                                                : isMine
+                                                    ? 'bg-gradient-to-r from-[#CEB888] to-[#C28E0E] text-black rounded-br-md'
+                                                    : 'bg-[#1e1e1e] text-[#f5f5f5] border border-[#ffffff08] rounded-bl-md'
                                             }`}
                                     >
                                         {msg.text}
                                     </div>
+                                    {isMine && !isDeleted && (
+                                        <button
+                                            type="button"
+                                            aria-label="Delete message"
+                                            title="Delete message"
+                                            onClick={() => handleDeleteMessage(msg._id)}
+                                            className="ml-2 self-end text-[10px] text-[#888] hover:text-[#f5f5f5] transition-colors"
+                                        >
+                                            Delete
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -200,6 +254,30 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
             </div>
 
             <form onSubmit={handleSend} className="px-4 py-3 border-t border-[#CEB888]/10">
+                <div className="flex items-center gap-2 mb-2">
+                    <label className="flex items-center gap-2 text-xs text-[#a0a0a0]">
+                        <input
+                            type="checkbox"
+                            checked={isDisappearing}
+                            onChange={(e) => setIsDisappearing(e.target.checked)}
+                            className="accent-[#CEB888]"
+                        />
+                        Disappearing message
+                    </label>
+                    {isDisappearing && (
+                        <select
+                            value={disappearingDurationSeconds}
+                            onChange={(e) => setDisappearingDurationSeconds(Number(e.target.value))}
+                            className="bg-[#111111] border border-[#CEB888]/20 rounded-lg px-2 py-1 text-xs text-[#f5f5f5] focus:outline-none focus:border-[#CEB888]/50"
+                        >
+                            <option value={30}>30 sec</option>
+                            <option value={60}>1 min</option>
+                            <option value={300}>5 min</option>
+                            <option value={1800}>30 min</option>
+                            <option value={3600}>1 hour</option>
+                        </select>
+                    )}
+                </div>
                 <div className="flex gap-2">
                     <input
                         type="text"
