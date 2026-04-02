@@ -9,6 +9,9 @@ const CheckIn = require('../models/CheckIn');
 const Course = require('../models/Course');
 const Building = require('../models/Building');
 const Room = require('../models/Room');
+const Message = require('../models/Message');
+const Conversation = require('../models/Conversation');
+const Friendship = require('../models/Friendship');
 
 let mongoServer;
 
@@ -42,6 +45,9 @@ beforeEach(async () => {
     await Otp.deleteMany({});
     await Note.deleteMany({});
     await CheckIn.deleteMany({});
+    await Message.deleteMany({});
+    await Conversation.deleteMany({});
+    await Friendship.deleteMany({});
 });
 
 describe('POST /api/auth/request-delete-otp', () => {
@@ -258,6 +264,100 @@ describe('POST /api/auth/confirm-delete', () => {
 
         const otps = await Otp.find({ email: validUser.email });
         expect(otps).toHaveLength(0);
+    });
+
+    test('cascading delete removes messages, conversations, and friendships', async () => {
+        const user = await User.create(validUser);
+        const otherUser = await User.create({
+            email: 'partner@purdue.edu',
+            password: 'password123',
+            displayName: 'Partner User',
+            major: 'Math',
+            year: 'Junior',
+        });
+
+        const conversation = await Conversation.create({
+            participants: [user._id, otherUser._id],
+            lastMessage: {
+                text: 'hello',
+                sender: user._id,
+                timestamp: new Date(),
+            },
+        });
+
+        await Message.create({
+            conversationId: conversation._id,
+            sender: user._id,
+            text: 'hello',
+            readBy: [user._id],
+        });
+
+        await Friendship.create({
+            requester: user._id,
+            recipient: otherUser._id,
+            status: 'accepted',
+        });
+
+        const token = await loginUser(validUser.email, validUser.password);
+
+        await request(app)
+            .post('/api/auth/request-delete-otp')
+            .set('Authorization', `Bearer ${token}`);
+
+        const otp = await Otp.findOne({ email: validUser.email });
+
+        await request(app)
+            .post('/api/auth/confirm-delete')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ code: otp.code });
+
+        const messages = await Message.find({ sender: user._id });
+        expect(messages).toHaveLength(0);
+
+        const conversations = await Conversation.find({ participants: user._id });
+        expect(conversations).toHaveLength(0);
+
+        const friendships = await Friendship.find({
+            $or: [{ requester: user._id }, { recipient: user._id }],
+        });
+        expect(friendships).toHaveLength(0);
+    });
+
+    test('returns error when messaging a deleted user from old conversation', async () => {
+        const deletedUser = await User.create(validUser);
+        const sender = await User.create({
+            email: 'sender@purdue.edu',
+            password: 'password123',
+            displayName: 'Sender User',
+            major: 'ECE',
+            year: 'Sophomore',
+        });
+
+        const conversation = await Conversation.create({
+            participants: [deletedUser._id, sender._id],
+        });
+
+        const deletedToken = await loginUser(validUser.email, validUser.password);
+        const senderToken = await loginUser('sender@purdue.edu', 'password123');
+
+        await request(app)
+            .post('/api/auth/request-delete-otp')
+            .set('Authorization', `Bearer ${deletedToken}`);
+
+        const otp = await Otp.findOne({ email: validUser.email });
+
+        await request(app)
+            .post('/api/auth/confirm-delete')
+            .set('Authorization', `Bearer ${deletedToken}`)
+            .send({ code: otp.code });
+
+        const res = await request(app)
+            .post(`/api/conversations/${conversation._id}/messages`)
+            .set('Authorization', `Bearer ${senderToken}`)
+            .send({ text: 'Can you see this?' });
+
+        expect(res.status).toBe(404);
+        expect(res.body.error).toBe('Conversation not found');
     });
 
     test('cascading delete removes user votes from other notes', async () => {

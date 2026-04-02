@@ -3,6 +3,7 @@ const { verifyToken } = require('./jwt');
 const User = require('../models/User');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const { usersExist, hasBlockedRelationship } = require('../utils/messageAccess');
 
 let io;
 
@@ -78,6 +79,25 @@ function initSocket(httpServer) {
                 if (!conversation) return;
 
                 if (!conversation.participants.some(p => p.toString() === socket.userId)) return;
+
+                const participantIds = conversation.participants.map((p) => p.toString());
+                const allParticipantsExist = await usersExist(participantIds);
+                if (!allParticipantsExist) {
+                    socket.emit('messageError', {
+                        conversationId,
+                        error: 'Cannot send message because a participant no longer exists',
+                    });
+                    return;
+                }
+
+                const blocked = await hasBlockedRelationship(participantIds);
+                if (blocked) {
+                    socket.emit('messageError', {
+                        conversationId,
+                        error: 'Messaging is not allowed because one user has blocked the other',
+                    });
+                    return;
+                }
 
                 const message = await Message.create({
                     conversationId,
