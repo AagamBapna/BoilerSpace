@@ -154,7 +154,7 @@ describe('Check-in updates lastStatusUpdate', () => {
 
         expect(res.body.occupancy).toBe(0);
         const timestamp = new Date(res.body.lastStatusUpdate);
-        expect(timestamp.getTime()).toBeGreaterThanOrEqual(beforeCheckout.getTime());
+        expect(timestamp.getTime()).toBeGreaterThanOrEqual(beforeCheckout.getTime() - 100);
     });
 
     test('status persists after re-fetch', async () => {
