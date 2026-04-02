@@ -5,6 +5,7 @@ const app = require('../app');
 const User = require('../models/User');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const Friendship = require('../models/Friendship');
 
 jest.setTimeout(30000);
 
@@ -50,6 +51,7 @@ beforeEach(async () => {
     await User.deleteMany({});
     await Conversation.deleteMany({});
     await Message.deleteMany({});
+    await Friendship.deleteMany({});
 
     const a = await registerAndLogin(userA);
     tokenA = a.token;
@@ -126,6 +128,22 @@ describe('POST /api/conversations', () => {
             .send({ participantId: userBId });
 
         expect(res.status).toBe(401);
+    });
+
+    test('blocks starting conversation when users are blocked', async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'blocked',
+        });
+
+        const res = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toBe('Cannot start conversation due to block settings');
     });
 });
 
@@ -339,6 +357,34 @@ describe('POST /api/conversations/:id/messages', () => {
 
         expect(res.status).toBe(400);
         expect(res.body.error).toBe('disappearingDurationSeconds is only allowed for disappearing messages');
+    });
+
+    test('returns 404 when conversation contains deleted participant', async () => {
+        await User.findByIdAndDelete(userBId);
+
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Are you there?' });
+
+        expect(res.status).toBe(404);
+        expect(res.body.error).toBe('Cannot send message because a participant no longer exists');
+    });
+
+    test('returns 403 when participants are blocked', async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'blocked',
+        });
+
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Blocked message' });
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toBe('Messaging is not allowed because one user has blocked the other');
     });
 });
 

@@ -4,6 +4,7 @@ const { protect } = require('../middleware/auth');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const { usersExist, hasBlockedRelationship } = require('../utils/messageAccess');
 const { emitMessageDeleted } = require('../config/socket');
 const DELETED_MESSAGE_PLACEHOLDER = 'This message was deleted';
 
@@ -22,6 +23,11 @@ router.post('/', protect, async (req, res) => {
         const otherUser = await User.findById(participantId);
         if (!otherUser) {
             return res.status(404).json({ error: 'User not found' });
+        }
+
+        const blocked = await hasBlockedRelationship([req.user._id, participantId]);
+        if (blocked) {
+            return res.status(403).json({ error: 'Cannot start conversation due to block settings' });
         }
 
         const sorted = [req.user._id.toString(), participantId].sort();
@@ -86,6 +92,12 @@ router.get('/:id/messages', protect, async (req, res) => {
             return res.status(403).json({ error: 'Not a participant in this conversation' });
         }
 
+        const participantIds = conversation.participants.map((p) => p.toString());
+        const allParticipantsExist = await usersExist(participantIds);
+        if (!allParticipantsExist) {
+            return res.status(404).json({ error: 'Conversation has a participant that no longer exists' });
+        }
+
         const total = await Message.countDocuments({ conversationId: id });
         const messages = await Message.find({ conversationId: id })
             .sort({ createdAt: -1 })
@@ -139,6 +151,17 @@ router.post('/:id/messages', protect, async (req, res) => {
             return res.status(403).json({ error: 'Not a participant in this conversation' });
         }
 
+        const participantIds = conversation.participants.map((p) => p.toString());
+        const allParticipantsExist = await usersExist(participantIds);
+        if (!allParticipantsExist) {
+            return res.status(404).json({ error: 'Cannot send message because a participant no longer exists' });
+        }
+
+        const blocked = await hasBlockedRelationship(participantIds);
+        if (blocked) {
+            return res.status(403).json({ error: 'Messaging is not allowed because one user has blocked the other' });
+        }
+
         const message = await Message.create({
             conversationId: id,
             sender: req.user._id,
@@ -176,6 +199,12 @@ router.delete('/:conversationId/messages/:messageId', protect, async (req, res) 
 
         if (!conversation.participants.some(p => p.toString() === req.user._id.toString())) {
             return res.status(403).json({ error: 'Not a participant in this conversation' });
+        }
+
+        const participantIds = conversation.participants.map((p) => p.toString());
+        const allParticipantsExist = await usersExist(participantIds);
+        if (!allParticipantsExist) {
+            return res.status(404).json({ error: 'Conversation has a participant that no longer exists' });
         }
 
         const message = await Message.findOne({

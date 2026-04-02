@@ -51,7 +51,7 @@ const messageSchema = new mongoose.Schema(
 messageSchema.index(
     { expiresAt: 1 },
     {
-        expireAfterSeconds: 0,
+        expireAfterSeconds: 300,
         partialFilterExpression: { expiresAt: { $type: 'date' } },
     }
 );
