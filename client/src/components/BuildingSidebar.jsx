@@ -52,9 +52,9 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
         : [];
 
     const noiseLevelIcon = {
-        quiet: 'Quiet',
-        moderate: 'Moderate',
-        loud: 'Loud',
+        quiet: '🤫 Quiet',
+        moderate: '🗣️ Moderate',
+        loud: '🔊 Loud',
     };
 
     const amenityIcons = {
@@ -161,7 +161,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                         <p className="text-sm text-[var(--color-text-secondary)]" style={{ marginBottom: '12px' }}>
                             {selectedBuilding.abbreviation} · {selectedBuilding.address || 'Purdue University'}
                         </p>
-                        <div className="flex flex-wrap" style={{ gap: '6px' }}>
+                        <div className="flex flex-wrap" style={{ gap: '6px', marginBottom: '16px' }}>
                             {(selectedBuilding.amenities || []).map((a, i) => (
                                 <span
                                     key={i}
@@ -172,6 +172,33 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                 </span>
                             ))}
                         </div>
+                        <button
+                            onClick={() => document.dispatchEvent(new CustomEvent('getDirections', { detail: selectedBuilding._id }))}
+                            style={{
+                                width: '100%',
+                                padding: '10px 16px',
+                                borderRadius: '8px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                border: 'none',
+                                background: 'linear-gradient(135deg, var(--color-purdue-gold), var(--color-purdue-rush))',
+                                color: 'black',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Get Walking Directions
+                        </button>
                     </div>
 
                     {/* Rooms list */}
@@ -228,7 +255,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                         </div>
                                         <div className="flex items-center text-xs text-[var(--color-text-secondary)]" style={{ gap: '12px' }}>
                                             <span>{room.capacity} seats</span>
-                                            <span>{noiseLevelIcon[room.noiseLevel] || 'Moderate'} {room.noiseLevel}</span>
+                                            <span>{noiseLevelIcon[room.noiseLevel?.toLowerCase()] || '🗣️ Moderate'}</span>
                                             <span>Current occupancy: {room.currentOccupancy}</span>
                                             <span className="timestamp-tooltip" data-tooltip={formatAbsolute(room.lastStatusUpdate)} tabIndex={0}>
                                                 Last updated: {formatRelative(room.lastStatusUpdate)}
@@ -247,11 +274,6 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                                 ))}
                                             </div>
                                             
-                                        )}
-                                        {room.lastActivityAt && (
-                                            <p className="text-xs text-[var(--color-text-secondary)]" style={{ marginTop: '8px', opacity: 0.6 }}>
-                                                Last activity {timeAgo(room.lastActivityAt)}
-                                            </p>
                                         )}
                                         {thresholdRoom === room._id ? (
                                             <div className="flex items-center" style={{ gap: '8px', marginTop: '8px' }}>

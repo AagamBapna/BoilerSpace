@@ -1,5 +1,8 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
+import MapboxDirections from '@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions';
+import '@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css';
+import { useLocation } from '../contexts/LocationContext';
 
 const PURDUE_CENTER = [-86.9125, 40.4237];
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -12,9 +15,18 @@ function getRandomStatus() {
 
 export default function CampusMap({ buildings, selectedBuilding, onSelectBuilding }) {
     const mapContainer = useRef(null);
+    const [isRouting, setIsRouting] = useState(false);
     const map = useRef(null);
     const markersRef = useRef([]);
     const popupRef = useRef(null);
+    const directionsRef = useRef(null);
+    const { requestLocationAccess } = useLocation();
+
+    // Store buildings map for easy lookup
+    const buildingsMap = useRef(new Map());
+    useEffect(() => {
+        buildingsMap.current = new Map(buildings.map(b => [b._id, b]));
+    }, [buildings]);
 
     // Initialize map
     useEffect(() => {
@@ -41,11 +53,58 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
             'bottom-right'
         );
 
+        // Initialize Directions
+        directionsRef.current = new MapboxDirections({
+            accessToken: mapboxgl.accessToken,
+            unit: 'imperial',
+            profile: 'mapbox/walking',
+            interactive: false,
+            controls: {
+                inputs: false,
+                instructions: false,
+                profileSwitcher: false
+            }
+        });
+
+        map.current.addControl(directionsRef.current, 'bottom-left');
+
         return () => {
             map.current?.remove();
             map.current = null;
         };
     }, []);
+
+    const clearRoute = useCallback(() => {
+        if (!directionsRef.current) return;
+
+        // Tell the routing engine to clear its internal state
+        directionsRef.current.setOrigin('');
+        directionsRef.current.setDestination('');
+
+        if (typeof directionsRef.current.removeRoutes === 'function') {
+            directionsRef.current.removeRoutes();
+        }
+
+        setIsRouting(false);
+    }, []);
+
+    // Listen for custom trigger to start directions
+    useEffect(() => {
+        const handleGetDirections = (e) => {
+            const destBuildingId = e.detail;
+            const b = buildingsMap.current.get(destBuildingId);
+            if (!b || !directionsRef.current) return;
+
+            requestLocationAccess((coords) => {
+                directionsRef.current.setOrigin(coords);
+                directionsRef.current.setDestination([b.longitude, b.latitude]);
+                setIsRouting(true);
+            });
+        };
+
+        document.addEventListener('getDirections', handleGetDirections);
+        return () => document.removeEventListener('getDirections', handleGetDirections);
+    }, [requestLocationAccess]);
 
     // Add building markers
     useEffect(() => {
@@ -149,10 +208,12 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
                 .join('')}
         </div>
         <button
-          onclick="document.dispatchEvent(new CustomEvent('viewRooms', {detail: '${building._id}'}))"
-          style="width:100%;padding:8px;background:linear-gradient(135deg, #CEB888, #C28E0E);color:#000;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;letter-spacing:0.3px;"
+            onclick="document.dispatchEvent(new CustomEvent('viewRooms', {detail: '${building._id}'}))"
+            style="width:100%;padding:10px;background:linear-gradient(135deg, #CEB888, #C28E0E);color:#000;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;transition:transform 0.2s ease;"
+            onmouseover="this.style.transform='scale(1.02)'"
+            onmouseout="this.style.transform='scale(1)'"
         >
-          View Rooms →
+            View Rooms
         </button>
       </div>
     `;
@@ -168,6 +229,19 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
     }, []);
 
     return (
-        <div ref={mapContainer} className="flex-1 h-full relative" />
+        <div className="flex-1 h-full relative">
+            <div ref={mapContainer} className="w-full h-full" />
+            {isRouting && (
+                <button
+                    onClick={clearRoute}
+                    className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-[var(--color-surface-light)] text-[var(--color-text-primary)] border border-[var(--color-text-secondary)]/20 rounded-full shadow-2xl font-bold flex items-center gap-2 transition-all hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/50"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Clear Route
+                </button>
+            )}
+        </div>
     );
 }
