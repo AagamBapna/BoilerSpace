@@ -384,6 +384,123 @@ describe('GET /api/conversations/:id/messages', () => {
     });
 });
 
+describe('DELETE /api/conversations/:conversationId/messages/:messageId', () => {
+    let convId;
+    let messageId;
+
+    beforeEach(async () => {
+        const conv = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+        convId = conv.body._id;
+
+        const message = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Accidental message' });
+        messageId = message.body._id;
+    });
+
+    test('allows author to soft-delete a message and replace content with placeholder', async () => {
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.text).toBe('This message was deleted');
+        expect(res.body.isDeleted).toBe(true);
+        expect(res.body.deletedAt).toBeTruthy();
+        expect(res.body.deletedBy._id).toBe(userAId);
+
+        const stored = await Message.findById(messageId);
+        expect(stored.text).toBe('This message was deleted');
+        expect(stored.isDeleted).toBe(true);
+        expect(stored.deletedAt).toBeTruthy();
+        expect(stored.deletedBy.toString()).toBe(userAId);
+    });
+
+    test('updates conversation lastMessage when deleting the latest message', async () => {
+        await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        const conversation = await Conversation.findById(convId);
+        expect(conversation.lastMessage.text).toBe('This message was deleted');
+    });
+
+    test('blocks non-author participants from deleting message', async () => {
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toBe('Only the message author can delete this message');
+    });
+
+    test('returns 403 for non-participant', async () => {
+        const userC = await User.create({
+            email: 'charlie@purdue.edu',
+            password: 'password123',
+            displayName: 'Charlie',
+            major: 'Physics',
+            year: 'Freshman',
+        });
+        const loginC = await request(app)
+            .post('/api/auth/login')
+            .send({ email: userC.email, password: 'password123' });
+
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${loginC.body.token}`);
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toBe('Not a participant in this conversation');
+    });
+
+    test('returns 404 for missing conversation', async () => {
+        const fakeConversationId = new mongoose.Types.ObjectId();
+
+        const res = await request(app)
+            .delete(`/api/conversations/${fakeConversationId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(404);
+        expect(res.body.error).toBe('Conversation not found');
+    });
+
+    test('returns 404 for missing message', async () => {
+        const fakeMessageId = new mongoose.Types.ObjectId();
+
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${fakeMessageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(404);
+        expect(res.body.error).toBe('Message not found');
+    });
+
+    test('returns 400 when message is already deleted', async () => {
+        await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Message is already deleted');
+    });
+
+    test('returns 401 without auth', async () => {
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`);
+
+        expect(res.status).toBe(401);
+    });
+});
+
 describe('PUT /api/conversations/:id/read', () => {
     let convId;
 

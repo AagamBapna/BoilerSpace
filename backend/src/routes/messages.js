@@ -4,6 +4,7 @@ const { protect } = require('../middleware/auth');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const DELETED_MESSAGE_PLACEHOLDER = 'This message was deleted';
 
 router.post('/', protect, async (req, res) => {
     const { participantId } = req.body;
@@ -146,6 +147,61 @@ router.post('/:id/messages', protect, async (req, res) => {
     } catch (err) {
         console.error('Send message error:', err.message);
         res.status(500).json({ error: 'Failed to send message' });
+    }
+});
+
+router.delete('/:conversationId/messages/:messageId', protect, async (req, res) => {
+    const { conversationId, messageId } = req.params;
+
+    try {
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({ error: 'Conversation not found' });
+        }
+
+        if (!conversation.participants.some(p => p.toString() === req.user._id.toString())) {
+            return res.status(403).json({ error: 'Not a participant in this conversation' });
+        }
+
+        const message = await Message.findOne({
+            _id: messageId,
+            conversationId,
+        });
+
+        if (!message) {
+            return res.status(404).json({ error: 'Message not found' });
+        }
+
+        if (message.sender.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'Only the message author can delete this message' });
+        }
+
+        if (message.isDeleted) {
+            return res.status(400).json({ error: 'Message is already deleted' });
+        }
+
+        message.text = DELETED_MESSAGE_PLACEHOLDER;
+        message.isDeleted = true;
+        message.deletedAt = new Date();
+        message.deletedBy = req.user._id;
+        await message.save();
+
+        if (conversation.lastMessage && conversation.lastMessage.timestamp
+            && message.createdAt.getTime() === new Date(conversation.lastMessage.timestamp).getTime()) {
+            conversation.lastMessage.text = DELETED_MESSAGE_PLACEHOLDER;
+            conversation.lastMessage.sender = message.sender;
+            conversation.lastMessage.timestamp = message.deletedAt;
+            await conversation.save();
+        }
+
+        const populated = await Message.findById(message._id)
+            .populate('sender', 'displayName email profilePictureUrl')
+            .populate('deletedBy', 'displayName email profilePictureUrl');
+
+        res.json(populated);
+    } catch (err) {
+        console.error('Delete message error:', err.message);
+        res.status(500).json({ error: 'Failed to delete message' });
     }
 });
 
