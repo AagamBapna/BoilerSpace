@@ -3,6 +3,7 @@ import axios from 'axios';
 import SearchBar from './SearchBar';
 import BookmarkedRooms from './BookmarkedRooms';
 import { formatRelative, formatAbsolute } from '../utils/formatRelative';
+import { useLocation } from '../contexts/LocationContext';
 
 
 export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [], recentBuildings = [], onRefreshRecentBuildings }) {
@@ -13,6 +14,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     const [activeCheckIn, setActiveCheckIn] = useState(null);
     const [thresholdRoom, setThresholdRoom] = useState(null);
     const [thresholdValue, setThresholdValue] = useState(50);
+    const { locationStatus, resetLocationStatus } = useLocation();
 
     const fetchRooms = async () => {
         if (!selectedBuilding) return;
@@ -172,33 +174,62 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                 </span>
                             ))}
                         </div>
-                        <button
-                            onClick={() => document.dispatchEvent(new CustomEvent('getDirections', { detail: selectedBuilding._id }))}
-                            style={{
-                                width: '100%',
-                                padding: '10px 16px',
-                                borderRadius: '8px',
-                                fontSize: '13px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                border: 'none',
-                                background: 'linear-gradient(135deg, var(--color-purdue-gold), var(--color-purdue-rush))',
-                                color: 'black',
-                                transition: 'all 0.2s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            Get Walking Directions
-                        </button>
+                        {locationStatus === 'denied' ? (
+                            <button
+                                onClick={resetLocationStatus}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 16px',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    background: 'rgba(239,68,68,0.1)',
+                                    color: '#ef4444',
+                                    transition: 'all 0.2s ease',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px'
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.transform = 'scale(1.02)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.transform = 'scale(1)'; }}
+                            >
+                                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                Enable Location for Directions
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => document.dispatchEvent(new CustomEvent('getDirections', { detail: selectedBuilding._id }))}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 16px',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    border: 'none',
+                                    background: 'linear-gradient(135deg, var(--color-purdue-gold), var(--color-purdue-rush))',
+                                    color: 'black',
+                                    transition: 'all 0.2s ease',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Get Walking Directions
+                            </button>
+                        )}
                     </div>
 
                     {/* Rooms list */}
@@ -273,7 +304,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                                     </span>
                                                 ))}
                                             </div>
-                                            
+
                                         )}
                                         {thresholdRoom === room._id ? (
                                             <div className="flex items-center justify-between" style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -415,7 +446,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                         {recentBuildings.length > 0 && (
                             <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                 <p className="text-xs text-[var(--color-text-secondary)] font-medium uppercase"
-                                style={{ padding: '0 8px', marginBottom: '8px', letterSpacing: '0.05em' }}>
+                                    style={{ padding: '0 8px', marginBottom: '8px', letterSpacing: '0.05em' }}>
                                     Recently Visited
                                 </p>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
