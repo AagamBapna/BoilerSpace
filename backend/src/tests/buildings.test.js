@@ -41,6 +41,7 @@ const sampleBuildings = [
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri());
+    await Room.syncIndexes();
 });
 
 afterAll(async () => {
