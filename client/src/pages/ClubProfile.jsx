@@ -14,6 +14,8 @@ export default function ClubProfile({ user }) {
   const [notice, setNotice] = useState(location.state?.notice || null);
   const [actionError, setActionError] = useState(null);
   const [isMember, setIsMember] = useState(false);
+  const [isPendingRequest, setIsPendingRequest] = useState(false);
+  const [isRemovedFromClub, setIsRemovedFromClub] = useState(false);
   const [joining, setJoining] = useState(false);
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [creatingEvent, setCreatingEvent] = useState(false);
@@ -56,10 +58,16 @@ export default function ClubProfile({ user }) {
     axios.get(`/api/users/${user.id}`)
       .then((res) => {
         const joined = Array.isArray(res.data?.clubIds) ? res.data.clubIds.map(String) : [];
+        const pending = Array.isArray(res.data?.pendingClubIds) ? res.data.pendingClubIds.map(String) : [];
+        const removed = Array.isArray(res.data?.removedClubIds) ? res.data.removedClubIds.map(String) : [];
         setIsMember(joined.includes(String(id)));
+        setIsPendingRequest(pending.includes(String(id)));
+        setIsRemovedFromClub(removed.includes(String(id)));
       })
       .catch(() => {
         setIsMember(false);
+        setIsPendingRequest(false);
+        setIsRemovedFromClub(false);
       });
   }, [user?.id, id]);
 
@@ -70,7 +78,7 @@ export default function ClubProfile({ user }) {
   const topActionClass = 'profile-button-like min-w-[120px] justify-center';
   const topActionGoldClass = `${topActionClass} profile-button-gold`;
 
-  const canJoin = Boolean(user?.id && !isOrganizer && !isMember && club);
+  const canJoin = Boolean(user?.id && !isOrganizer && !isMember && !isPendingRequest && !isRemovedFromClub && club);
   const canLeave = Boolean(user?.id && !isOrganizer && isMember && club);
 
   const handleJoinClub = async () => {
@@ -80,8 +88,8 @@ export default function ClubProfile({ user }) {
     try {
       setJoining(true);
       await axios.post(`/api/clubs/${id}/join`);
-      setIsMember(true);
-      setNotice('You joined this club.');
+      setIsPendingRequest(true);
+      setNotice('Your join request has been sent.');
     } catch (err) {
       setActionError(err.response?.data?.message || err.response?.data?.error || 'Failed to join club.');
     } finally {
@@ -99,6 +107,7 @@ export default function ClubProfile({ user }) {
       setJoining(true);
       await axios.post(`/api/clubs/${id}/leave`);
       setIsMember(false);
+      setIsPendingRequest(false);
       setNotice('You left this club.');
     } catch (err) {
       setActionError(err.response?.data?.message || err.response?.data?.error || 'Failed to leave club.');
@@ -157,7 +166,17 @@ export default function ClubProfile({ user }) {
         <button onClick={handleCreateEventClick} className={topActionGoldClass}>Create Event</button>
         {canJoin && (
           <button onClick={handleJoinClub} disabled={joining} className={topActionGoldClass}>
-            {joining ? 'Joining...' : 'Join Club'}
+            {joining ? 'Sending...' : 'Request to Join'}
+          </button>
+        )}
+        {!canJoin && isPendingRequest && !isMember && (
+          <button disabled className="profile-button-like profile-button-gold min-w-[120px] justify-center opacity-70 cursor-not-allowed">
+            Request Sent
+          </button>
+        )}
+        {!canJoin && isRemovedFromClub && (
+          <button disabled className="profile-button-like profile-button-danger min-w-[120px] justify-center opacity-70 cursor-not-allowed">
+            Removed from Club
           </button>
         )}
         {canLeave && (

@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 jest.mock('../config/gcs', () => ({
+    isGcsConfigured: true,
     bucket: {
         name: 'boilerspace-uploads',
         file: (name) => ({
@@ -75,7 +76,7 @@ afterAll(async () => {
     const files = fs.readdirSync(uploadsDir);
     for (const file of files) {
         if (file !== '.gitkeep' && file !== '.gitignore') {
-            fs.unlinkSync(path.join(uploadsDir, file));
+            fs.rmSync(path.join(uploadsDir, file), { recursive: true, force: true });
         }
     }
 

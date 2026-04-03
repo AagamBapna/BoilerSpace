@@ -27,6 +27,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(passport.initialize());
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/buildings', buildingRoutes);
 app.use('/api/buildings', checkinRoutes);
 app.use('/api/auth', authRoutes);

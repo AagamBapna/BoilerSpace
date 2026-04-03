@@ -77,6 +77,7 @@ describe('ClubProfile page', () => {
             category: 'Academic',
             contactInfo: 'cs@example.com',
             organizerIds: ['owner-1'],
+            pendingMemberIds: [],
           },
         });
       }
@@ -99,7 +100,7 @@ describe('ClubProfile page', () => {
 
     await screen.findByText('CS Club');
     expect(screen.queryByRole('button', { name: 'Organizer Dashboard' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Join Club' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Request to Join' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Club' })).not.toBeInTheDocument();
   });
 
@@ -114,6 +115,7 @@ describe('ClubProfile page', () => {
             category: 'Academic',
             contactInfo: 'cs@example.com',
             organizerIds: ['owner-1'],
+            pendingMemberIds: [],
           },
         });
       }
@@ -136,11 +138,11 @@ describe('ClubProfile page', () => {
 
     await screen.findByText('CS Club');
     expect(screen.getByRole('button', { name: 'Organizer Dashboard' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Join Club' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Request to Join' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Club' })).not.toBeInTheDocument();
   });
 
-  test('joins club from profile when user is not already a member', async () => {
+  test('requests membership from profile when user is not already a member', async () => {
     const user = userEvent.setup();
 
     axios.get.mockImplementation((url) => {
@@ -153,6 +155,7 @@ describe('ClubProfile page', () => {
             category: 'Academic',
             contactInfo: 'cs@example.com',
             organizerIds: ['owner-1'],
+            pendingMemberIds: [],
           },
         });
       }
@@ -160,11 +163,11 @@ describe('ClubProfile page', () => {
         return Promise.resolve({ data: [] });
       }
       if (url === '/api/users/student-1') {
-        return Promise.resolve({ data: { clubIds: [] } });
+        return Promise.resolve({ data: { clubIds: [], pendingClubIds: [], removedClubIds: [] } });
       }
       return Promise.reject(new Error(`Unexpected URL: ${url}`));
     });
-    axios.post.mockResolvedValueOnce({ data: { success: true } });
+    axios.post.mockResolvedValueOnce({ data: { success: true, pendingRequest: true } });
 
     render(
       <MemoryRouter initialEntries={['/clubs/club-1']}>
@@ -175,12 +178,12 @@ describe('ClubProfile page', () => {
     );
 
     await screen.findByText('CS Club');
-    await user.click(screen.getByRole('button', { name: 'Join Club' }));
+    await user.click(screen.getByRole('button', { name: 'Request to Join' }));
 
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith('/api/clubs/club-1/join');
     });
-    expect(screen.getByText('You joined this club.')).toBeInTheDocument();
+    expect(screen.getByText('Your join request has been sent.')).toBeInTheDocument();
   });
 
   test('shows leave club button for members and leaves successfully', async () => {
@@ -198,6 +201,7 @@ describe('ClubProfile page', () => {
             category: 'Academic',
             contactInfo: 'cs@example.com',
             organizerIds: ['owner-1'],
+            pendingMemberIds: [],
           },
         });
       }
@@ -205,7 +209,7 @@ describe('ClubProfile page', () => {
         return Promise.resolve({ data: [] });
       }
       if (url === '/api/users/student-1') {
-        return Promise.resolve({ data: { clubIds: ['club-1'] } });
+        return Promise.resolve({ data: { clubIds: ['club-1'], pendingClubIds: [], removedClubIds: [] } });
       }
       return Promise.reject(new Error(`Unexpected URL: ${url}`));
     });

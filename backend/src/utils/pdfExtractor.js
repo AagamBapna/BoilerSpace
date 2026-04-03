@@ -1,10 +1,35 @@
 const pdfParse = require('pdf-parse');
+const fs = require('fs');
+const path = require('path');
+const http = require('http');
 const https = require('https');
+
+async function readFirstExistingFile(candidates) {
+    for (const candidate of candidates) {
+        try {
+            return await fs.promises.readFile(candidate);
+        } catch (err) {
+            if (err.code !== 'ENOENT') {
+                throw err;
+            }
+        }
+    }
+    const error = new Error(`File not found: ${candidates.join(', ')}`);
+    error.code = 'ENOENT';
+    throw error;
+}
 
 // Download a file from a URL and return it as a buffer
 function downloadBuffer(url) {
+    if (url.startsWith('/uploads/')) {
+        const backendUploadsPath = path.join(__dirname, '../../', url);
+        const repoUploadsPath = path.join(__dirname, '../../../', url);
+        return readFirstExistingFile([backendUploadsPath, repoUploadsPath]);
+    }
+
+    const client = url.startsWith('http://') ? http : https;
     return new Promise((resolve, reject) => {
-        https.get(url, (response) => {
+        client.get(url, (response) => {
             const chunks = [];
             response.on('data', (chunk) => chunks.push(chunk));
             response.on('end', () => resolve(Buffer.concat(chunks)));

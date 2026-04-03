@@ -16,6 +16,8 @@ const clubSchema = new mongoose.Schema(
     // unqiue id for club organizer
     // support multiple organizers
     organizerIds: { type: [String], required: true, default: [] },
+    // user ids waiting for organizer approval
+    pendingMemberIds: { type: [String], default: [] },
   },
   { timestamps: true }
 );

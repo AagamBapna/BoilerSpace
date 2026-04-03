@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const keyPath = path.join(__dirname, '../../gcs-key.json');
 let bucket;
+let isGcsConfigured = false;
 if (fs.existsSync(keyPath)) {
     const { Storage } = require('@google-cloud/storage');
     const storage = new Storage({
@@ -9,6 +10,7 @@ if (fs.existsSync(keyPath)) {
         projectId: 'boilerspace',
     });
     bucket = storage.bucket('boilerspace-uploads');
+    isGcsConfigured = true;
 } else {
     console.warn('GCS key file not found — file uploads will not work.');
     bucket = {
@@ -19,4 +21,4 @@ if (fs.existsSync(keyPath)) {
         }),
     };
 }
-module.exports = { bucket };
+module.exports = { bucket, isGcsConfigured };
