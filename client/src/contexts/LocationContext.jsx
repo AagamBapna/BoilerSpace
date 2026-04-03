@@ -90,14 +90,19 @@ export function LocationProvider({ children }) {
             navigator.permissions.query({ name: 'geolocation' }).then((result) => {
                 if (result.state === 'denied') {
                     alert('You have permanently blocked location access in your browser. Please click the padlock icon in your address bar, change Location to Allow, and refresh the page to enable this feature.');
+                } else if (result.state === 'granted') {
+                    // If natively granted, bypass the prompt and just grab the location
+                    setLocationStatus('granted');
+                    getCurrentLocation();
                 } else {
+                    // State is 'prompt', ask them via our beautiful modal
                     setLocationStatus('prompt');
-                    requestLocationAccess();
+                    setIsPromptModalOpen(true);
                 }
             });
         } else {
             setLocationStatus('prompt');
-            requestLocationAccess();
+            setIsPromptModalOpen(true);
         }
     };
 
