@@ -8,6 +8,8 @@ vi.mock('mapbox-gl', () => ({ default: {} }));
 vi.mock('../contexts/LocationContext', () => ({
     useLocation: vi.fn(() => ({
         locationStatus: 'granted',
+        userLocation: [40, -86],
+        requestLocationAccess: vi.fn(),
         resetLocationStatus: vi.fn(),
         disableLocationAccess: vi.fn(),
     }))
