@@ -64,8 +64,13 @@ router.get('/:id/rooms', async (req, res) => {
         if (!building) {
             return res.status(404).json({ error: 'Building not found' });
         }
-        const rooms = await Room.find({ buildingId: req.params.id })
-            .sort({ floor: 1, name: 1 });
+        const filter = { buildingId: req.params.id };
+        const { amenities } = req.query;
+        if (amenities) {
+            const amenityList = Array.isArray(amenities) ? amenities : amenities.split(',');
+            filter.amenities = { $all: amenityList };
+        }
+        const rooms = await Room.find(filter).sort({ floor: 1, name: 1 });
         const now = new Date();
         const roomsWithOccupancy = await Promise.all(
             rooms.map(async (room) => {
