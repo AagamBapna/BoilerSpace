@@ -225,6 +225,42 @@ router.delete('/:noteId/vote', protect, async (req, res) => {
     }
 });
 
+// GET /api/notes/:noteId/comments — retrieve comments for a note
+router.get('/:noteId/comments', protect, async (req, res) => {
+    try {
+        const note = await Note.findById(req.params.noteId);
+        if (!note) {
+            return res.status(404).json({ error: 'Note not found.' });
+        }
+
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+        const skip = (page - 1) * limit;
+
+        const [comments, total] = await Promise.all([
+            NoteComment.find({ noteId: note._id })
+                .populate('userId', 'displayName email profilePictureUrl')
+                .sort({ createdAt: 1 })
+                .skip(skip)
+                .limit(limit),
+            NoteComment.countDocuments({ noteId: note._id }),
+        ]);
+
+        res.json({
+            comments,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+        });
+    } catch (error) {
+        if (error.name === 'CastError') {
+            return res.status(404).json({ error: 'Note not found.' });
+        }
+        console.error('Error fetching comments:', error);
+        res.status(500).json({ error: 'Failed to fetch comments.' });
+    }
+});
+
 // POST /api/notes/:noteId/comments — add a comment to a note
 router.post('/:noteId/comments', protect, async (req, res) => {
     try {
