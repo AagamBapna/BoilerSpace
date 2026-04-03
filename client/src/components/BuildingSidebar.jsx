@@ -5,6 +5,7 @@ import BookmarkedRooms from './BookmarkedRooms';
 import SnackIndicator from './SnackIndicator';
 import SnackReporter from './SnackReporter';
 import { formatRelative, formatAbsolute } from '../utils/formatRelative';
+import { useLocation } from '../contexts/LocationContext';
 
 
 export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [], recentBuildings = [], onRefreshRecentBuildings }) {
@@ -15,6 +16,8 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     const [activeCheckIn, setActiveCheckIn] = useState(null);
     const [thresholdRoom, setThresholdRoom] = useState(null);
     const [thresholdValue, setThresholdValue] = useState(50);
+    const [showingOriginSelector, setShowingOriginSelector] = useState(false);
+    const { locationStatus, resetLocationStatus, disableLocationAccess } = useLocation();
     const [snackData, setSnackData] = useState(null);
     const [showSnackReporter, setShowSnackReporter] = useState(false);
 
@@ -62,9 +65,9 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
         : [];
 
     const noiseLevelIcon = {
-        quiet: 'Quiet',
-        moderate: 'Moderate',
-        loud: 'Loud',
+        quiet: '🤫 Quiet',
+        moderate: '🗣️ Moderate',
+        loud: '🔊 Loud',
     };
 
     const amenityIcons = {
@@ -174,7 +177,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                         <p className="text-sm text-[var(--color-text-secondary)]" style={{ marginBottom: '12px' }}>
                             {selectedBuilding.abbreviation} · {selectedBuilding.address || 'Purdue University'}
                         </p>
-                        <div className="flex flex-wrap" style={{ gap: '6px' }}>
+                        <div className="flex flex-wrap" style={{ gap: '6px', marginBottom: '16px' }}>
                             {(selectedBuilding.amenities || []).map((a, i) => (
                                 <span
                                     key={i}
@@ -185,6 +188,83 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                 </span>
                             ))}
                         </div>
+                        {showingOriginSelector ? (
+                            <div className="bg-[#1a1a1a] p-4 rounded-xl border border-[var(--color-purdue-gold)]/20 mt-2 flex flex-col gap-3 shadow-2xl">
+                                <div>
+                                    <p className="text-[11px] text-[var(--color-text-secondary)] mb-2 font-semibold uppercase tracking-wider">Select Starting Point</p>
+                                    <SearchBar
+                                        buildings={buildings.filter(b => b._id !== selectedBuilding._id)}
+                                        onSelectBuilding={(building) => {
+                                            setShowingOriginSelector(false);
+                                            document.dispatchEvent(new CustomEvent('getDirections', { detail: { destId: selectedBuilding._id, originId: building._id } }));
+                                        }}
+                                        onSearchChange={() => {}}
+                                    />
+                                </div>
+                                <div className="text-center relative py-1">
+                                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+                                    <span className="relative bg-[#1a1a1a] px-3 text-[10px] text-[var(--color-text-secondary)] font-bold uppercase tracking-widest">OR</span>
+                                </div>
+                                <button
+                                    onClick={() => { setShowingOriginSelector(false); resetLocationStatus(); }}
+                                    className="w-full py-2.5 bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444]/20 border border-[#ef4444]/30 rounded-lg text-xs font-semibold transition-all flex justify-center items-center gap-2"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    Enable GPS Location
+                                </button>
+                                <button onClick={() => setShowingOriginSelector(false)} className="mx-auto mt-0.5 text-[11px] text-[var(--color-text-secondary)] hover:text-white transition-colors">Cancel</button>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <button
+                                    onClick={() => {
+                                        if (locationStatus === 'denied') {
+                                            setShowingOriginSelector(true);
+                                        } else {
+                                            document.dispatchEvent(new CustomEvent('getDirections', { detail: selectedBuilding._id }));
+                                        }
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 16px',
+                                        borderRadius: '8px',
+                                        fontSize: '13px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        border: 'none',
+                                        background: 'linear-gradient(135deg, var(--color-purdue-gold), var(--color-purdue-rush))',
+                                        color: 'black',
+                                        transition: 'all 0.2s ease',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Get Walking Directions
+                                </button>
+
+                                {locationStatus === 'granted' && (
+                                    <button
+                                        onClick={() => {
+                                            disableLocationAccess();
+                                            document.dispatchEvent(new CustomEvent('clearDirections'));
+                                        }}
+                                        className="text-[11px] text-[var(--color-text-secondary)] hover:text-[#ef4444] transition-colors mx-auto"
+                                        style={{ marginTop: '2px' }}
+                                    >
+                                        Disable Location
+                                    </button>
+                                )}
+                            </div>
                         {showSnackReporter && (
                             <SnackReporter
                                 buildingId={selectedBuilding._id}
@@ -250,7 +330,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                         </div>
                                         <div className="flex items-center text-xs text-[var(--color-text-secondary)]" style={{ gap: '12px' }}>
                                             <span>{room.capacity} seats</span>
-                                            <span>{noiseLevelIcon[room.noiseLevel] || 'Moderate'} {room.noiseLevel}</span>
+                                            <span>{noiseLevelIcon[room.noiseLevel?.toLowerCase()] || '🗣️ Moderate'}</span>
                                             <span>Current occupancy: {room.currentOccupancy}</span>
                                             <span className="timestamp-tooltip" data-tooltip={formatAbsolute(room.lastStatusUpdate)} tabIndex={0}>
                                                 Last updated: {formatRelative(room.lastStatusUpdate)}
@@ -268,57 +348,62 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                                     </span>
                                                 ))}
                                             </div>
-                                            
-                                        )}
-                                        {room.lastActivityAt && (
-                                            <p className="text-xs text-[var(--color-text-secondary)]" style={{ marginTop: '8px', opacity: 0.6 }}>
-                                                Last activity {timeAgo(room.lastActivityAt)}
-                                            </p>
+
                                         )}
                                         {thresholdRoom === room._id ? (
-                                            <div className="flex items-center" style={{ gap: '8px', marginTop: '8px' }}>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max="100"
-                                                    value={thresholdValue}
-                                                    onChange={(e) => setThresholdValue(Number(e.target.value))}
-                                                    className="text-xs bg-[var(--color-surface)] border border-white/10 rounded px-2 py-1 text-white"
-                                                    style={{ width: '60px' }}
-                                                />
-                                                <span className="text-xs text-[var(--color-text-secondary)]">%</span>
-                                                <button
-                                                    onClick={async () => {
-                                                        try {
-                                                            await axios.post('/api/notifications/preferences', {
-                                                                roomId: room._id,
-                                                                threshold: thresholdValue,
-                                                            });
-                                                            setThresholdRoom(null);
-                                                            alert('Alert saved!');
-                                                        } catch (err) {
-                                                            alert(err.response?.data?.error || 'Failed to save alert');
-                                                        }
-                                                    }}
-                                                    className="text-xs px-2 py-1 rounded"
-                                                    style={{ background: 'var(--color-purdue-gold)', color: 'black', fontWeight: '600' }}
-                                                >
-                                                    Save
-                                                </button>
-                                                <button
-                                                    onClick={() => setThresholdRoom(null)}
-                                                    className="text-xs text-[var(--color-text-secondary)] hover:text-white"
-                                                >
-                                                    Cancel
-                                                </button>
+                                            <div className="flex items-center justify-between" style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <div className="flex items-center" style={{ gap: '8px' }}>
+                                                    <span className="text-xs text-[var(--color-text-secondary)] font-medium">Alert me at:</span>
+                                                    <div className="flex items-center relative">
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            max="100"
+                                                            value={thresholdValue}
+                                                            onChange={(e) => setThresholdValue(Number(e.target.value))}
+                                                            className="text-sm font-semibold rounded-md text-white focus:outline-none focus:border-[var(--color-purdue-gold)] transition-colors"
+                                                            style={{ width: '64px', padding: '4px 8px', paddingRight: '20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                                        />
+                                                        <span className="absolute right-2 text-xs text-[var(--color-text-secondary)] pointer-events-none">%</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center" style={{ gap: '6px' }}>
+                                                    <button
+                                                        onClick={() => setThresholdRoom(null)}
+                                                        className="text-xs font-medium px-3 py-1.5 rounded-md text-[var(--color-text-secondary)] hover:text-white hover:bg-white/5 transition-colors"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                await axios.post('/api/notifications/preferences', {
+                                                                    roomId: room._id,
+                                                                    threshold: thresholdValue,
+                                                                });
+                                                                setThresholdRoom(null);
+                                                                alert('Alert saved!');
+                                                            } catch (err) {
+                                                                alert(err.response?.data?.error || 'Failed to save alert');
+                                                            }
+                                                        }}
+                                                        className="text-xs font-bold px-4 py-1.5 rounded-md text-black transition-transform hover:scale-105"
+                                                        style={{ background: 'var(--color-purdue-gold)' }}
+                                                    >
+                                                        Save
+                                                    </button>
+                                                </div>
                                             </div>
                                         ) : (
                                             <button
                                                 onClick={() => { setThresholdRoom(room._id); setThresholdValue(50); }}
-                                                className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-purdue-gold)] transition-colors"
-                                                style={{ marginTop: '8px' }}
+                                                className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-purdue-gold)] transition-colors flex items-center gap-1.5"
+                                                style={{ marginTop: '12px' }}
                                             >
-                                                🔔 Set capacity alert
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                                </svg>
+                                                Set capacity alert
                                             </button>
                                         )}
                                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
@@ -405,7 +490,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                         {recentBuildings.length > 0 && (
                             <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                 <p className="text-xs text-[var(--color-text-secondary)] font-medium uppercase"
-                                style={{ padding: '0 8px', marginBottom: '8px', letterSpacing: '0.05em' }}>
+                                    style={{ padding: '0 8px', marginBottom: '8px', letterSpacing: '0.05em' }}>
                                     Recently Visited
                                 </p>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
