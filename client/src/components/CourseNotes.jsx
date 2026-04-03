@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import NoteUploadForm from './NoteUploadForm';
 import NoteVoter from './NoteVoter';
+import NoteCommentList from './NoteCommentList';
 import StudyGuide from './StudyGuide';
 
 export default function CourseNotes({ courseId, courseName, onClose, userId }) {
@@ -10,6 +11,7 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
   const [error, setError] = useState(null);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [showStudyGuide, setShowStudyGuide] = useState(false);
+  const [expandedComments, setExpandedComments] = useState({});
 
   useEffect(() => {
     if (!courseId) return;
@@ -201,64 +203,79 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
             {notes.map(note => (
               <div
                 key={note._id}
-                className="flex items-start gap-3 p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)] hover:border-[var(--color-purdue-gold)]/30 transition-colors"
+                className="p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)] hover:border-[var(--color-purdue-gold)]/30 transition-colors"
               >
-                <div className="flex-shrink-0 mt-0.5">
-                  {getFileIcon(note.fileType)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm text-[var(--color-text-primary)] truncate">
-                    {note.title}
-                  </h3>
-                  {note.description && (
-                    <p className="text-xs text-[var(--color-text-secondary)] mt-0.5 line-clamp-2">
-                      {note.description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-3 mt-2 text-xs text-[var(--color-text-secondary)]">
-                    <span className="flex items-center gap-1.5">
-                      {note.uploadedBy?.profilePictureUrl ? (
-                        <img src={note.uploadedBy.profilePictureUrl} alt="" className="w-4 h-4 rounded-full object-cover" />
-                      ) : (
-                        <span className="w-4 h-4 rounded-full bg-gradient-to-br from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] flex items-center justify-center text-black font-bold" style={{ fontSize: '8px' }}>
-                          {note.uploadedBy?.displayName?.[0] || '?'}
-                        </span>
-                      )}
-                      {note.uploadedBy?.displayName || 'Unknown'}
-                    </span>
-                    <span>·</span>
-                    <span>{formatTimestamp(note.createdAt)}</span>
-                    <span>·</span>
-                    <span>{formatFileSize(note.fileSize)}</span>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    {getFileIcon(note.fileType)}
                   </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <NoteVoter
-                    noteId={note._id}
-                    initialVotes={note.voteCount || 0}
-                    userVote={note.votes?.find(v => v.user === userId || v.user?._id === userId)?.vote || null}
-                  />
-                  <button
-                    onClick={() => handleDownload(note)}
-                    className="p-2 hover:bg-[var(--color-surface)] rounded-lg transition-colors"
-                    title="Download"
-                  >
-                    <svg className="w-4 h-4 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </button>
-                  {userId && note.uploadedBy?._id === userId && (
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm text-[var(--color-text-primary)] truncate">
+                      {note.title}
+                    </h3>
+                    {note.description && (
+                      <p className="text-xs text-[var(--color-text-secondary)] mt-0.5 line-clamp-2">
+                        {note.description}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-3 mt-2 text-xs text-[var(--color-text-secondary)]">
+                      <span className="flex items-center gap-1.5">
+                        {note.uploadedBy?.profilePictureUrl ? (
+                          <img src={note.uploadedBy.profilePictureUrl} alt="" className="w-4 h-4 rounded-full object-cover" />
+                        ) : (
+                          <span className="w-4 h-4 rounded-full bg-gradient-to-br from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] flex items-center justify-center text-black font-bold" style={{ fontSize: '8px' }}>
+                            {note.uploadedBy?.displayName?.[0] || '?'}
+                          </span>
+                        )}
+                        {note.uploadedBy?.displayName || 'Unknown'}
+                      </span>
+                      <span>·</span>
+                      <span>{formatTimestamp(note.createdAt)}</span>
+                      <span>·</span>
+                      <span>{formatFileSize(note.fileSize)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <NoteVoter
+                      noteId={note._id}
+                      initialVotes={note.voteCount || 0}
+                      userVote={note.votes?.find(v => v.user === userId || v.user?._id === userId)?.vote || null}
+                    />
                     <button
-                      onClick={() => handleDelete(note._id)}
-                      className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
-                      title="Delete"
+                      onClick={() => setExpandedComments(prev => ({ ...prev, [note._id]: !prev[note._id] }))}
+                      className="p-2 hover:bg-[var(--color-surface)] rounded-lg transition-colors"
+                      title="Comments"
                     >
-                      <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <svg className={`w-4 h-4 ${expandedComments[note._id] ? 'text-[var(--color-purdue-gold)]' : 'text-[var(--color-text-secondary)]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                     </button>
-                  )}
+                    <button
+                      onClick={() => handleDownload(note)}
+                      className="p-2 hover:bg-[var(--color-surface)] rounded-lg transition-colors"
+                      title="Download"
+                    >
+                      <svg className="w-4 h-4 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </button>
+                    {userId && note.uploadedBy?._id === userId && (
+                      <button
+                        onClick={() => handleDelete(note._id)}
+                        className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
+                        title="Delete"
+                      >
+                        <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 </div>
+                {/* Expandable Comments Section */}
+                {expandedComments[note._id] && (
+                  <NoteCommentList noteId={note._id} userId={userId} />
+                )}
               </div>
             ))}
           </div>
