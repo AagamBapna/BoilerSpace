@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import NoteUploadForm from './NoteUploadForm';
 import NoteVoter from './NoteVoter';
+import NoteCommentList from './NoteCommentList';
 import StudyGuide from './StudyGuide';
 import PracticeQuestions from './PracticeQuestions';
 import CourseQA from './CourseQA';
@@ -12,6 +13,7 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
   const [error, setError] = useState(null);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [showStudyGuide, setShowStudyGuide] = useState(false);
+  const [expandedComments, setExpandedComments] = useState({});
   const [showPracticeQuestions, setShowPracticeQuestions] = useState(false);
   const [showCourseQA, setShowCourseQA] = useState(false);
 
@@ -53,6 +55,13 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
       console.error('Failed to delete note:', err);
       alert(err.response?.data?.error || 'Failed to delete note.');
     }
+  };
+
+  const toggleComments = (noteId) => {
+    setExpandedComments((prev) => ({
+      ...prev,
+      [noteId]: !prev[noteId],
+    }));
   };
 
   const handleDownload = async (note) => {
@@ -278,6 +287,15 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </button>
+                  <button
+                    onClick={() => toggleComments(note._id)}
+                    className="p-2 hover:bg-[var(--color-surface)] rounded-lg transition-colors"
+                    title="Comments"
+                  >
+                    <svg className="w-4 h-4 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h8M8 14h5m-2 7a9 9 0 100-18 9 9 0 000 18z" />
+                    </svg>
+                  </button>
                   {userId && note.uploadedBy?._id === userId && (
                     <button
                       onClick={() => handleDelete(note._id)}
@@ -290,6 +308,11 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
                     </button>
                   )}
                 </div>
+                {expandedComments[note._id] && (
+                  <div className="mt-3 w-full">
+                    <NoteCommentList noteId={note._id} />
+                  </div>
+                )}
               </div>
             ))}
           </div>

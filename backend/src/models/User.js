@@ -45,6 +45,23 @@ const userSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Room',
         }],
+        notificationPreferences: [{
+            roomId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Room',
+                required: true,
+            },
+            threshold: {
+                type: Number,
+                required: true,
+                min: 1,
+                max: 100,
+            },
+            enabled: {
+                type: Boolean,
+                default: true,
+            },
+        }],
         availability: [{
             day: {
                 type: String,
