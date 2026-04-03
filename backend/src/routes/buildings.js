@@ -3,6 +3,7 @@ const router = express.Router();
 const Building = require('../models/Building');
 const Room = require('../models/Room');
 const CheckIn = require('../models/CheckIn');
+const { haversineDistance } = require('../utils/distance');
 
 // GET /api/buildings — all buildings sorted alphabetically
 router.get('/', async (req, res) => {
@@ -11,6 +12,29 @@ router.get('/', async (req, res) => {
         res.json(buildings);
     } catch (err) {
         console.error('Error fetching buildings:', err);
+        res.status(500).json({ error: 'Failed to fetch buildings' });
+    }
+});
+
+// GET /api/buildings/nearby?lat=40.4237&lon=-86.9212
+router.get('/nearby', async (req, res) => {
+    try {
+        const { lat, lon } = req.query;
+        if (!lat || !lon) {
+            return res.status(400).json({ error: 'lat and lon query params required' });
+        }
+        const userLat = parseFloat(lat);
+        const userLon = parseFloat(lon);
+        const buildings = await Building.find();
+        const sorted = buildings
+            .map(b => ({
+                ...b.toObject(),
+                distance: haversineDistance(userLat, userLon, b.latitude, b.longitude),
+            }))
+            .sort((a, b) => a.distance - b.distance);
+        res.json(sorted);
+    } catch (err) {
+        console.error('Error fetching nearby buildings:', err);
         res.status(500).json({ error: 'Failed to fetch buildings' });
     }
 });
