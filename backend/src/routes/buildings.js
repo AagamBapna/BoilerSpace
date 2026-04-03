@@ -84,4 +84,94 @@ router.get('/:id/occupancy', async (req, res) => {
     }
 });
 
+const { protect } = require('../middleware/auth');
+const { aggregateSnackReports } = require('../utils/aggregateSnackReports');
+
+// GET /api/buildings/:id/snacks — aggregated snack info + recent reports
+router.get('/:id/snacks', async (req, res) => {
+    try {
+        const building = await Building.findById(req.params.id);
+        if (!building) {
+            return res.status(404).json({ error: 'Building not found' });
+        }
+
+        const recentReports = building.snackReports
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .slice(0, 10)
+            .map(r => ({
+                type: r.type,
+                value: r.value,
+                createdAt: r.createdAt,
+            }));
+
+        res.json({
+            cafeScore: building.cafeScore,
+            vendingScore: building.vendingScore,
+            cafeCount: building.cafeCount,
+            vendingCount: building.vendingCount,
+            lastSnackReportAt: building.lastSnackReportAt,
+            recentReports,
+        });
+    } catch (err) {
+        if (err.name === 'CastError') {
+            return res.status(404).json({ error: 'Building not found' });
+        }
+        console.error('Error fetching snack data:', err);
+        res.status(500).json({ error: 'Failed to fetch snack data' });
+    }
+});
+
+// POST /api/buildings/:id/snacks — submit a snack report (auth required)
+router.post('/:id/snacks', protect, async (req, res) => {
+    try {
+        const { type, value } = req.body;
+
+        if (!['cafe', 'vending'].includes(type)) {
+            return res.status(400).json({ error: 'type must be "cafe" or "vending"' });
+        }
+        if (typeof value !== 'boolean') {
+            return res.status(400).json({ error: 'value must be a boolean' });
+        }
+
+        const building = await Building.findById(req.params.id);
+        if (!building) {
+            return res.status(404).json({ error: 'Building not found' });
+        }
+
+        // Prevent duplicate: same user + same type within 1 hour
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const duplicate = building.snackReports.find(
+            r => r.userId.toString() === req.user._id.toString()
+                && r.type === type
+                && r.createdAt > oneHourAgo
+        );
+        if (duplicate) {
+            return res.status(409).json({ error: 'You recently reported this' });
+        }
+
+        building.snackReports.push({
+            userId: req.user._id,
+            type,
+            value,
+            createdAt: new Date(),
+        });
+
+        await aggregateSnackReports(building);
+
+        res.json({
+            cafeScore: building.cafeScore,
+            vendingScore: building.vendingScore,
+            cafeCount: building.cafeCount,
+            vendingCount: building.vendingCount,
+            lastSnackReportAt: building.lastSnackReportAt,
+        });
+    } catch (err) {
+        if (err.name === 'CastError') {
+            return res.status(404).json({ error: 'Building not found' });
+        }
+        console.error('Error submitting snack report:', err);
+        res.status(500).json({ error: 'Failed to submit snack report' });
+    }
+});
+
 module.exports = router;

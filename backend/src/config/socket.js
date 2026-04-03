@@ -3,8 +3,29 @@ const { verifyToken } = require('./jwt');
 const User = require('../models/User');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const { usersExist, hasBlockedRelationship } = require('../utils/messageAccess');
 
 let io;
+
+function emitMessageDeleted({ conversationId, message, participantIds }) {
+    if (!io) return;
+    participantIds.forEach((participantId) => {
+        io.to(participantId.toString()).emit('messageDeleted', {
+            conversationId,
+            message,
+        });
+    });
+}
+
+function emitMessageDisappeared({ conversationId, messageId, participantIds }) {
+    if (!io) return;
+    participantIds.forEach((participantId) => {
+        io.to(participantId.toString()).emit('messageDisappeared', {
+            conversationId,
+            messageId: messageId.toString(),
+        });
+    });
+}
 
 function initSocket(httpServer) {
     io = new Server(httpServer, {
@@ -37,10 +58,21 @@ function initSocket(httpServer) {
         socket.join(socket.userId);
 
         socket.on('sendMessage', async (data) => {
-            const { conversationId, text } = data;
+            const {
+                conversationId,
+                text,
+                isDisappearing = false,
+                disappearingDurationSeconds,
+            } = data;
 
             if (!conversationId || !text || !text.trim()) return;
             if (text.length > 2000) return;
+            if (typeof isDisappearing !== 'boolean') return;
+            if (isDisappearing) {
+                if (!Number.isInteger(disappearingDurationSeconds) || disappearingDurationSeconds <= 0) return;
+            } else if (disappearingDurationSeconds !== undefined) {
+                return;
+            }
 
             try {
                 const conversation = await Conversation.findById(conversationId);
@@ -48,11 +80,32 @@ function initSocket(httpServer) {
 
                 if (!conversation.participants.some(p => p.toString() === socket.userId)) return;
 
+                const participantIds = conversation.participants.map((p) => p.toString());
+                const allParticipantsExist = await usersExist(participantIds);
+                if (!allParticipantsExist) {
+                    socket.emit('messageError', {
+                        conversationId,
+                        error: 'Cannot send message because a participant no longer exists',
+                    });
+                    return;
+                }
+
+                const blocked = await hasBlockedRelationship(participantIds);
+                if (blocked) {
+                    socket.emit('messageError', {
+                        conversationId,
+                        error: 'Messaging is not allowed because one user has blocked the other',
+                    });
+                    return;
+                }
+
                 const message = await Message.create({
                     conversationId,
                     sender: socket.userId,
                     text: text.trim(),
                     readBy: [socket.userId],
+                    isDisappearing,
+                    expiresAt: isDisappearing ? new Date(Date.now() + (disappearingDurationSeconds * 1000)) : null,
                 });
 
                 conversation.lastMessage = {
@@ -125,4 +178,4 @@ function getIO() {
     return io;
 }
 
-module.exports = { initSocket, getIO };
+module.exports = { initSocket, getIO, emitMessageDeleted, emitMessageDisappeared };

@@ -5,6 +5,7 @@ const app = require('../app');
 const User = require('../models/User');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const Friendship = require('../models/Friendship');
 
 jest.setTimeout(30000);
 
@@ -50,6 +51,7 @@ beforeEach(async () => {
     await User.deleteMany({});
     await Conversation.deleteMany({});
     await Message.deleteMany({});
+    await Friendship.deleteMany({});
 
     const a = await registerAndLogin(userA);
     tokenA = a.token;
@@ -126,6 +128,22 @@ describe('POST /api/conversations', () => {
             .send({ participantId: userBId });
 
         expect(res.status).toBe(401);
+    });
+
+    test('blocks starting conversation when users are blocked', async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'blocked',
+        });
+
+        const res = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toBe('Cannot start conversation due to block settings');
     });
 });
 
@@ -294,6 +312,80 @@ describe('POST /api/conversations/:id/messages', () => {
 
         expect(res.status).toBe(401);
     });
+
+    test('stores expiresAt when sending disappearing message', async () => {
+        const beforeSend = Date.now();
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({
+                text: 'Sensitive message',
+                isDisappearing: true,
+                disappearingDurationSeconds: 120,
+            });
+
+        expect(res.status).toBe(201);
+        expect(res.body.isDisappearing).toBe(true);
+        expect(res.body.expiresAt).toBeTruthy();
+        const expiresAtMs = new Date(res.body.expiresAt).getTime();
+        expect(expiresAtMs).toBeGreaterThanOrEqual(beforeSend + 119000);
+        expect(expiresAtMs).toBeLessThanOrEqual(beforeSend + 121000);
+    });
+
+    test('rejects disappearing message without duration', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({
+                text: 'Sensitive message',
+                isDisappearing: true,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('disappearingDurationSeconds must be a positive integer');
+    });
+
+    test('rejects duration when message is not disappearing', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({
+                text: 'Normal message',
+                isDisappearing: false,
+                disappearingDurationSeconds: 120,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('disappearingDurationSeconds is only allowed for disappearing messages');
+    });
+
+    test('returns 404 when conversation contains deleted participant', async () => {
+        await User.findByIdAndDelete(userBId);
+
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Are you there?' });
+
+        expect(res.status).toBe(404);
+        expect(res.body.error).toBe('Cannot send message because a participant no longer exists');
+    });
+
+    test('returns 403 when participants are blocked', async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'blocked',
+        });
+
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Blocked message' });
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toBe('Messaging is not allowed because one user has blocked the other');
+    });
 });
 
 describe('GET /api/conversations/:id/messages', () => {
@@ -384,6 +476,123 @@ describe('GET /api/conversations/:id/messages', () => {
     });
 });
 
+describe('DELETE /api/conversations/:conversationId/messages/:messageId', () => {
+    let convId;
+    let messageId;
+
+    beforeEach(async () => {
+        const conv = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+        convId = conv.body._id;
+
+        const message = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Accidental message' });
+        messageId = message.body._id;
+    });
+
+    test('allows author to soft-delete a message and replace content with placeholder', async () => {
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.text).toBe('This message was deleted');
+        expect(res.body.isDeleted).toBe(true);
+        expect(res.body.deletedAt).toBeTruthy();
+        expect(res.body.deletedBy._id).toBe(userAId);
+
+        const stored = await Message.findById(messageId);
+        expect(stored.text).toBe('This message was deleted');
+        expect(stored.isDeleted).toBe(true);
+        expect(stored.deletedAt).toBeTruthy();
+        expect(stored.deletedBy.toString()).toBe(userAId);
+    });
+
+    test('updates conversation lastMessage when deleting the latest message', async () => {
+        await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        const conversation = await Conversation.findById(convId);
+        expect(conversation.lastMessage.text).toBe('This message was deleted');
+    });
+
+    test('blocks non-author participants from deleting message', async () => {
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toBe('Only the message author can delete this message');
+    });
+
+    test('returns 403 for non-participant', async () => {
+        const userC = await User.create({
+            email: 'charlie@purdue.edu',
+            password: 'password123',
+            displayName: 'Charlie',
+            major: 'Physics',
+            year: 'Freshman',
+        });
+        const loginC = await request(app)
+            .post('/api/auth/login')
+            .send({ email: userC.email, password: 'password123' });
+
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${loginC.body.token}`);
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toBe('Not a participant in this conversation');
+    });
+
+    test('returns 404 for missing conversation', async () => {
+        const fakeConversationId = new mongoose.Types.ObjectId();
+
+        const res = await request(app)
+            .delete(`/api/conversations/${fakeConversationId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(404);
+        expect(res.body.error).toBe('Conversation not found');
+    });
+
+    test('returns 404 for missing message', async () => {
+        const fakeMessageId = new mongoose.Types.ObjectId();
+
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${fakeMessageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(404);
+        expect(res.body.error).toBe('Message not found');
+    });
+
+    test('returns 400 when message is already deleted', async () => {
+        await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Message is already deleted');
+    });
+
+    test('returns 401 without auth', async () => {
+        const res = await request(app)
+            .delete(`/api/conversations/${convId}/messages/${messageId}`);
+
+        expect(res.status).toBe(401);
+    });
+});
+
 describe('PUT /api/conversations/:id/read', () => {
     let convId;
 
@@ -464,5 +673,116 @@ describe('PUT /api/conversations/:id/read', () => {
             .put(`/api/conversations/${convId}/read`);
 
         expect(res.status).toBe(401);
+    });
+});
+
+describe('Message schema deletion and expiry metadata', () => {
+    test('sets deletion and disappearing defaults', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const message = await Message.create({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Defaults check',
+            readBy: [userAId],
+        });
+
+        expect(message.isDeleted).toBe(false);
+        expect(message.deletedAt).toBeNull();
+        expect(message.deletedBy).toBeNull();
+        expect(message.isDisappearing).toBe(false);
+        expect(message.expiresAt).toBeNull();
+    });
+
+    test('requires expiresAt when isDisappearing is true', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const message = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Should fail',
+            readBy: [userAId],
+            isDisappearing: true,
+        });
+
+        await expect(message.validate()).rejects.toThrow('expiresAt must be set only for disappearing messages');
+    });
+
+    test('rejects expiresAt when isDisappearing is false', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const message = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Should fail',
+            readBy: [userAId],
+            isDisappearing: false,
+            expiresAt: new Date(Date.now() + 60000),
+        });
+
+        await expect(message.validate()).rejects.toThrow('expiresAt must be set only for disappearing messages');
+    });
+
+    test('requires deletedAt and deletedBy when isDeleted is true', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const missingDeletedAt = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Should fail',
+            readBy: [userAId],
+            isDeleted: true,
+            deletedBy: userAId,
+        });
+
+        await expect(missingDeletedAt.validate()).rejects.toThrow('deletedAt must be set only for deleted messages');
+
+        const missingDeletedBy = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Should fail',
+            readBy: [userAId],
+            isDeleted: true,
+            deletedAt: new Date(),
+        });
+
+        await expect(missingDeletedBy.validate()).rejects.toThrow('deletedBy must be set only for deleted messages');
+    });
+
+    test('accepts valid disappearing and deleted metadata combinations', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const disappearingMessage = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Will disappear',
+            readBy: [userAId],
+            isDisappearing: true,
+            expiresAt: new Date(Date.now() + 60000),
+        });
+
+        await expect(disappearingMessage.validate()).resolves.toBeUndefined();
+
+        const deletedMessage = new Message({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Deleted marker',
+            readBy: [userAId],
+            isDeleted: true,
+            deletedAt: new Date(),
+            deletedBy: userAId,
+        });
+
+        await expect(deletedMessage.validate()).resolves.toBeUndefined();
     });
 });

@@ -227,6 +227,9 @@ router.post('/verify-otp', async (req, res) => {
 const Note = require('../models/Note');
 const CheckIn = require('../models/CheckIn');
 const Club = require('../models/Club');
+const Message = require('../models/Message');
+const Conversation = require('../models/Conversation');
+const Friendship = require('../models/Friendship');
 
 router.post('/request-delete-otp', protect, async (req, res) => {
     try {
@@ -275,6 +278,11 @@ router.post('/confirm-delete', protect, async (req, res) => {
         }
 
         await CheckIn.deleteMany({ userId });
+        await Message.deleteMany({ sender: userId });
+        await Conversation.deleteMany({ participants: userId });
+        await Friendship.deleteMany({
+            $or: [{ requester: userId }, { recipient: userId }],
+        });
 
         await User_OTP.deleteMany({ email });
 

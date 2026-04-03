@@ -2,7 +2,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const http = require('http');
 const mongoose = require('mongoose');
 const app = require('./app');
-const startExpirationJob = require('./jobs/expirationJob');
+const { startExpirationJob } = require('./jobs/expirationJob');
 const CheckIn = require('./models/CheckIn');
 const { initSocket } = require('./config/socket');
 
