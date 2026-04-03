@@ -1,6 +1,15 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+jest.mock('../config/socket', () => ({
+    initSocket: jest.fn(),
+    getIO: () => ({
+        to: () => ({ emit: jest.fn() }),
+        emit: jest.fn(),
+    }),
+    emitMessageDeleted: jest.fn(),
+    emitMessageDisappeared: jest.fn(),
+}));
 const app = require('../app');
 const User = require('../models/User');
 const Conversation = require('../models/Conversation');

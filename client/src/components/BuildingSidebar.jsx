@@ -17,9 +17,15 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     const [thresholdRoom, setThresholdRoom] = useState(null);
     const [thresholdValue, setThresholdValue] = useState(50);
     const [showingOriginSelector, setShowingOriginSelector] = useState(false);
-    const { locationStatus, resetLocationStatus, disableLocationAccess } = useLocation();
+    const { locationStatus, userLocation, requestLocationAccess, resetLocationStatus, disableLocationAccess } = useLocation();
     const [snackData, setSnackData] = useState(null);
     const [showSnackReporter, setShowSnackReporter] = useState(false);
+
+    useEffect(() => {
+        if (!userLocation) {
+            requestLocationAccess();
+        }
+    }, []);
 
     const fetchRooms = async () => {
         if (!selectedBuilding) return;
@@ -56,12 +62,32 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
         return () => clearTimeout(timer);
     }, [activeCheckIn]);
 
+        const calcDistance = (lat1, lon1, lat2, lon2) => {
+        const R = 3958.8;
+        const latDistance = (lat2 - lat1) * Math.PI / 180;
+        const lonDistance = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(latDistance / 2) ** 2 +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(lonDistance / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
     const filteredBuildings = Array.isArray(buildings)
         ? buildings.filter(
             (b) =>
                 b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 b.abbreviation.toLowerCase().includes(searchQuery.toLowerCase())
         )
+        .map(b =>({
+            ...b,
+            distance: userLocation ? calcDistance(userLocation[1], userLocation[0], b.latitude, b.longitude) : null
+        }))
+        .sort((a, b) => {
+            if (a.distance !== null && b.distance !== null) {
+                return a.distance - b.distance;
+            }
+            return 0;
+        })
         : [];
 
     const noiseLevelIcon = {
@@ -552,6 +578,13 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                             <p className="text-xs text-[var(--color-text-secondary)] truncate">
                                                 {(building.amenities || []).slice(0, 3).join(' · ')}
                                             </p>
+                                            {building.distance !== null && (
+                                                <p className="text-xs text-[var(--color-purdue-gold)]" style={{ marginTop: '2px' }}>
+                                                    {building.distance < 0.1
+                                                        ? `${Math.round(building.distance * 5280)} ft away`
+                                                        : `${building.distance.toFixed(2)} mi away`}
+                                                </p>
+                                            )}
                                         </div>
                                         <svg
                                             className="w-4 h-4 text-[var(--color-text-secondary)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
