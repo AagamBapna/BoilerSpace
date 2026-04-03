@@ -265,6 +265,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                     </button>
                                 )}
                             </div>
+                        )}
                         {showSnackReporter && (
                             <SnackReporter
                                 buildingId={selectedBuilding._id}

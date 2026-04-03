@@ -46,6 +46,16 @@ vi.mock('mapbox-gl', () => {
     };
 });
 
+vi.mock('../contexts/LocationContext', () => ({
+    useLocation: vi.fn(() => ({
+        locationStatus: 'granted',
+        resetLocationStatus: vi.fn(),
+        disableLocationAccess: vi.fn(),
+        requestLocationAccess: vi.fn()
+    })),
+    LocationProvider: ({ children }) => <>{children}</>
+}));
+
 vi.mock('../lib/auth', () => ({
     getToken: vi.fn(() => null),
     setToken: vi.fn(),
@@ -98,10 +108,14 @@ function mockAuthedGetRequests({ buildings = sampleBuildings, bookmarks = [], ro
     axios.get.mockImplementation((url) => {
         if (url === '/api/auth/me') return Promise.resolve({ data: authUser });
         if (url === '/api/users/bookmarks') return Promise.resolve({ data: bookmarks });
+        if (url === '/api/users/recentBuildings') return Promise.resolve({ data: [] });
         if (url === '/api/buildings') return Promise.resolve({ data: buildings });
         if (url.startsWith('/api/buildings/') && url.endsWith('/rooms')) {
             const buildingId = url.split('/')[3];
             return Promise.resolve({ data: roomsByBuilding[buildingId] || [] });
+        }
+        if (url.match(/\/api\/buildings\/.*\/snacks/)) {
+            return Promise.resolve({ data: null });
         }
         return Promise.reject(new Error(`Unexpected GET request in test: ${url}`));
     });
@@ -269,7 +283,7 @@ describe('App — Building Selection & Room Display', () => {
         });
 
         expect(screen.getByText('30 seats')).toBeInTheDocument();
-        expect(screen.getByText('Moderate moderate')).toBeInTheDocument();
+        expect(screen.getByText('🗣️ Moderate')).toBeInTheDocument();
     });
 
     test('shows empty rooms message when a building has no rooms', async () => {

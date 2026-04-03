@@ -5,6 +5,14 @@ import BuildingSidebar from '../components/BuildingSidebar';
 
 vi.mock('mapbox-gl', () => ({ default: {} }));
 
+vi.mock('../contexts/LocationContext', () => ({
+    useLocation: vi.fn(() => ({
+        locationStatus: 'granted',
+        resetLocationStatus: vi.fn(),
+        disableLocationAccess: vi.fn(),
+    }))
+}));
+
 const mockBuildings = [
     { _id: '1', name: 'WALC', abbreviation: 'WALC', latitude: 40, longitude: -86, amenities: ['Wi-Fi'], address: '' },
     { _id: '2', name: 'Lawson', abbreviation: 'LWSN', latitude: 40, longitude: -86, amenities: ['Outlets'], address: '' },
