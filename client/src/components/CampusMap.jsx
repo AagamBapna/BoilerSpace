@@ -88,6 +88,13 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
         setIsRouting(false);
     }, []);
 
+    // Listen to global clear events
+    useEffect(() => {
+        const handleClear = () => clearRoute();
+        document.addEventListener('clearDirections', handleClear);
+        return () => document.removeEventListener('clearDirections', handleClear);
+    }, [clearRoute]);
+
     // Listen for custom trigger to start directions
     useEffect(() => {
         const handleGetDirections = (e) => {

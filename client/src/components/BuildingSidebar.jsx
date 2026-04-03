@@ -14,7 +14,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     const [activeCheckIn, setActiveCheckIn] = useState(null);
     const [thresholdRoom, setThresholdRoom] = useState(null);
     const [thresholdValue, setThresholdValue] = useState(50);
-    const { locationStatus, resetLocationStatus } = useLocation();
+    const { locationStatus, resetLocationStatus, disableLocationAccess } = useLocation();
 
     const fetchRooms = async () => {
         if (!selectedBuilding) return;
@@ -202,33 +202,45 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                 Enable Location for Directions
                             </button>
                         ) : (
-                            <button
-                                onClick={() => document.dispatchEvent(new CustomEvent('getDirections', { detail: selectedBuilding._id }))}
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 16px',
-                                    borderRadius: '8px',
-                                    fontSize: '13px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer',
-                                    border: 'none',
-                                    background: 'linear-gradient(135deg, var(--color-purdue-gold), var(--color-purdue-rush))',
-                                    color: 'black',
-                                    transition: 'all 0.2s ease',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                Get Walking Directions
-                            </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <button
+                                    onClick={() => document.dispatchEvent(new CustomEvent('getDirections', { detail: selectedBuilding._id }))}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 16px',
+                                        borderRadius: '8px',
+                                        fontSize: '13px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        border: 'none',
+                                        background: 'linear-gradient(135deg, var(--color-purdue-gold), var(--color-purdue-rush))',
+                                        color: 'black',
+                                        transition: 'all 0.2s ease',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Get Walking Directions
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        disableLocationAccess();
+                                        document.dispatchEvent(new CustomEvent('clearDirections'));
+                                    }}
+                                    className="text-[11px] text-[var(--color-text-secondary)] hover:text-red-400 transition-colors mx-auto"
+                                    style={{ marginTop: '2px' }}
+                                >
+                                    Disable Location
+                                </button>
+                            </div>
                         )}
                     </div>
 

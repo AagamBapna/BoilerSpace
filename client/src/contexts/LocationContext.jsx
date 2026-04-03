@@ -16,12 +16,12 @@ export function LocationProvider({ children }) {
     useEffect(() => {
         localStorage.setItem('boilerSpace_locationStatus', locationStatus);
 
-        // Always check natively if the permission was revoked or re-enabled in browser
+        // Always check natively if the permission was revoked in browser
         if (navigator.permissions) {
             navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-                if (result.state === 'granted' && locationStatus !== 'granted') {
-                    setLocationStatus('granted');
-                } else if (result.state === 'denied' && locationStatus !== 'denied') {
+                // Only auto-sync denial. Do NOT auto-sync 'granted' because 
+                // the user might want it explicitly disabled within our app's UI overriding the browser!
+                if (result.state === 'denied' && locationStatus !== 'denied') {
                     setLocationStatus('denied');
                     setUserLocation(null);
                 }
@@ -80,6 +80,11 @@ export function LocationProvider({ children }) {
         setIsPromptModalOpen(true);
     };
 
+    const disableLocationAccess = () => {
+        setLocationStatus('denied');
+        setUserLocation(null);
+    };
+
     const resetLocationStatus = () => {
         if (navigator.permissions) {
             navigator.permissions.query({ name: 'geolocation' }).then((result) => {
@@ -116,6 +121,7 @@ export function LocationProvider({ children }) {
             userLocation,
             requestLocationAccess,
             resetLocationStatus,
+            disableLocationAccess,
             isPromptModalOpen,
             handleModalAllow,
             handleModalDeny
