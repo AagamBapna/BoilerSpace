@@ -16,6 +16,9 @@ function getRandomStatus() {
 export default function CampusMap({ buildings, selectedBuilding, onSelectBuilding }) {
     const mapContainer = useRef(null);
     const [isRouting, setIsRouting] = useState(false);
+    const [routeSteps, setRouteSteps] = useState([]);
+    const [routeSummary, setRouteSummary] = useState(null);
+    const [isDirectionsOpen, setIsDirectionsOpen] = useState(true);
     const map = useRef(null);
     const markersRef = useRef([]);
     const popupRef = useRef(null);
@@ -66,6 +69,17 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
             }
         });
 
+        directionsRef.current.on('route', (e) => {
+            if (e.route && e.route[0] && e.route[0].legs && e.route[0].legs[0].steps) {
+                setRouteSteps(e.route[0].legs[0].steps);
+                // calculate summary
+                const mins = Math.ceil(e.route[0].duration / 60);
+                const miles = (e.route[0].distance * 0.000621371).toFixed(1);
+                setRouteSummary({ time: `${mins} min`, dist: `${miles} mi` });
+                setIsDirectionsOpen(true);
+            }
+        });
+
         map.current.addControl(directionsRef.current, 'bottom-left');
 
         return () => {
@@ -86,6 +100,8 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
         }
 
         setIsRouting(false);
+        setRouteSteps([]);
+        setRouteSummary(null);
     }, []);
 
     // Listen to global clear events
@@ -98,15 +114,27 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
     // Listen for custom trigger to start directions
     useEffect(() => {
         const handleGetDirections = (e) => {
-            const destBuildingId = e.detail;
-            const b = buildingsMap.current.get(destBuildingId);
-            if (!b || !directionsRef.current) return;
+            const detail = e.detail;
+            const destId = typeof detail === 'string' ? detail : detail.destId;
+            const originId = typeof detail === 'string' ? null : detail.originId;
 
-            requestLocationAccess((coords) => {
-                directionsRef.current.setOrigin(coords);
-                directionsRef.current.setDestination([b.longitude, b.latitude]);
-                setIsRouting(true);
-            });
+            const destB = buildingsMap.current.get(destId);
+            if (!destB || !directionsRef.current) return;
+
+            if (originId) {
+                const originB = buildingsMap.current.get(originId);
+                if (originB) {
+                    directionsRef.current.setOrigin([originB.longitude, originB.latitude]);
+                    directionsRef.current.setDestination([destB.longitude, destB.latitude]);
+                    setIsRouting(true);
+                }
+            } else {
+                requestLocationAccess((coords) => {
+                    directionsRef.current.setOrigin(coords);
+                    directionsRef.current.setDestination([destB.longitude, destB.latitude]);
+                    setIsRouting(true);
+                });
+            }
         };
 
         document.addEventListener('getDirections', handleGetDirections);
@@ -238,6 +266,54 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
     return (
         <div className="flex-1 h-full relative">
             <div ref={mapContainer} className="w-full h-full" />
+            
+            {/* Directions Overlay */}
+            {isRouting && routeSteps.length > 0 && (
+                <div className="absolute top-4 right-4 z-40 w-80 bg-[var(--color-surface-light)] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] transition-all duration-300">
+                    <button 
+                        onClick={() => setIsDirectionsOpen(!isDirectionsOpen)}
+                        className="flex items-center justify-between p-4 bg-[var(--color-surface-hover)] border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer w-full text-left"
+                    >
+                        <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-[var(--color-purdue-gold)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                            <div className="flex flex-col">
+                                <span className="font-bold text-sm leading-tight text-white">Walking Directions</span>
+                                {routeSummary && (
+                                    <span className="text-[11px] text-[var(--color-purdue-gold)] font-medium">
+                                        {routeSummary.dist} • {routeSummary.time}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        <svg className={`w-5 h-5 text-[var(--color-text-secondary)] transition-transform duration-300 ${isDirectionsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    
+                    {isDirectionsOpen && (
+                        <div className="flex-1 overflow-y-auto p-2 w-full">
+                            {routeSteps.map((step, i) => (
+                                <div key={i} className="flex gap-3 p-3 border-b border-white/5 last:border-0 hover:bg-white/5 rounded-lg transition-colors">
+                                    <div className="mt-0.5 text-[var(--color-purdue-gold)] shrink-0">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium leading-snug">{step.maneuver.instruction}</p>
+                                        <p className="text-xs text-[var(--color-text-secondary)] mt-1">
+                                            {Math.round(step.distance)} ft
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {isRouting && (
                 <button
                     onClick={clearRoute}

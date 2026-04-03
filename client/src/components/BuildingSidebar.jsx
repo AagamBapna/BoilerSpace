@@ -14,6 +14,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     const [activeCheckIn, setActiveCheckIn] = useState(null);
     const [thresholdRoom, setThresholdRoom] = useState(null);
     const [thresholdValue, setThresholdValue] = useState(50);
+    const [showingOriginSelector, setShowingOriginSelector] = useState(false);
     const { locationStatus, resetLocationStatus, disableLocationAccess } = useLocation();
 
     const fetchRooms = async () => {
@@ -174,37 +175,44 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                 </span>
                             ))}
                         </div>
-                        {locationStatus === 'denied' ? (
-                            <button
-                                onClick={resetLocationStatus}
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 16px',
-                                    borderRadius: '8px',
-                                    fontSize: '13px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    background: 'rgba(239,68,68,0.1)',
-                                    color: '#ef4444',
-                                    transition: 'all 0.2s ease',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px'
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.transform = 'scale(1.02)'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.transform = 'scale(1)'; }}
-                            >
-                                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                Enable Location for Directions
-                            </button>
+                        {showingOriginSelector ? (
+                            <div className="bg-[#1a1a1a] p-4 rounded-xl border border-[var(--color-purdue-gold)]/20 mt-2 flex flex-col gap-3 shadow-2xl">
+                                <div>
+                                    <p className="text-[11px] text-[var(--color-text-secondary)] mb-2 font-semibold uppercase tracking-wider">Select Starting Point</p>
+                                    <SearchBar
+                                        buildings={buildings.filter(b => b._id !== selectedBuilding._id)}
+                                        onSelectBuilding={(building) => {
+                                            setShowingOriginSelector(false);
+                                            document.dispatchEvent(new CustomEvent('getDirections', { detail: { destId: selectedBuilding._id, originId: building._id } }));
+                                        }}
+                                        onSearchChange={() => {}}
+                                    />
+                                </div>
+                                <div className="text-center relative py-1">
+                                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+                                    <span className="relative bg-[#1a1a1a] px-3 text-[10px] text-[var(--color-text-secondary)] font-bold uppercase tracking-widest">OR</span>
+                                </div>
+                                <button
+                                    onClick={() => { setShowingOriginSelector(false); resetLocationStatus(); }}
+                                    className="w-full py-2.5 bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444]/20 border border-[#ef4444]/30 rounded-lg text-xs font-semibold transition-all flex justify-center items-center gap-2"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    Enable GPS Location
+                                </button>
+                                <button onClick={() => setShowingOriginSelector(false)} className="mx-auto mt-0.5 text-[11px] text-[var(--color-text-secondary)] hover:text-white transition-colors">Cancel</button>
+                            </div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <button
-                                    onClick={() => document.dispatchEvent(new CustomEvent('getDirections', { detail: selectedBuilding._id }))}
+                                    onClick={() => {
+                                        if (locationStatus === 'denied') {
+                                            setShowingOriginSelector(true);
+                                        } else {
+                                            document.dispatchEvent(new CustomEvent('getDirections', { detail: selectedBuilding._id }));
+                                        }
+                                    }}
                                     style={{
                                         width: '100%',
                                         padding: '10px 16px',
@@ -230,16 +238,19 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                     </svg>
                                     Get Walking Directions
                                 </button>
-                                <button
-                                    onClick={() => {
-                                        disableLocationAccess();
-                                        document.dispatchEvent(new CustomEvent('clearDirections'));
-                                    }}
-                                    className="text-[11px] text-[var(--color-text-secondary)] hover:text-red-400 transition-colors mx-auto"
-                                    style={{ marginTop: '2px' }}
-                                >
-                                    Disable Location
-                                </button>
+
+                                {locationStatus === 'granted' && (
+                                    <button
+                                        onClick={() => {
+                                            disableLocationAccess();
+                                            document.dispatchEvent(new CustomEvent('clearDirections'));
+                                        }}
+                                        className="text-[11px] text-[var(--color-text-secondary)] hover:text-[#ef4444] transition-colors mx-auto"
+                                        style={{ marginTop: '2px' }}
+                                    >
+                                        Disable Location
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
