@@ -4,11 +4,27 @@ const path = require('path');
 const http = require('http');
 const https = require('https');
 
+async function readFirstExistingFile(candidates) {
+    for (const candidate of candidates) {
+        try {
+            return await fs.promises.readFile(candidate);
+        } catch (err) {
+            if (err.code !== 'ENOENT') {
+                throw err;
+            }
+        }
+    }
+    const error = new Error(`File not found: ${candidates.join(', ')}`);
+    error.code = 'ENOENT';
+    throw error;
+}
+
 // Download a file from a URL and return it as a buffer
 function downloadBuffer(url) {
     if (url.startsWith('/uploads/')) {
-        const localPath = path.join(__dirname, '../../', url);
-        return fs.promises.readFile(localPath);
+        const backendUploadsPath = path.join(__dirname, '../../', url);
+        const repoUploadsPath = path.join(__dirname, '../../../', url);
+        return readFirstExistingFile([backendUploadsPath, repoUploadsPath]);
     }
 
     const client = url.startsWith('http://') ? http : https;

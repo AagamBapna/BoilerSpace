@@ -4,6 +4,7 @@ import axios from 'axios';
 export default function PracticeQuestions({ courseId, courseName, onClose }) {
   const [questions, setQuestions] = useState([]);
   const [revealed, setRevealed] = useState({});
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [count, setCount] = useState(5);
   const [difficulty, setDifficulty] = useState('mixed');
   const [focus, setFocus] = useState('');
@@ -23,6 +24,7 @@ export default function PracticeQuestions({ courseId, courseName, onClose }) {
         focus,
       });
       setQuestions(response.data.questions || []);
+      setCurrentIndex(0);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to generate practice questions');
     } finally {
@@ -32,6 +34,14 @@ export default function PracticeQuestions({ courseId, courseName, onClose }) {
 
   const toggleReveal = (id) => {
     setRevealed((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const goPrevious = () => {
+    setCurrentIndex((prev) => (prev === 0 ? questions.length - 1 : prev - 1));
+  };
+
+  const goNext = () => {
+    setCurrentIndex((prev) => (prev === questions.length - 1 ? 0 : prev + 1));
   };
 
   return (
@@ -119,12 +129,33 @@ export default function PracticeQuestions({ courseId, courseName, onClose }) {
 
         {!loading && questions.length > 0 && (
           <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
-            {questions.map((item, index) => {
+            {(() => {
+              const item = questions[currentIndex];
               const isRevealed = Boolean(revealed[item.id]);
               return (
-                <div key={item.id} className="p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)]">
+                <div className="p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)]">
+                  <div className="flex items-center justify-between mb-3">
+                    <button
+                      onClick={goPrevious}
+                      aria-label="Previous question"
+                      className="p-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] transition-colors"
+                    >
+                      ←
+                    </button>
+                    <p className="text-xs font-semibold text-[var(--color-text-secondary)]">
+                      Question {currentIndex + 1} of {questions.length}
+                    </p>
+                    <button
+                      onClick={goNext}
+                      aria-label="Next question"
+                      className="p-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] transition-colors"
+                    >
+                      →
+                    </button>
+                  </div>
+
                   <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                    {index + 1}. {item.question}
+                    {currentIndex + 1}. {item.question}
                   </p>
 
                   {!isRevealed && (
@@ -150,7 +181,7 @@ export default function PracticeQuestions({ courseId, courseName, onClose }) {
                   )}
                 </div>
               );
-            })}
+            })()}
 
             <button
               onClick={handleGenerate}

@@ -6,7 +6,26 @@ const Embedding = require('../models/Embedding');
 const StudyGuide = require('../models/StudyGuide');
 const { protect } = require('../middleware/auth');
 const { model, embeddingModel } = require('../config/gemini');
-const { extractTextFromPDF, chunkText, findRelevantChunks, cosineSimilarity } = require('../utils/pdfExtractor');
+const { extractTextFromPDF, chunkText, cosineSimilarity } = require('../utils/pdfExtractor');
+
+function calculateCosineSimilarity(a, b) {
+    if (typeof cosineSimilarity === 'function') {
+        return cosineSimilarity(a, b);
+    }
+
+    let dot = 0;
+    let magnitudeA = 0;
+    let magnitudeB = 0;
+    for (let i = 0; i < a.length; i++) {
+        dot += a[i] * b[i];
+        magnitudeA += a[i] * a[i];
+        magnitudeB += b[i] * b[i];
+    }
+    if (magnitudeA === 0 || magnitudeB === 0) {
+        return 0;
+    }
+    return dot / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
+}
 
 async function getRelevantChunks(courseId, query, topK = 30) {
     const stored = await Embedding.find({ courseId });
@@ -19,7 +38,7 @@ async function getRelevantChunks(courseId, query, topK = 30) {
     const scored = stored.map((doc) => ({
         text: doc.text,
         source: doc.source,
-        score: cosineSimilarity(queryVector, doc.embedding),
+        score: calculateCosineSimilarity(queryVector, doc.embedding),
     }));
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, topK);
@@ -52,14 +71,9 @@ function parseModelJson(text) {
 
 function sanitizeQuestionItem(item, index) {
     const question = typeof item?.question === 'string' ? item.question.trim() : '';
-    let answer = typeof item?.answer === 'string' ? item.answer.trim() : '';
+    const answer = typeof item?.answer === 'string' ? item.answer.trim() : '';
     if (!question || !answer) {
         return null;
-    }
-
-    const fullSolutionPattern = /(step\s*\d+|final answer\s*(is|:)|full\s+derivation|therefore,?\s+the\s+answer\s+is)/i;
-    if (fullSolutionPattern.test(answer)) {
-        answer = 'Use the core concept in the question to outline your own steps, then compare your reasoning to definitions and examples from your notes.';
     }
 
     const conciseAnswer = answer.length > 650 ? `${answer.slice(0, 647).trim()}...` : answer;
@@ -87,8 +101,8 @@ Rules:
 - Questions must test understanding of ${course.department} ${course.courseCode}: ${course.title}.
 - Difficulty target: ${difficulty}.
 - Focus area: ${focus || 'general course coverage'}.
-- Do not include full worked solutions, full derivations, or final-answer-only responses.
-- Each answer must be brief guidance (2-4 sentences) that helps the student self-check.
+- Do not include long worked derivations.
+- Each answer must include the correct final answer and a brief explanation (2-4 sentences).
 - If context is missing for a topic, say that briefly in the answer.
 - Do not include markdown, code fences, or extra keys.
 
@@ -116,11 +130,6 @@ ${context}`;
 
 async function getCourseChunks(courseId) {
     const notes = await Note.find({ courseId, fileType: 'application/pdf' });
-    if (notes.length === 0) {
-        console.error(`No PDF notes found for course ${courseId}`);
-        return [];
-    }
-
     const allChunks = [];
     for (const note of notes) {
         try {
@@ -128,10 +137,49 @@ async function getCourseChunks(courseId) {
             const chunks = chunkText(text);
             chunks.forEach((chunk) => allChunks.push({ text: chunk, source: note.title }));
         } catch (err) {
-            console.error(`Failed to extract text from ${note.title}:`, err);
+            if (err?.code === 'ENOENT') {
+                console.warn(`Skipping missing local file for note ${note.title}`);
+            } else {
+                console.error(`Failed to extract text from ${note.title}:`, err.message || err);
+            }
         }
     }
+
+    if (allChunks.length > 0) {
+        return allChunks;
+    }
+
+    const embeddedChunks = await Embedding.find({ courseId }).select('text source').lean();
+    if (embeddedChunks.length > 0) {
+        return embeddedChunks.map((chunk) => ({
+            text: chunk.text,
+            source: chunk.source || 'embedded-note',
+        }));
+    }
+
+    if (notes.length === 0) {
+        console.error(`No PDF notes found for course ${courseId}`);
+    } else {
+        console.error(`No readable PDF content found for course ${courseId}`);
+    }
     return allChunks;
+}
+
+function getRelevantTextChunks(chunks, query, limit = 30) {
+    const normalizedQuery = query.toLowerCase();
+    const scored = chunks.map((chunk) => {
+        const text = String(chunk).toLowerCase();
+        let score = 0;
+        for (const term of normalizedQuery.split(/\s+/).filter(Boolean)) {
+            if (text.includes(term)) {
+                score += 1;
+            }
+        }
+        return { text: chunk, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, limit).map((item) => item.text);
 }
 
 // POST /api/courses/:id/study-guide, Generate a study guide for a course based on its PDF notes
@@ -223,7 +271,7 @@ router.post('/:id/practice-questions', protect, async (req, res) => {
         }
 
         const contextChunks = focus
-            ? findRelevantChunks(chunks.map((c) => c.text), focus, 30)
+            ? getRelevantTextChunks(chunks.map((c) => c.text), focus, 30)
             : chunks.slice(0, 30).map((c) => c.text);
         const context = contextChunks.join('\n---\n');
 
@@ -276,7 +324,7 @@ router.post('/:id/qa', protect, async (req, res) => {
             return res.status(404).json({ error: 'No PDF notes found for this course' });
         }
 
-        const relevantChunks = findRelevantChunks(chunks.map((c) => c.text), question, 30);
+        const relevantChunks = getRelevantTextChunks(chunks.map((c) => c.text), question, 30);
         const context = relevantChunks.join('\n---\n');
         const prompt = buildQaPrompt({ course, question, context });
 

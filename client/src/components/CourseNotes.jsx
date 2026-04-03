@@ -35,6 +35,15 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
     setShowUploadForm(false);
   };
 
+  const resolveDownloadUrl = (fileUrl) => {
+    if (!fileUrl) return null;
+    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+      return fileUrl;
+    }
+
+    return `${window.location.protocol}//${window.location.hostname}:3000${fileUrl}`;
+  };
+
   const handleDelete = async (noteId) => {
     if (!window.confirm('Are you sure you want to delete this note?')) return;
     try {
@@ -52,10 +61,14 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
         maxRedirects: 0,
         validateStatus: (status) => status === 302,
       });
-      window.open(response.headers.location, '_blank');
+      const downloadUrl = resolveDownloadUrl(response.headers.location || note.fileUrl);
+      if (downloadUrl) {
+        window.open(downloadUrl, '_blank');
+      }
     } catch (err) {
-      if (note.fileUrl) {
-        window.open(note.fileUrl, '_blank');
+      const downloadUrl = resolveDownloadUrl(note.fileUrl);
+      if (downloadUrl) {
+        window.open(downloadUrl, '_blank');
       } else {
         console.error('Failed to download note:', err);
       }

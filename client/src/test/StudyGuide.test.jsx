@@ -20,7 +20,7 @@ describe('StudyGuide — Rendering', () => {
     });
     test('renders modal with course name', async () => {
         render(<StudyGuide courseId="c001" courseName="CS 40800 — Software Testing" onClose={vi.fn()} />);
-        expect(screen.getByText('🤖 AI Study Guide')).toBeInTheDocument();
+        expect(screen.getByText('AI Study Guide')).toBeInTheDocument();
         expect(screen.getByText('CS 40800 — Software Testing')).toBeInTheDocument();
     });
     test('shows generate button initially', async () => {

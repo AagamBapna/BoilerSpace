@@ -109,4 +109,46 @@ describe('PracticeQuestions', () => {
       expect(screen.getByText('No PDF notes found for this course')).toBeInTheDocument();
     });
   });
+
+  test('navigates one question at a time with arrow buttons', async () => {
+    const user = userEvent.setup();
+    axios.post.mockResolvedValueOnce({
+      data: {
+        questions: [
+          {
+            id: 'q1',
+            question: 'Question one?',
+            answer: 'Answer one.',
+          },
+          {
+            id: 'q2',
+            question: 'Question two?',
+            answer: 'Answer two.',
+          },
+        ],
+      },
+    });
+
+    render(
+      <PracticeQuestions
+        courseId="course-1"
+        courseName="CS 30700"
+        onClose={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Generate Practice Questions' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('1. Question one?')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('2. Question two?')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next question' }));
+    expect(screen.getByText('2. Question two?')).toBeInTheDocument();
+    expect(screen.queryByText('1. Question one?')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Previous question' }));
+    expect(screen.getByText('1. Question one?')).toBeInTheDocument();
+  });
 });
