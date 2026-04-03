@@ -149,6 +149,9 @@ router.delete('/:noteId', protect, async (req, res) => {
         const fileName = note.fileUrl.replace(`https://storage.googleapis.com/${bucket.name}/`, '');
         await bucket.file(fileName).delete().catch(() => {});
 
+        // Cascade delete all comments for this note
+        await NoteComment.deleteMany({ noteId: note._id });
+
         await note.deleteOne();
 
         res.json({ message: 'Note deleted successfully.' });
@@ -293,6 +296,36 @@ router.post('/:noteId/comments', protect, async (req, res) => {
         }
         console.error('Error creating comment:', error);
         res.status(500).json({ error: 'Failed to create comment.' });
+    }
+});
+
+// DELETE /api/notes/:noteId/comments/:commentId — delete a comment
+router.delete('/:noteId/comments/:commentId', protect, async (req, res) => {
+    try {
+        const comment = await NoteComment.findById(req.params.commentId);
+        if (!comment) {
+            return res.status(404).json({ error: 'Comment not found.' });
+        }
+
+        // Verify the comment belongs to the specified note
+        if (comment.noteId.toString() !== req.params.noteId) {
+            return res.status(404).json({ error: 'Comment not found.' });
+        }
+
+        // Only the comment author can delete their comment
+        if (comment.userId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'You can only delete your own comments.' });
+        }
+
+        await comment.deleteOne();
+
+        res.json({ message: 'Comment deleted successfully.' });
+    } catch (error) {
+        if (error.name === 'CastError') {
+            return res.status(404).json({ error: 'Comment not found.' });
+        }
+        console.error('Error deleting comment:', error);
+        res.status(500).json({ error: 'Failed to delete comment.' });
     }
 });
 
