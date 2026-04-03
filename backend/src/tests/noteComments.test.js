@@ -102,6 +102,10 @@ beforeEach(async () => {
         fileSize: 1024,
         fileType: 'application/pdf',
     });
+
+    // Enroll both users in the course
+    await User.findByIdAndUpdate(userId, { $push: { courses: course._id } });
+    await User.findByIdAndUpdate(secondUserId, { $push: { courses: course._id } });
 });
 
 // ── POST /api/notes/:noteId/comments ────────────────────────────
@@ -408,6 +412,75 @@ describe('Cascade delete comments on note deletion', () => {
 
         expect(await NoteComment.countDocuments({ noteId: note._id })).toBe(0);
         expect(await NoteComment.countDocuments({ noteId: otherNote._id })).toBe(1);
+    });
+});
+
+// ── Course Enrollment Access Control ─────────────────────────────
+
+describe('Course enrollment access control', () => {
+    let unenrolledToken;
+
+    beforeEach(async () => {
+        // Register a third user who is NOT enrolled in the course
+        await request(app).post('/api/auth/register').send({
+            email: 'outsider@purdue.edu',
+            password: 'password123',
+            displayName: 'Outsider',
+            major: 'History',
+            year: 'Freshman',
+        });
+        const loginRes = await request(app)
+            .post('/api/auth/login')
+            .send({ email: 'outsider@purdue.edu', password: 'password123' });
+        unenrolledToken = loginRes.body.token;
+    });
+
+    test('returns 403 when non-enrolled user tries to post a comment', async () => {
+        const res = await request(app)
+            .post(`/api/notes/${note._id}/comments`)
+            .set('Authorization', `Bearer ${unenrolledToken}`)
+            .send({ content: 'I am not enrolled' });
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toBe('You must be enrolled in this course to comment.');
+    });
+
+    test('returns 403 when non-enrolled user tries to view comments', async () => {
+        const res = await request(app)
+            .get(`/api/notes/${note._id}/comments`)
+            .set('Authorization', `Bearer ${unenrolledToken}`);
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toBe('You must be enrolled in this course to view comments.');
+    });
+
+    test('returns 403 when non-enrolled user tries to delete a comment', async () => {
+        const comment = await NoteComment.create({
+            noteId: note._id,
+            userId,
+            content: 'Enrolled user comment',
+        });
+
+        const res = await request(app)
+            .delete(`/api/notes/${note._id}/comments/${comment._id}`)
+            .set('Authorization', `Bearer ${unenrolledToken}`);
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toBe('You must be enrolled in this course to manage comments.');
+
+        // Comment should still exist
+        const check = await NoteComment.findById(comment._id);
+        expect(check).not.toBeNull();
+    });
+
+    test('enrolled user can post a comment successfully', async () => {
+        const res = await request(app)
+            .post(`/api/notes/${note._id}/comments`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ content: 'I am enrolled!' });
+
+        expect(res.status).toBe(201);
+        expect(res.body.content).toBe('I am enrolled!');
     });
 });
 

@@ -4,6 +4,7 @@ const multer = require('multer');
 const Note = require('../models/Note');
 const NoteComment = require('../models/NoteComment');
 const Course = require('../models/Course');
+const User = require('../models/User');
 const upload = require('../middleware/upload');
 const { protect } = require('../middleware/auth');
 const { bucket } = require('../config/gcs');
@@ -236,6 +237,12 @@ router.get('/:noteId/comments', protect, async (req, res) => {
             return res.status(404).json({ error: 'Note not found.' });
         }
 
+        // Verify user is enrolled in the note's course
+        const user = await User.findById(req.user._id);
+        if (!user.courses.some(c => c.toString() === note.courseId.toString())) {
+            return res.status(403).json({ error: 'You must be enrolled in this course to view comments.' });
+        }
+
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
         const skip = (page - 1) * limit;
@@ -272,6 +279,12 @@ router.post('/:noteId/comments', protect, async (req, res) => {
             return res.status(404).json({ error: 'Note not found.' });
         }
 
+        // Verify user is enrolled in the note's course
+        const user = await User.findById(req.user._id);
+        if (!user.courses.some(c => c.toString() === note.courseId.toString())) {
+            return res.status(403).json({ error: 'You must be enrolled in this course to comment.' });
+        }
+
         const { content } = req.body;
         if (!content || !content.trim()) {
             return res.status(400).json({ error: 'Comment content is required.' });
@@ -305,6 +318,15 @@ router.delete('/:noteId/comments/:commentId', protect, async (req, res) => {
         const comment = await NoteComment.findById(req.params.commentId);
         if (!comment) {
             return res.status(404).json({ error: 'Comment not found.' });
+        }
+
+        // Verify user is enrolled in the note's course
+        const note = await Note.findById(req.params.noteId);
+        if (note) {
+            const user = await User.findById(req.user._id);
+            if (!user.courses.some(c => c.toString() === note.courseId.toString())) {
+                return res.status(403).json({ error: 'You must be enrolled in this course to manage comments.' });
+            }
         }
 
         // Verify the comment belongs to the specified note
