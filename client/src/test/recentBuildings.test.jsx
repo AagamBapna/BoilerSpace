@@ -2,6 +2,8 @@ import { describe, test, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import BuildingSidebar from '../components/BuildingSidebar';
+import userEvent from '@testing-library/user-event';
+import axios from 'axios';
 
 vi.mock('mapbox-gl', () => ({ default: {} }));
 
@@ -13,6 +15,13 @@ vi.mock('../contexts/LocationContext', () => ({
         resetLocationStatus: vi.fn(),
         disableLocationAccess: vi.fn(),
     }))
+}));
+
+vi.mock('axios', () => ({
+    default: {
+        get: vi.fn(() => Promise.resolve({ data: [] })),
+        post: vi.fn(() => Promise.resolve({ data: {} }))
+    }
 }));
 
 const mockBuildings = [
@@ -75,5 +84,59 @@ describe('Room amenity icons', () => {
                 recentBuildings={[]}
             />
         );
+    });
+
+    describe('Amenity filter UI', () => {
+        test('renders filter pills when a building is selected', () => {
+            render(
+                <BuildingSidebar
+                    buildings={mockBuildings}
+                    selectedBuilding={mockBuildings[0]}
+                    onSelectBuilding={vi.fn()}
+                    onClose={vi.fn()}
+                    user={{ displayName: 'Test' }}
+                    onLogout={vi.fn()}
+                    recentBuildings={[]}
+                />
+            );
+            expect(screen.getByText('Filter by Amenity')).toBeDefined();
+            expect(screen.getByText('Whiteboard')).toBeDefined();
+            expect(screen.getByText('Projector')).toBeDefined();
+            expect(screen.getByText('Outlets')).toBeDefined();
+        });
+        test('does not show filter pills on building list view', () => {
+            render(
+                <BuildingSidebar
+                    buildings={mockBuildings}
+                    selectedBuilding={null}
+                    onSelectBuilding={vi.fn()}
+                    onClose={vi.fn()}
+                    user={{ displayName: 'Test' }}
+                    onLogout={vi.fn()}
+                    recentBuildings={[]}
+                />
+            );
+            expect(screen.queryByText('Filter by Amenity')).toBeNull();
+        });
+        test('shows clear filters button when a filter is active', async () => {
+            const user = userEvent.setup();
+            render(
+                <BuildingSidebar
+                    buildings={mockBuildings}
+                    selectedBuilding={mockBuildings[0]}
+                    onSelectBuilding={vi.fn()}
+                    onClose={vi.fn()}
+                    user={{ displayName: 'Test' }}
+                    onLogout={vi.fn()}
+                    recentBuildings={[]}
+                />
+            );
+            // No clear button initially
+            expect(screen.queryByText('Clear filters')).toBeNull();
+            // Click Whiteboard filter
+            await user.click(screen.getByText('Whiteboard'));
+            // Clear button should now appear
+            expect(screen.getByText('Clear filters')).toBeDefined();
+        });
     });
 });

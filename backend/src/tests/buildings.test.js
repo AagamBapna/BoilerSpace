@@ -265,6 +265,49 @@ describe('GET /api/buildings/:id/rooms', () => {
     });
 });
 
+// ─── API: GET /api/buildings/:id/rooms?amenities= ────────────────────────────
+describe('GET /api/buildings/:id/rooms — amenity filtering', () => {
+    let walc;
+    beforeEach(async () => {
+        walc = await Building.create(sampleBuildings[0]);
+        await Room.insertMany([
+            { buildingId: walc._id, name: 'WALC 1018', floor: 1, capacity: 30, amenities: ['Whiteboard', 'Projector'], noiseLevel: 'moderate' },
+            { buildingId: walc._id, name: 'WALC 1055', floor: 1, capacity: 20, amenities: ['Outlets', 'Whiteboard'], noiseLevel: 'quiet' },
+            { buildingId: walc._id, name: 'WALC 2051', floor: 2, capacity: 50, amenities: ['Projector', 'Outlets'], noiseLevel: 'moderate' },
+            { buildingId: walc._id, name: 'WALC 3087', floor: 3, capacity: 40, amenities: ['Outlets'], noiseLevel: 'loud' },
+        ]);
+    });
+    test('returns all rooms when no amenity filter is provided', async () => {
+        const res = await request(app).get(`/api/buildings/${walc._id}/rooms`);
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveLength(4);
+    });
+    // Acceptance Criteria: selecting "whiteboard" shows only rooms with whiteboards
+    test('filters rooms by a single amenity', async () => {
+        const res = await request(app).get(`/api/buildings/${walc._id}/rooms?amenities=Whiteboard`);
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveLength(2);
+        res.body.forEach((room) => {
+            expect(room.amenities).toContain('Whiteboard');
+        });
+    });
+    // Acceptance Criteria: selecting "outlets" AND "whiteboard" shows only rooms with both
+    test('filters rooms by multiple amenities (AND logic)', async () => {
+        const res = await request(app).get(`/api/buildings/${walc._id}/rooms?amenities=Whiteboard,Outlets`);
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveLength(1);
+        expect(res.body[0].name).toBe('WALC 1055');
+        expect(res.body[0].amenities).toContain('Whiteboard');
+        expect(res.body[0].amenities).toContain('Outlets');
+    });
+    test('returns empty array when no rooms match the amenity filter', async () => {
+        const res = await request(app).get(`/api/buildings/${walc._id}/rooms?amenities=Cafe`);
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual([]);
+    });
+});
+
+
 // ─── No-Duplicate Seeding Acceptance Criteria ────────────────────────────────
 
 describe('No duplicate buildings after re-seed', () => {

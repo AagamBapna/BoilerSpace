@@ -214,6 +214,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                         </div>
                         <p className="text-sm text-[var(--color-text-secondary)]" style={{ marginBottom: '12px' }}>
                             {selectedBuilding.abbreviation} · {selectedBuilding.address || 'Purdue University'}
+                            {selectedBuilding.distance != null && ` · ${selectedBuilding.distance.toFixed(2)} mi away`}
                         </p>
                         <div className="flex flex-wrap" style={{ gap: '6px', marginBottom: '16px' }}>
                             {(selectedBuilding.amenities || []).map((a, i) => (
@@ -335,8 +336,8 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                             );
                                         }}
                                         className={`text-xs font-medium transition-all ${isActive
-                                                ? 'text-black bg-[var(--color-purdue-gold)]'
-                                                : 'text-[var(--color-text-secondary)] hover:text-white'
+                                            ? 'text-black bg-[var(--color-purdue-gold)]'
+                                            : 'text-[var(--color-text-secondary)] hover:text-white'
                                             }`}
                                         style={{
                                             padding: '5px 12px',
