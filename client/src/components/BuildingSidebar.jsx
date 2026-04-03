@@ -10,6 +10,7 @@ import { useLocation } from '../contexts/LocationContext';
 
 export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [], recentBuildings = [], onRefreshRecentBuildings }) {
     const [rooms, setRooms] = useState([]);
+    const [selectedAmenities, setSelectedAmenities] = useState([]);
     const [loadingRooms, setLoadingRooms] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [sidebarView, setSidebarView] = useState('buildings');
@@ -30,7 +31,11 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     const fetchRooms = async () => {
         if (!selectedBuilding) return;
         try {
-            const res = await axios.get(`/api/buildings/${selectedBuilding._id}/rooms`);
+            const params = {};
+            if (selectedAmenities.length > 0) {
+                params.amenities = selectedAmenities.join(',');
+            }
+            const res = await axios.get(`/api/buildings/${selectedBuilding._id}/rooms`, { params });
             setRooms(res.data);
         } catch (err) {
             console.error('Failed to fetch rooms:', err);
@@ -44,14 +49,21 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
             setShowSnackReporter(false);
             return;
         }
-        fetchRooms();
+        setSelectedAmenities([]);
         // Fetch snack data for selected building
         axios.get(`/api/buildings/${selectedBuilding._id}/snacks`)
             .then(res => setSnackData(res.data))
             .catch(() => setSnackData(null));
+    }, [selectedBuilding]);
+
+    useEffect(() => {
+        if (!selectedBuilding) {
+            return;
+        }
+        fetchRooms();
         const interval = setInterval(fetchRooms, 5000);
         return () => clearInterval(interval);
-    }, [selectedBuilding]);
+    }, [selectedBuilding, selectedAmenities]);
 
     useEffect(() => {
         if (!activeCheckIn) return;
@@ -62,13 +74,13 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
         return () => clearTimeout(timer);
     }, [activeCheckIn]);
 
-        const calcDistance = (lat1, lon1, lat2, lon2) => {
+    const calcDistance = (lat1, lon1, lat2, lon2) => {
         const R = 3958.8;
         const latDistance = (lat2 - lat1) * Math.PI / 180;
         const lonDistance = (lon2 - lon1) * Math.PI / 180;
         const a = Math.sin(latDistance / 2) ** 2 +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(lonDistance / 2) ** 2;
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(lonDistance / 2) ** 2;
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     };
 
@@ -78,16 +90,16 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                 b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 b.abbreviation.toLowerCase().includes(searchQuery.toLowerCase())
         )
-        .map(b =>({
-            ...b,
-            distance: userLocation ? calcDistance(userLocation[1], userLocation[0], b.latitude, b.longitude) : null
-        }))
-        .sort((a, b) => {
-            if (a.distance !== null && b.distance !== null) {
-                return a.distance - b.distance;
-            }
-            return 0;
-        })
+            .map(b => ({
+                ...b,
+                distance: userLocation ? calcDistance(userLocation[1], userLocation[0], b.latitude, b.longitude) : null
+            }))
+            .sort((a, b) => {
+                if (a.distance !== null && b.distance !== null) {
+                    return a.distance - b.distance;
+                }
+                return 0;
+            })
         : [];
 
     const noiseLevelIcon = {
@@ -202,6 +214,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                         </div>
                         <p className="text-sm text-[var(--color-text-secondary)]" style={{ marginBottom: '12px' }}>
                             {selectedBuilding.abbreviation} · {selectedBuilding.address || 'Purdue University'}
+                            {selectedBuilding.distance != null && ` · ${selectedBuilding.distance.toFixed(2)} mi away`}
                         </p>
                         <div className="flex flex-wrap" style={{ gap: '6px', marginBottom: '16px' }}>
                             {(selectedBuilding.amenities || []).map((a, i) => (
@@ -224,7 +237,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                             setShowingOriginSelector(false);
                                             document.dispatchEvent(new CustomEvent('getDirections', { detail: { destId: selectedBuilding._id, originId: building._id } }));
                                         }}
-                                        onSearchChange={() => {}}
+                                        onSearchChange={() => { }}
                                     />
                                 </div>
                                 <div className="text-center relative py-1">
@@ -300,6 +313,54 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                 onUpdate={(updated) => setSnackData(prev => ({ ...prev, ...updated }))}
                                 onClose={() => setShowSnackReporter(false)}
                             />
+                        )}
+                    </div>
+
+                    {/* Amenity Filter */}
+                    <div style={{ padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <p className="text-xs text-[var(--color-text-secondary)] font-medium uppercase"
+                            style={{ marginBottom: '8px', letterSpacing: '0.05em' }}>
+                            Filter by Amenity
+                        </p>
+                        <div className="flex flex-wrap" style={{ gap: '6px' }}>
+                            {['Whiteboard', 'Projector', 'Outlets', 'Cafe', 'Lab', 'Printers'].map((amenity) => {
+                                const isActive = selectedAmenities.includes(amenity);
+                                return (
+                                    <button
+                                        key={amenity}
+                                        onClick={() => {
+                                            setSelectedAmenities((prev) =>
+                                                isActive
+                                                    ? prev.filter((a) => a !== amenity)
+                                                    : [...prev, amenity]
+                                            );
+                                        }}
+                                        className={`text-xs font-medium transition-all ${isActive
+                                            ? 'text-black bg-[var(--color-purdue-gold)]'
+                                            : 'text-[var(--color-text-secondary)] hover:text-white'
+                                            }`}
+                                        style={{
+                                            padding: '5px 12px',
+                                            borderRadius: '20px',
+                                            border: isActive
+                                                ? '1px solid var(--color-purdue-gold)'
+                                                : '1px solid rgba(255,255,255,0.1)',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        {amenity}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {selectedAmenities.length > 0 && (
+                            <button
+                                onClick={() => setSelectedAmenities([])}
+                                className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-purdue-gold)] transition-colors"
+                                style={{ marginTop: '8px' }}
+                            >
+                                Clear filters
+                            </button>
                         )}
                     </div>
 

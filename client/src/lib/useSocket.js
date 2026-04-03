@@ -18,7 +18,7 @@ export function useSocket(user) {
             return;
         }
 
-        const socket = io(window.location.origin.replace(/:\d+$/, ':3000'), {
+        const socket = io(window.location.origin.replace(/:\d+$/, ':5001'), {
             auth: { token },
             transports: ['websocket', 'polling'],
         });

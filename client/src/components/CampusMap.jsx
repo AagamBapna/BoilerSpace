@@ -23,13 +23,23 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
     const markersRef = useRef([]);
     const popupRef = useRef(null);
     const directionsRef = useRef(null);
-    const { requestLocationAccess } = useLocation();
+    const { requestLocationAccess, userLocation } = useLocation();
 
     // Store buildings map for easy lookup
     const buildingsMap = useRef(new Map());
     useEffect(() => {
         buildingsMap.current = new Map(buildings.map(b => [b._id, b]));
     }, [buildings]);
+
+    const calcDistance = (lat1, lon1, lat2, lon2) => {
+        const R = 3958.8;
+        const latDistance = (lat2 - lat1) * Math.PI / 180;
+        const lonDistance = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(latDistance / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(lonDistance / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
 
     // Initialize map
     useEffect(() => {
@@ -175,7 +185,8 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
                 .addTo(map.current);
 
             // Click handler
-            el.addEventListener('click', () => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
                 onSelectBuilding(building);
                 flyToBuilding(building);
                 showPopup(building, status);
@@ -185,6 +196,7 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
             el.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
+                    e.stopPropagation();
                     onSelectBuilding(building);
                     flyToBuilding(building);
                     showPopup(building, status);
@@ -214,6 +226,11 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
 
     const showPopup = useCallback((building, status) => {
         if (popupRef.current) popupRef.current.remove();
+        let displayDistance = building.distance;
+        if (displayDistance == null && userLocation) {
+            displayDistance = calcDistance(userLocation[1], userLocation[0], building.latitude, building.longitude);
+        }
+
 
         const statusColors = {
             open: '#22c55e',
@@ -227,7 +244,11 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
         };
 
         const html = `
-      <div style="padding: 16px 18px;">
+      <div style="padding: 16px 18px; position: relative;">
+        ${displayDistance != null ? `
+        <div style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: linear-gradient(to right, #2a2215, #1f1a10); color: #CEB888; border: 1px solid rgba(206, 184, 136, 0.3); font-weight: 600; font-size: 10px; padding: 4px 14px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
+            ${displayDistance.toFixed(2)} mi away
+        </div>` : ''}
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <span style="width:10px;height:10px;border-radius:50%;background:${statusColors[status]};display:inline-block;"></span>
           <span style="font-size:11px;color:${statusColors[status]};font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${statusLabels[status]}</span>
@@ -261,7 +282,7 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
             .setLngLat([building.longitude, building.latitude])
             .setHTML(html)
             .addTo(map.current);
-    }, []);
+    }, [userLocation]);
 
     return (
         <div className="flex-1 h-full relative">
