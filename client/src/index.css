@@ -349,9 +349,18 @@ body {
 }
 
 @keyframes sparkle {
-    0%, 100% { opacity: 0.3; transform: scale(0.8); }
-    50% { opacity: 1; transform: scale(1.2); }
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
   }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
 
 /* ── Course Selector ──────────────────────────────────────── */
 .background-blur {
@@ -618,4 +627,78 @@ body {
 .timestamp-tooltip:hover::after,
 .timestamp-tooltip:focus::after {
   opacity: 1;
+}
+
+/* ── Mapbox Directions Dark Theme Overrides ───────────────────── */
+.mapboxgl-ctrl-directions {
+  background: var(--color-surface-light) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.mapbox-directions-inputs {
+  background: var(--color-surface-light) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.mapbox-directions-component input {
+  background: var(--color-surface-hover) !important;
+  color: var(--color-text-primary) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+}
+
+.mapbox-directions-component input:focus {
+  border-color: var(--color-purdue-gold) !important;
+}
+
+.mapbox-directions-origin .mapbox-form-label {
+  background-color: var(--color-status-open) !important;
+}
+
+.mapbox-directions-destination .mapbox-form-label {
+  background-color: var(--color-status-busy) !important;
+}
+
+.directions-icon {
+  filter: invert(1) brightness(0.8) !important;
+}
+
+.mapbox-directions-instructions {
+  background: var(--color-surface-light) !important;
+  max-height: 450px;
+  overflow-y: auto;
+}
+
+.mapbox-directions-step {
+  color: var(--color-text-secondary) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.mapbox-directions-step:hover {
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.mapbox-directions-profile {
+  background: var(--color-surface-light) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.mapbox-directions-profile label {
+  color: var(--color-text-secondary) !important;
+  background: transparent !important;
+}
+
+.mapbox-directions-profile input[type="radio"]:checked+label {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-directions {
+  margin-bottom: 40px;
+  /* Float slightly above bottom edge */
+  margin-left: 20px;
 }

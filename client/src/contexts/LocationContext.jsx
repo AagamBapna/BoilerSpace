@@ -16,20 +16,20 @@ export function LocationProvider({ children }) {
     useEffect(() => {
         localStorage.setItem('boilerSpace_locationStatus', locationStatus);
 
+        // Always check natively if the permission was revoked in browser
+        if (navigator.permissions) {
+            navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+                // Only auto-sync denial. Do NOT auto-sync 'granted' because 
+                // the user might want it explicitly disabled within our app's UI overriding the browser!
+                if (result.state === 'denied' && locationStatus !== 'denied') {
+                    setLocationStatus('denied');
+                    setUserLocation(null);
+                }
+            });
+        }
+
         if (locationStatus === 'granted') {
-            // Check natively if the permission was revoked in browser
-            if (navigator.permissions) {
-                navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-                    if (result.state === 'denied') {
-                        setLocationStatus('denied');
-                        setUserLocation(null);
-                    } else {
-                        getCurrentLocation();
-                    }
-                });
-            } else {
-                getCurrentLocation();
-            }
+            getCurrentLocation();
         }
     }, [locationStatus]);
 
@@ -74,11 +74,31 @@ export function LocationProvider({ children }) {
             return;
         }
 
-        // If 'prompt', show our custom modal
         if (onSuccess) {
             setOnSuccessCallbacks(prev => [...prev, onSuccess]);
         }
         setIsPromptModalOpen(true);
+    };
+
+    const disableLocationAccess = () => {
+        setLocationStatus('denied');
+        setUserLocation(null);
+    };
+
+    const resetLocationStatus = () => {
+        if (navigator.permissions) {
+            navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+                if (result.state === 'denied') {
+                    alert('You have permanently blocked location access in your browser. Please click the padlock icon in your address bar, change Location to Allow, and refresh the page to enable this feature.');
+                } else {
+                    setLocationStatus('prompt');
+                    requestLocationAccess();
+                }
+            });
+        } else {
+            setLocationStatus('prompt');
+            requestLocationAccess();
+        }
     };
 
     const handleModalAllow = () => {
@@ -100,6 +120,8 @@ export function LocationProvider({ children }) {
             locationStatus,
             userLocation,
             requestLocationAccess,
+            resetLocationStatus,
+            disableLocationAccess,
             isPromptModalOpen,
             handleModalAllow,
             handleModalDeny

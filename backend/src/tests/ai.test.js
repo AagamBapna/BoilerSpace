@@ -176,6 +176,7 @@ describe('GET /api/courses/:id/study-guides', () => {
             content: 'Old guide',
             notesUsed: 2,
         });
+        await new Promise((resolve) => setTimeout(resolve, 50));
         await StudyGuide.create({
             courseId: course._id,
             userId,
