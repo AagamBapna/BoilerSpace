@@ -276,3 +276,92 @@ describe('CourseNotes — Upload Form Toggle', () => {
         expect(screen.getByText('+ Upload')).toBeInTheDocument();
     });
 });
+
+describe('CourseNotes — Comment Toggle', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    test('shows comment toggle button on each note', async () => {
+        axios.get.mockResolvedValueOnce({ data: sampleNotes });
+        render(<CourseNotes courseId="c001" courseName="CS 30700" onClose={vi.fn()} userId="u001" />);
+        await waitFor(() => {
+            expect(screen.getByText('Lecture 1 Notes')).toBeInTheDocument();
+        });
+
+        const commentButtons = screen.getAllByTitle('Comments');
+        expect(commentButtons).toHaveLength(2);
+    });
+
+    test('expands comment section when comment button is clicked', async () => {
+        const user = userEvent.setup();
+        axios.get
+            .mockResolvedValueOnce({ data: sampleNotes })
+            .mockResolvedValueOnce({ data: { comments: [], total: 0, page: 1 } });
+
+        render(<CourseNotes courseId="c001" courseName="CS 30700" onClose={vi.fn()} userId="u001" />);
+        await waitFor(() => {
+            expect(screen.getByText('Lecture 1 Notes')).toBeInTheDocument();
+        });
+
+        await user.click(screen.getAllByTitle('Comments')[0]);
+
+        await waitFor(() => {
+            expect(screen.getByText('No comments yet. Be the first to comment!')).toBeInTheDocument();
+            expect(screen.getByPlaceholderText('Add a comment...')).toBeInTheDocument();
+        });
+    });
+
+    test('collapses comment section when comment button is clicked again', async () => {
+        const user = userEvent.setup();
+        axios.get
+            .mockResolvedValueOnce({ data: sampleNotes })
+            .mockResolvedValueOnce({ data: { comments: [], total: 0, page: 1 } });
+
+        render(<CourseNotes courseId="c001" courseName="CS 30700" onClose={vi.fn()} userId="u001" />);
+        await waitFor(() => {
+            expect(screen.getByText('Lecture 1 Notes')).toBeInTheDocument();
+        });
+
+        // Open
+        await user.click(screen.getAllByTitle('Comments')[0]);
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText('Add a comment...')).toBeInTheDocument();
+        });
+
+        // Close
+        await user.click(screen.getAllByTitle('Comments')[0]);
+        await waitFor(() => {
+            expect(screen.queryByPlaceholderText('Add a comment...')).not.toBeInTheDocument();
+        });
+    });
+
+    test('can expand comments on multiple notes independently', async () => {
+        const user = userEvent.setup();
+        axios.get
+            .mockResolvedValueOnce({ data: sampleNotes })
+            .mockResolvedValueOnce({ data: { comments: [{ _id: 'c1', noteId: 'n001', userId: { _id: 'u001', displayName: 'Note Tester', profilePictureUrl: '' }, content: 'First note comment', createdAt: new Date().toISOString() }], total: 1, page: 1 } })
+            .mockResolvedValueOnce({ data: { comments: [{ _id: 'c2', noteId: 'n002', userId: { _id: 'u002', displayName: 'Other User', profilePictureUrl: '' }, content: 'Second note comment', createdAt: new Date().toISOString() }], total: 1, page: 1 } });
+
+        render(<CourseNotes courseId="c001" courseName="CS 30700" onClose={vi.fn()} userId="u001" />);
+        await waitFor(() => {
+            expect(screen.getByText('Lecture 1 Notes')).toBeInTheDocument();
+        });
+
+        // Open comments on first note
+        await user.click(screen.getAllByTitle('Comments')[0]);
+        await waitFor(() => {
+            expect(screen.getByText('First note comment')).toBeInTheDocument();
+        });
+
+        // Open comments on second note
+        await user.click(screen.getAllByTitle('Comments')[1]);
+        await waitFor(() => {
+            expect(screen.getByText('Second note comment')).toBeInTheDocument();
+        });
+
+        // Both should be visible
+        expect(screen.getByText('First note comment')).toBeInTheDocument();
+        expect(screen.getByText('Second note comment')).toBeInTheDocument();
+    });
+});
