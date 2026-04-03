@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const Note = require('../models/Note');
+const NoteComment = require('../models/NoteComment');
 const Course = require('../models/Course');
 const upload = require('../middleware/upload');
 const { protect } = require('../middleware/auth');
@@ -221,6 +222,41 @@ router.delete('/:noteId/vote', protect, async (req, res) => {
     } catch (error) {
         console.error('Error removing vote:', error);
         res.status(500).json({ error: 'Failed to remove vote.' });
+    }
+});
+
+// POST /api/notes/:noteId/comments — add a comment to a note
+router.post('/:noteId/comments', protect, async (req, res) => {
+    try {
+        const note = await Note.findById(req.params.noteId);
+        if (!note) {
+            return res.status(404).json({ error: 'Note not found.' });
+        }
+
+        const { content } = req.body;
+        if (!content || !content.trim()) {
+            return res.status(400).json({ error: 'Comment content is required.' });
+        }
+
+        if (content.length > 2000) {
+            return res.status(400).json({ error: 'Comment cannot exceed 2000 characters.' });
+        }
+
+        const comment = await NoteComment.create({
+            noteId: note._id,
+            userId: req.user._id,
+            content: content.trim(),
+        });
+
+        await comment.populate('userId', 'displayName email profilePictureUrl');
+
+        res.status(201).json(comment);
+    } catch (error) {
+        if (error.name === 'CastError') {
+            return res.status(404).json({ error: 'Note not found.' });
+        }
+        console.error('Error creating comment:', error);
+        res.status(500).json({ error: 'Failed to create comment.' });
     }
 });
 
