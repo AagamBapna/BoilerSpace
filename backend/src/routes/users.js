@@ -85,7 +85,7 @@ router.get('/search', protect, async (req, res) => {
     }
 });
 
-// GET /api/users/:id, get user by ID (with privacy guard)
+// GET /api/users/:id, get user by ID (with tiered privacy)
 router.get('/:id', protect, async (req, res) => {
     try {
         const user = await User.findById(req.params.id)
@@ -95,27 +95,61 @@ router.get('/:id', protect, async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // If user is private and viewer is not their friend, return limited info
-        if (user.profileVisibility === 'private' && req.user._id.toString() !== user._id.toString()) {
-            const Friendship = require('../models/Friendship');
-            const friendship = await Friendship.findOne({
-                $or: [
-                    { requester: req.user._id, recipient: user._id, status: 'accepted' },
-                    { requester: user._id, recipient: req.user._id, status: 'accepted' },
-                ],
-            });
+        const isSelf = req.user._id.toString() === user._id.toString();
 
-            if (!friendship) {
-                return res.json({
-                    _id: user._id,
-                    displayName: user.displayName,
-                    profilePictureUrl: user.profilePictureUrl,
-                    profileVisibility: user.profileVisibility,
-                });
+        // Self-view: return full profile
+        if (isSelf) {
+            return res.json(user);
+        }
+
+        // Non-self: look up friendship status
+        const Friendship = require('../models/Friendship');
+        const friendship = await Friendship.findOne({
+            $or: [
+                { requester: req.user._id, recipient: user._id },
+                { requester: user._id, recipient: req.user._id },
+            ],
+        });
+
+        let connectionStatus = 'none';
+        let friendshipId = null;
+        if (friendship) {
+            friendshipId = friendship._id;
+            if (friendship.status === 'accepted') {
+                connectionStatus = 'accepted';
+            } else if (friendship.status === 'pending') {
+                connectionStatus = friendship.requester.toString() === req.user._id.toString()
+                    ? 'pending_outgoing'
+                    : 'pending_incoming';
             }
         }
 
-        res.json(user);
+        // Private profile and not friends: return minimal info
+        if (user.profileVisibility === 'private' && connectionStatus !== 'accepted') {
+            return res.json({
+                _id: user._id,
+                displayName: user.displayName,
+                profilePictureUrl: user.profilePictureUrl,
+                profileVisibility: user.profileVisibility,
+                connectionStatus,
+                friendshipId,
+            });
+        }
+
+        // Public profile (or private but friends): return public fields only
+        res.json({
+            _id: user._id,
+            displayName: user.displayName,
+            profilePictureUrl: user.profilePictureUrl,
+            profileVisibility: user.profileVisibility,
+            major: user.major,
+            year: user.year,
+            bio: user.bio,
+            courses: user.courses,
+            availability: user.availability,
+            connectionStatus,
+            friendshipId,
+        });
     } catch (err) {
         if (err.name === 'CastError') {
             return res.status(404).json({ error: 'User not found' });
@@ -131,7 +165,7 @@ router.put('/:id', protect, async (req, res) => {
         if (req.user._id.toString() !== req.params.id) {
             return res.status(403).json({ error: 'You can only update your own profile' });
         }
-        const { displayName, major, year } = req.body;
+        const { displayName, major, year, bio } = req.body;
         if (displayName !== undefined && (!displayName || displayName.trim().length === 0)) {
             return res.status(400).json({ error: 'Display name cannot be empty' });
         }
@@ -156,6 +190,12 @@ router.put('/:id', protect, async (req, res) => {
         if (year !== undefined) {
             user.year = year;
         }
+        if (bio !== undefined) {
+            if (bio.length > 300) {
+                return res.status(400).json({ error: 'Bio must be 300 characters or fewer' });
+            }
+            user.bio = bio.trim();
+        }
         await user.save();
         res.json({
             message: 'Profile updated successfully',
@@ -165,6 +205,7 @@ router.put('/:id', protect, async (req, res) => {
                 displayName: user.displayName,
                 major: user.major,
                 year: user.year,
+                bio: user.bio,
                 profilePictureUrl: user.profilePictureUrl,
             }
         });

@@ -33,6 +33,12 @@ const userSchema = new mongoose.Schema(
             required: [true, 'Year is required'],
             trim: true,
         },
+        bio: {
+            type: String,
+            default: '',
+            maxlength: [300, 'Bio must be 300 characters or fewer'],
+            trim: true,
+        },
         emailVerified: {
             type: Boolean,
             default: false,
