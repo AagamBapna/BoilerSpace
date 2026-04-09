@@ -136,7 +136,7 @@ router.get('/:id', protect, async (req, res) => {
             });
         }
 
-        // Public profile (or private but friends): return public fields only
+        // Public profile : return public fields only
         res.json({
             _id: user._id,
             displayName: user.displayName,
