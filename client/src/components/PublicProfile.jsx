@@ -133,6 +133,79 @@ export default function PublicProfile({ user, onUserUpdate }) {
 
   const isPrivate = profile?.profileVisibility === 'private' && !profile?.courses;
 
+  // ── Connection state machine ──
+  const [connecting, setConnecting] = useState(false);
+  const [actionError, setActionError] = useState(null);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    setActionError(null);
+    try {
+      const res = await axios.post('/api/friendships/request', { recipientId: userId });
+      setProfile(prev => ({ ...prev, connectionStatus: 'pending_outgoing', friendshipId: res.data._id }));
+    } catch (err) {
+      setActionError(err.response?.data?.error || 'Failed to send connection request.');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleCancelRequest = async () => {
+    if (!profile.friendshipId) return;
+    setConnecting(true);
+    setActionError(null);
+    try {
+      await axios.delete(`/api/friendships/${profile.friendshipId}`);
+      setProfile(prev => ({ ...prev, connectionStatus: 'none', friendshipId: null }));
+    } catch (err) {
+      setActionError(err.response?.data?.error || 'Failed to cancel request.');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleAcceptRequest = async () => {
+    if (!profile.friendshipId) return;
+    setConnecting(true);
+    setActionError(null);
+    try {
+      await axios.put(`/api/friendships/${profile.friendshipId}/accept`);
+      setProfile(prev => ({ ...prev, connectionStatus: 'accepted' }));
+    } catch (err) {
+      setActionError(err.response?.data?.error || 'Failed to accept request.');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (!profile.friendshipId) return;
+    setConnecting(true);
+    setActionError(null);
+    try {
+      await axios.put(`/api/friendships/${profile.friendshipId}/reject`);
+      setProfile(prev => ({ ...prev, connectionStatus: 'none', friendshipId: null }));
+    } catch (err) {
+      setActionError(err.response?.data?.error || 'Failed to decline request.');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleUnfriend = async () => {
+    if (!profile.friendshipId) return;
+    setConnecting(true);
+    setActionError(null);
+    try {
+      await axios.delete(`/api/friendships/${profile.friendshipId}`);
+      setProfile(prev => ({ ...prev, connectionStatus: 'none', friendshipId: null }));
+    } catch (err) {
+      setActionError(err.response?.data?.error || 'Failed to remove friend.');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   const topActionClass = 'profile-button-like min-w-[100px] justify-center';
 
   // -- Avatar helper --
@@ -320,34 +393,88 @@ export default function PublicProfile({ user, onUserUpdate }) {
                     <p className="text-sm text-[var(--color-text-secondary)] mt-2">This profile is private.</p>
                   )}
 
-                  {/* Connect button area — placeholder for Commit 3 */}
-                  {!isSelf && !isPrivate && profile.connectionStatus === 'none' && (
-                    <button
-                      id="connect-button"
-                      className="mt-2 w-full max-w-xs py-2.5 text-sm font-semibold rounded-lg bg-[var(--color-purdue-gold)] text-black hover:bg-[var(--color-purdue-gold-light)] transition-colors"
-                    >
-                      Connect
-                    </button>
-                  )}
-                  {!isSelf && profile.connectionStatus === 'pending_outgoing' && (
-                    <div className="mt-2 w-full max-w-xs py-2.5 text-sm font-semibold rounded-lg bg-yellow-500/20 text-yellow-400 text-center">
-                      Request Pending
+                  {/* Connect / Friendship action buttons */}
+                  {!isSelf && !isPrivate && (
+                    <div className="w-full max-w-xs mt-2">
+                      {profile.connectionStatus === 'none' && (
+                        <button
+                          id="connect-button"
+                          onClick={handleConnect}
+                          disabled={connecting}
+                          className="w-full py-2.5 text-sm font-semibold rounded-lg bg-[var(--color-purdue-gold)] text-black hover:bg-[var(--color-purdue-gold-light)] transition-colors disabled:opacity-50"
+                        >
+                          {connecting ? 'Sending...' : 'Connect'}
+                        </button>
+                      )}
+                      {profile.connectionStatus === 'pending_outgoing' && (
+                        <button
+                          onClick={handleCancelRequest}
+                          disabled={connecting}
+                          className="w-full py-2.5 text-sm font-semibold rounded-lg bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 transition-colors disabled:opacity-50"
+                        >
+                          {connecting ? 'Cancelling...' : 'Request Pending — Cancel'}
+                        </button>
+                      )}
+                      {profile.connectionStatus === 'pending_incoming' && (
+                        <div className="flex gap-2">
+                          <button
+                            id="accept-request-button"
+                            onClick={handleAcceptRequest}
+                            disabled={connecting}
+                            className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-[var(--color-purdue-gold)] text-black hover:bg-[var(--color-purdue-gold-light)] transition-colors disabled:opacity-50"
+                          >
+                            {connecting ? 'Accepting...' : 'Accept Request'}
+                          </button>
+                          <button
+                            onClick={handleRejectRequest}
+                            disabled={connecting}
+                            className="px-4 py-2.5 text-sm font-semibold rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                      {profile.connectionStatus === 'accepted' && (
+                        <div className="flex flex-col gap-2">
+                          <div className="w-full py-2.5 text-sm font-semibold rounded-lg bg-green-500/20 text-green-400 text-center flex items-center justify-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Friends
+                          </div>
+                          <button
+                            onClick={handleUnfriend}
+                            disabled={connecting}
+                            className="w-full py-2 text-xs rounded-lg text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                          >
+                            {connecting ? 'Removing...' : 'Unfriend'}
+                          </button>
+                        </div>
+                      )}
+                      {actionError && (
+                        <p className="text-xs text-red-400 mt-2 text-center">{actionError}</p>
+                      )}
                     </div>
                   )}
-                  {!isSelf && profile.connectionStatus === 'pending_incoming' && (
-                    <button
-                      id="accept-request-button"
-                      className="mt-2 w-full max-w-xs py-2.5 text-sm font-semibold rounded-lg bg-[var(--color-purdue-gold)] text-black hover:bg-[var(--color-purdue-gold-light)] transition-colors"
-                    >
-                      Accept Friend Request
-                    </button>
-                  )}
-                  {!isSelf && profile.connectionStatus === 'accepted' && (
-                    <div className="mt-2 w-full max-w-xs py-2.5 text-sm font-semibold rounded-lg bg-green-500/20 text-green-400 text-center flex items-center justify-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Friends
+                  {!isSelf && isPrivate && profile.connectionStatus !== 'accepted' && (
+                    <div className="w-full max-w-xs mt-2">
+                      {profile.connectionStatus === 'none' && (
+                        <button
+                          onClick={handleConnect}
+                          disabled={connecting}
+                          className="w-full py-2.5 text-sm font-semibold rounded-lg bg-[var(--color-purdue-gold)] text-black hover:bg-[var(--color-purdue-gold-light)] transition-colors disabled:opacity-50"
+                        >
+                          {connecting ? 'Sending...' : 'Send Friend Request'}
+                        </button>
+                      )}
+                      {profile.connectionStatus === 'pending_outgoing' && (
+                        <div className="w-full py-2.5 text-sm font-semibold rounded-lg bg-yellow-500/20 text-yellow-400 text-center">
+                          Request Pending
+                        </div>
+                      )}
+                      {actionError && (
+                        <p className="text-xs text-red-400 mt-2 text-center">{actionError}</p>
+                      )}
                     </div>
                   )}
                 </div>

@@ -9,6 +9,7 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
     const [displayName, setDisplayName] = useState(user.displayName || '');
     const [major, setMajor] = useState(user.major || '');
     const [year, setYear] = useState(user.year || '');
+    const [bio, setBio] = useState(user.bio || '');
     const [profilePictureUrl, setProfilePictureUrl] = useState(user.profilePictureUrl || '');
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
@@ -26,6 +27,7 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
                 displayName,
                 major,
                 year,
+                bio,
             });
             setSuccess(true);
             setEditing(false);
@@ -49,6 +51,7 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
         setDisplayName(user.displayName || '');
         setMajor(user.major || '');
         setYear(user.year || '');
+        setBio(user.bio || '');
         setEditing(false);
         setError(null);
     };
@@ -227,6 +230,12 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
                 <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Display Name</label>
                 <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)}
                   className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Bio</label>
+                <textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={300} rows={2} placeholder="Tell others about yourself..."
+                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)] resize-none" />
+                <p className="text-xs text-[var(--color-text-secondary)] mt-1 text-right">{bio.length}/300</p>
               </div>
               <div>
                 <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Major</label>
