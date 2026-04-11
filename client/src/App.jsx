@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, useInRouterContext, Link } from 'react-router-dom';
+import { Routes, Route, useInRouterContext, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
@@ -15,6 +15,7 @@ import ClassmateDiscovery from './components/ClassmateDiscovery';
 import FriendRequests from './components/FriendRequests';
 import FriendsList from './components/FriendsList';
 import ClassmateProfile from './components/ClassmateProfile';
+import PublicProfile from './components/PublicProfile';
 import ClubList from './pages/ClubList';
 import ClubProfile from './pages/ClubProfile';
 import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
@@ -27,6 +28,10 @@ import './index.css';
 
 export default function App() {
   const inRouterContext = useInRouterContext();
+  // useNavigate throws outside Router so guard it
+  let _nav = null;
+  try { _nav = useNavigate(); } catch { /* outside Router */ }
+  const navigate = _nav || (() => {});
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [authMode, setAuthMode] = useState('login');
@@ -524,21 +529,21 @@ export default function App() {
       {showClassmates && (
         <ClassmateDiscovery
           onClose={() => setShowClassmates(false)}
-          onViewProfile={(id) => { setShowClassmates(false); setViewingClassmateId(id); }}
+          onViewProfile={(id) => { setShowClassmates(false); navigate(`/profile/${id}`); }}
         />
       )}
 
       {showFriendRequests && (
         <FriendRequests
           onClose={() => { setShowFriendRequests(false); axios.get('/api/friendships/pending').then(r => setPendingRequestCount(r.data.incoming.length)).catch(() => {}); }}
-          onViewProfile={(id) => { setShowFriendRequests(false); setViewingClassmateId(id); }}
+          onViewProfile={(id) => { setShowFriendRequests(false); navigate(`/profile/${id}`); }}
         />
       )}
 
       {showFriendsList && (
         <FriendsList
           onClose={() => setShowFriendsList(false)}
-          onViewProfile={(id) => { setShowFriendsList(false); setViewingClassmateId(id); }}
+          onViewProfile={(id) => { setShowFriendsList(false); navigate(`/profile/${id}`); }}
         />
       )}
 
@@ -580,6 +585,7 @@ export default function App() {
         <Route path="/events" element={<ActivityPage initialTab="events" />} />
         <Route path="/events/:id" element={<EventPage user={user} />} />
         <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
+        <Route path="/profile/:userId" element={<PublicProfile user={user} onUserUpdate={(updatedUser) => setUser(prev => ({ ...prev, ...updatedUser }))} />} />
         <Route path="*" element={mapExperience} />
       </Routes>
     </div>
