@@ -55,7 +55,9 @@ describe('CourseQA', () => {
     await user.click(screen.getByRole('button', { name: 'Ask AI' }));
 
     await waitFor(() => {
-      expect(screen.getByText('No PDF notes found for this course')).toBeInTheDocument();
+      expect(
+        screen.getByText('No course notes available for this course. Please ensure study materials have been uploaded.')
+      ).toBeInTheDocument();
     });
   });
 
