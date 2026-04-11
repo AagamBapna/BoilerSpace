@@ -11,6 +11,34 @@ export default function CourseQA({ courseId, courseName, onClose }) {
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [bookmarkError, setBookmarkError] = useState(null);
 
+  const getErrorMessage = (error) => {
+    const backendError = error.response?.data?.error || '';
+    const statusCode = error.response?.status;
+
+    // Specific error type handling
+    if (backendError.includes('No PDF notes found')) {
+      return 'No course notes available for this course. Please ensure study materials have been uploaded.';
+    }
+    if (backendError.includes('AI model not configured')) {
+      return 'AI service is currently unavailable. Please try again later.';
+    }
+    if (backendError.includes('AI returned an empty answer')) {
+      return 'Could not generate an answer. Try rephrasing your question or check if course materials cover this topic.';
+    }
+    if (backendError.includes('question is required')) {
+      return 'Please enter a valid question.';
+    }
+    if (statusCode === 404) {
+      return 'Course not found or no materials available.';
+    }
+    if (statusCode === 500 || statusCode === 502) {
+      return 'AI service encountered an error. Please try again in a moment.';
+    }
+
+    // Generic fallback
+    return backendError || 'Unable to answer question. Please try again.';
+  };
+
   const handleAskQuestion = async () => {
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) {
@@ -32,7 +60,7 @@ export default function CourseQA({ courseId, courseName, onClose }) {
       setAnswer(response.data.answer || '');
       setAskedQuestion(trimmedQuestion);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to answer question');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
