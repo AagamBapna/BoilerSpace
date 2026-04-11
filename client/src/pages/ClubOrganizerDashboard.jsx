@@ -11,8 +11,12 @@ export default function ClubOrganizerDashboard({ user }) {
   const [announcements, setAnnouncements] = useState([]);
   const [members, setMembers] = useState([]);
   const [pendingMembers, setPendingMembers] = useState([]);
+  const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [savingMemberId, setSavingMemberId] = useState(null);
+  const [newPositionName, setNewPositionName] = useState('');
+  const [positionsSaving, setPositionsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [clubForm, setClubForm] = useState({
@@ -29,18 +33,29 @@ export default function ClubOrganizerDashboard({ user }) {
     return Boolean(viewerId && Array.isArray(club?.organizerIds) && club.organizerIds.map(String).includes(viewerId));
   }, [club, user]);
 
+  const viewerId = String(user?.id || user?._id || '');
+  const viewerMembership = useMemo(
+    () => members.find((m) => String(m.id) === viewerId) || null,
+    [members, viewerId]
+  );
+  const viewerRole = viewerMembership?.role || (isOrganizer ? 'admin' : 'member');
+  const canManagePositions = viewerRole === 'admin';
+
   const loadMembers = async () => {
     try {
       setMembersLoading(true);
-      const [membersRes, pendingRes] = await Promise.all([
+      const [membersRes, pendingRes, positionsRes] = await Promise.all([
         axios.get(`/api/clubs/${clubId}/members`),
         axios.get(`/api/clubs/${clubId}/pending-members`),
+        axios.get(`/api/clubs/${clubId}/positions`),
       ]);
       setMembers(membersRes.data || []);
       setPendingMembers(pendingRes.data || []);
+      setPositions(positionsRes.data?.positions || ['Member']);
     } catch (err) {
       setMembers([]);
       setPendingMembers([]);
+      setPositions(['Member']);
       setError(err.response?.data?.message || 'Failed to load members.');
     } finally {
       setMembersLoading(false);
@@ -155,6 +170,91 @@ export default function ClubOrganizerDashboard({ user }) {
       await loadData();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to demote organizer.');
+    }
+  };
+
+  const canManageMember = (member) => {
+    const targetRole = member?.role || (organizerIdSet.has(String(member?.id)) ? 'admin' : 'member');
+    if (viewerRole === 'admin') return true;
+    if (viewerRole === 'officer') {
+      return targetRole === 'member' && String(member?.id) !== viewerId;
+    }
+    return false;
+  };
+
+  const handleUpdateMemberRolePosition = async (memberId, payload) => {
+    try {
+      setSavingMemberId(String(memberId));
+      setNotice(null);
+      setError(null);
+      await axios.patch(`/api/clubs/${clubId}/members/${memberId}/role`, payload);
+      await loadMembers();
+      setNotice('Member role/position updated.');
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to update member role/position.');
+    } finally {
+      setSavingMemberId(null);
+    }
+  };
+
+  const handleAddPosition = async () => {
+    const trimmed = String(newPositionName || '').trim();
+    if (!trimmed) {
+      setError('Position name is required.');
+      return;
+    }
+
+    try {
+      setPositionsSaving(true);
+      setNotice(null);
+      setError(null);
+      const res = await axios.post(`/api/clubs/${clubId}/positions`, { name: trimmed });
+      setPositions(res.data?.positions || []);
+      setNewPositionName('');
+      setNotice('Position added.');
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to add position.');
+    } finally {
+      setPositionsSaving(false);
+    }
+  };
+
+  const handleRenamePosition = async (oldName) => {
+    const nextName = window.prompt(`Rename "${oldName}" to:`, oldName);
+    if (!nextName || !nextName.trim() || nextName.trim() === oldName) return;
+
+    try {
+      setPositionsSaving(true);
+      setNotice(null);
+      setError(null);
+      const encoded = encodeURIComponent(oldName);
+      const res = await axios.patch(`/api/clubs/${clubId}/positions/${encoded}`, { name: nextName.trim() });
+      setPositions(res.data?.positions || []);
+      setNotice('Position updated.');
+      await loadMembers();
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to rename position.');
+    } finally {
+      setPositionsSaving(false);
+    }
+  };
+
+  const handleDeletePosition = async (positionName) => {
+    const confirmed = window.confirm(`Delete position "${positionName}"?`);
+    if (!confirmed) return;
+
+    try {
+      setPositionsSaving(true);
+      setNotice(null);
+      setError(null);
+      const encoded = encodeURIComponent(positionName);
+      const res = await axios.delete(`/api/clubs/${clubId}/positions/${encoded}`);
+      setPositions(res.data?.positions || []);
+      setNotice('Position deleted.');
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to delete position.');
+    } finally {
+      setPositionsSaving(false);
     }
   };
 
@@ -350,17 +450,38 @@ export default function ClubOrganizerDashboard({ user }) {
                   <div>
                     <p className="text-sm font-medium">{m.displayName || m.email}</p>
                     <p className="text-xs text-[var(--color-text-secondary)]">{m.email}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)] mt-1">
+                      Role: <span className="text-[var(--color-text-primary)] capitalize">{m.role || (organizerIdSet.has(String(m.id)) ? 'admin' : 'member')}</span>
+                      {' · '}
+                      Position: <span className="text-[var(--color-text-primary)]">{m.position || 'Member'}</span>
+                    </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    {organizerIdSet.has(String(m.id)) ? (
-                      <span className="text-xs text-emerald-300">Organizer</span>
+                    {canManageMember(m) ? (
+                      <>
+                        <select
+                          value={m.role || (organizerIdSet.has(String(m.id)) ? 'admin' : 'member')}
+                          onChange={(e) => handleUpdateMemberRolePosition(m.id, { role: e.target.value })}
+                          disabled={savingMemberId === String(m.id)}
+                          className="text-xs bg-[var(--color-surface-light)] border border-white/15 rounded px-2 py-1"
+                        >
+                          <option value="member">member</option>
+                          <option value="officer">officer</option>
+                          {viewerRole === 'admin' && <option value="admin">admin</option>}
+                        </select>
+                        <select
+                          value={m.position || 'Member'}
+                          onChange={(e) => handleUpdateMemberRolePosition(m.id, { position: e.target.value })}
+                          disabled={savingMemberId === String(m.id)}
+                          className="text-xs bg-[var(--color-surface-light)] border border-white/15 rounded px-2 py-1"
+                        >
+                          {positions.map((positionName) => (
+                            <option key={positionName} value={positionName}>{positionName}</option>
+                          ))}
+                        </select>
+                      </>
                     ) : (
-                      <button
-                        onClick={() => handlePromoteMember(m.id)}
-                        className="text-xs text-[var(--color-purdue-gold)] hover:text-[var(--color-purdue-gold-light)]"
-                      >
-                        Promote
-                      </button>
+                      <span className="text-xs text-[var(--color-text-secondary)]">View only</span>
                     )}
                     {!organizerIdSet.has(String(m.id)) && (
                       <button onClick={() => handleKickMember(m.id)} className="text-xs text-red-300 hover:text-red-200">Kick</button>
@@ -368,6 +489,59 @@ export default function ClubOrganizerDashboard({ user }) {
                   </div>
                 </div>
               ))}
+            </div>
+          </Panel>
+
+          <Panel title="Custom Positions">
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2">
+                <input
+                  value={newPositionName}
+                  onChange={(e) => setNewPositionName(e.target.value)}
+                  placeholder="New position (e.g., Treasurer)"
+                  disabled={!canManagePositions || positionsSaving}
+                  className="flex-1 px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/15 text-sm"
+                />
+                <button
+                  onClick={handleAddPosition}
+                  disabled={!canManagePositions || positionsSaving}
+                  className="text-xs px-3 py-2 rounded bg-[var(--color-purdue-gold)] text-black font-semibold disabled:opacity-60"
+                >
+                  Add
+                </button>
+              </div>
+
+              {!canManagePositions && (
+                <p className="text-xs text-[var(--color-text-secondary)]">Only admins can create, rename, or delete positions.</p>
+              )}
+
+              <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+                {positions.map((positionName) => (
+                  <div key={positionName} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
+                    <span className="text-sm">{positionName}</span>
+                    <div className="flex items-center gap-3">
+                      {canManagePositions && (
+                        <button
+                          onClick={() => handleRenamePosition(positionName)}
+                          disabled={positionsSaving}
+                          className="text-xs text-[var(--color-purdue-gold)] hover:text-[var(--color-purdue-gold-light)] disabled:opacity-60"
+                        >
+                          Rename
+                        </button>
+                      )}
+                      {canManagePositions && positionName.toLowerCase() !== 'member' && (
+                        <button
+                          onClick={() => handleDeletePosition(positionName)}
+                          disabled={positionsSaving}
+                          className="text-xs text-red-300 hover:text-red-200 disabled:opacity-60"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </Panel>
         </section>
