@@ -432,7 +432,7 @@ export default function App() {
         </button>
       </div>
 
-      <button onClick={() => setShowProfile(true)} className="profile-button">
+      <button onClick={() => navigate(`/profile/${user.id}`)} className="profile-button">
         {user.profilePictureUrl ? (
           <img src={user.profilePictureUrl} alt="" className="profile-avatar" style={{ objectFit: 'cover' }} />
         ) : (
