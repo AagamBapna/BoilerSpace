@@ -400,7 +400,7 @@ router.post('/study-plan/generate', protect, async (req, res) => {
         - Days are one of Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
         - Study blocks must be between the preferred study hours ${studyStart} - ${studyEnd})
         - Do not schedule study blocks during busy times: ${busyInfo}
-        - Times must be in EST and AM/PM format
+        - Times must be in EST and 24 hour format
         - Each study block should be between 30-120 minutes long
         - Include short breaks of 10-15 minutes between study blocks
         - Spread study for each course out over the week (max 5 hours per day), with more focus on courses with higher priority and sooner exam dates

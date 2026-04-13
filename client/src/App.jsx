@@ -20,6 +20,7 @@ import ClubProfile from './pages/ClubProfile';
 import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
 import ActivityPage from './pages/ActivityPage';
 import EventPage from './pages/EventPage';
+import StudyPlanGenerator from './components/StudyPlanGenerator';
 import { getToken, setToken, clearToken } from './lib/auth';
 import NotificationBell from './components/NotificationBell';
 import { useSocket } from './lib/useSocket';
@@ -48,6 +49,7 @@ export default function App() {
   const [showClassmates, setShowClassmates] = useState(false);
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [showFriendsList, setShowFriendsList] = useState(false);
+  const [showStudyPlan, setShowStudyPlan] = useState(false);
   const [viewingClassmateId, setViewingClassmateId] = useState(null);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const socketRef = useSocket(user);
@@ -378,6 +380,16 @@ export default function App() {
           </svg>
           <span>Course Notes</span>
         </button>
+        <button
+          type="button"
+          onClick={() => setShowStudyPlan(true)}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>Study Plan</span>
+        </button>
         <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} />
         <button
           type="button"
@@ -546,6 +558,12 @@ export default function App() {
         <ClassmateProfile
           userId={viewingClassmateId}
           onClose={() => setViewingClassmateId(null)}
+        />
+      )}
+      {showStudyPlan && (
+        <StudyPlanGenerator
+          userId={user.id}
+          onClose={() => setShowStudyPlan(false)}
         />
       )}
 
