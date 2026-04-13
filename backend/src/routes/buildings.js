@@ -9,7 +9,17 @@ const { haversineDistance } = require('../utils/distance');
 router.get('/', async (req, res) => {
     try {
         const buildings = await Building.find().sort({ name: 1 });
-        res.json(buildings);
+        const buildingsWithStatus = await Promise.all(buildings.map(async b => {
+            const rooms = await Room.find({ buildingId: b._id });
+            let noiseClassification = 'Collaborative';
+            if (rooms.some(r => r.noiseClassification === 'Quiet')) {
+                noiseClassification = 'Quiet';
+            } else if (rooms.some(r => r.noiseClassification === 'Moderate')) {
+                noiseClassification = 'Moderate';
+            }
+            return { ...b.toObject(), noiseClassification };
+        }));
+        res.json(buildingsWithStatus);
     } catch (err) {
         console.error('Error fetching buildings:', err);
         res.status(500).json({ error: 'Failed to fetch buildings' });
@@ -26,9 +36,20 @@ router.get('/nearby', async (req, res) => {
         const userLat = parseFloat(lat);
         const userLon = parseFloat(lon);
         const buildings = await Building.find();
-        const sorted = buildings
+        const buildingsWithStatus = await Promise.all(buildings.map(async b => {
+            const rooms = await Room.find({ buildingId: b._id });
+            let noiseClassification = 'Collaborative';
+            if (rooms.some(r => r.noiseClassification === 'Quiet')) {
+                noiseClassification = 'Quiet';
+            } else if (rooms.some(r => r.noiseClassification === 'Moderate')) {
+                noiseClassification = 'Moderate';
+            }
+            return { ...b.toObject(), noiseClassification };
+        }));
+        
+        const sorted = buildingsWithStatus
             .map(b => ({
-                ...b.toObject(),
+                ...b,
                 distance: haversineDistance(userLat, userLon, b.latitude, b.longitude),
             }))
             .sort((a, b) => a.distance - b.distance);
