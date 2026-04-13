@@ -29,7 +29,7 @@ const sampleBookmarks = [
         name: 'LWSN B134',
         floor: 0,
         capacity: 200,
-        noiseLevel: 'loud',
+        noiseClassification: 'Collaborative',
         currentOccupancy: 45,
         amenities: ['Projector', 'Outlets'],
         buildingId: {
@@ -44,7 +44,7 @@ const sampleBookmarks = [
         name: 'WALC 1018',
         floor: 1,
         capacity: 30,
-        noiseLevel: 'moderate',
+        noiseClassification: 'Moderate',
         currentOccupancy: 22,
         amenities: ['Whiteboard'],
         buildingId: {

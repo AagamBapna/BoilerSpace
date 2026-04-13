@@ -50,7 +50,7 @@ beforeEach(async () => {
         name: 'LWSN B134',
         floor: 0,
         capacity: 200,
-        noiseLevel: 'loud',
+        noiseClassification: 'Collaborative',
         amenities: ['Projector', 'Outlets'],
     });
 });
