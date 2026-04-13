@@ -8,7 +8,7 @@ import { formatRelative, formatAbsolute } from '../utils/formatRelative';
 import { useLocation } from '../contexts/LocationContext';
 
 
-export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [], recentBuildings = [], onRefreshRecentBuildings }) {
+export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [], recentBuildings = [], onRefreshRecentBuildings, isQuietZonesOnly }) {
     const [rooms, setRooms] = useState([]);
     const [selectedAmenities, setSelectedAmenities] = useState([]);
     const [loadingRooms, setLoadingRooms] = useState(false);
@@ -102,10 +102,10 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
             })
         : [];
 
-    const noiseLevelIcon = {
+    const noiseClassificationIcon = {
         quiet: '🤫 Quiet',
         moderate: '🗣️ Moderate',
-        loud: '🔊 Loud',
+        collaborative: '🔊 Collaborative',
     };
 
     const amenityIcons = {
@@ -381,7 +381,9 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                             <p className="text-sm text-[var(--color-text-secondary)] text-center" style={{ padding: '16px 0' }}>No rooms found</p>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {rooms.map((room) => (
+                                {rooms
+                                    .filter(r => !isQuietZonesOnly || r.noiseClassification === 'Quiet')
+                                    .map((room) => (
                                     <div
                                         key={room._id}
                                         className="rounded-xl border border-white/5 hover:border-[var(--color-purdue-gold)]/20"
@@ -418,7 +420,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                         </div>
                                         <div className="flex items-center text-xs text-[var(--color-text-secondary)]" style={{ gap: '12px' }}>
                                             <span>{room.capacity} seats</span>
-                                            <span>{noiseLevelIcon[room.noiseLevel?.toLowerCase()] || '🗣️ Moderate'}</span>
+                                            <span>{noiseClassificationIcon[room.noiseClassification?.toLowerCase()] || '🗣️ Moderate'}</span>
                                             <span>Current occupancy: {room.currentOccupancy}</span>
                                             <span className="timestamp-tooltip" data-tooltip={formatAbsolute(room.lastStatusUpdate)} tabIndex={0}>
                                                 Last updated: {formatRelative(room.lastStatusUpdate)}
