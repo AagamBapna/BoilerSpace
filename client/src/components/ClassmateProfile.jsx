@@ -3,147 +3,185 @@ import axios from 'axios';
 
 export default function ClassmateProfile({ userId, onClose }) {
   const [profile, setProfile] = useState(null);
-  const [friendship, setFriendship] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchData = async () => {
+  // ── Connection state machine ──
+  const [connecting, setConnecting] = useState(false);
+  const [actionError, setActionError] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    axios.get(`/api/users/${userId}`)
+      .then(res => {
+        setProfile(res.data);
+      })
+      .catch(err => {
+        if (err.response?.status === 404) setError('User not found.');
+        else setError('Failed to load profile.');
+      })
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    setActionError(null);
     try {
-      setLoading(true);
-      const [profileRes, classmatesRes] = await Promise.all([
-        axios.get(`/api/users/${userId}`),
-        axios.get('/api/friendships/classmates'),
-      ]);
-      setProfile(profileRes.data);
-
-      // Find friendship status from classmates data
-      for (const group of classmatesRes.data) {
-        const match = group.classmates.find(c => c._id === userId);
-        if (match?.friendship) {
-          setFriendship(match.friendship);
-          break;
-        }
-      }
-
-      // Also check pending/friends if not found in classmates
-      if (!friendship) {
-        const [pendingRes, friendsRes] = await Promise.all([
-          axios.get('/api/friendships/pending'),
-          axios.get('/api/friendships/friends'),
-        ]);
-        const incomingMatch = pendingRes.data.incoming.find(r => r.requester._id === userId);
-        if (incomingMatch) {
-          setFriendship({ id: incomingMatch._id, status: 'pending', direction: 'incoming' });
-          return;
-        }
-        const outgoingMatch = pendingRes.data.outgoing.find(r => r.recipient._id === userId);
-        if (outgoingMatch) {
-          setFriendship({ id: outgoingMatch._id, status: 'pending', direction: 'outgoing' });
-          return;
-        }
-        const friendMatch = friendsRes.data.find(f => f._id === userId);
-        if (friendMatch) {
-          setFriendship({ id: friendMatch.friendshipId, status: 'accepted', direction: null });
-        }
-      }
-    } catch {
-      setError('Failed to load profile.');
+      const res = await axios.post('/api/friendships/request', { recipientId: userId });
+      setProfile(prev => ({ ...prev, connectionStatus: 'pending_outgoing', friendshipId: res.data._id }));
+    } catch (err) {
+      setActionError(err.response?.data?.error || 'Failed to send connection request.');
     } finally {
-      setLoading(false);
+      setConnecting(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, [userId]);
-
-  const handleAddFriend = async () => {
+  const handleCancelRequest = async () => {
+    if (!profile.friendshipId) return;
+    setConnecting(true);
+    setActionError(null);
     try {
-      await axios.post('/api/friendships/request', { recipientId: userId });
-      fetchData();
+      await axios.delete(`/api/friendships/${profile.friendshipId}`);
+      setProfile(prev => ({ ...prev, connectionStatus: 'none', friendshipId: null }));
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to send friend request');
+      setActionError(err.response?.data?.error || 'Failed to cancel request.');
+    } finally {
+      setConnecting(false);
     }
   };
 
-  const handleAccept = async () => {
+  const handleAcceptRequest = async () => {
+    if (!profile.friendshipId) return;
+    setConnecting(true);
+    setActionError(null);
     try {
-      await axios.put(`/api/friendships/${friendship.id}/accept`);
-      fetchData();
+      await axios.put(`/api/friendships/${profile.friendshipId}/accept`);
+      setProfile(prev => ({ ...prev, connectionStatus: 'accepted' }));
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to accept request');
+      setActionError(err.response?.data?.error || 'Failed to accept request.');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (!profile.friendshipId) return;
+    setConnecting(true);
+    setActionError(null);
+    try {
+      await axios.put(`/api/friendships/${profile.friendshipId}/reject`);
+      setProfile(prev => ({ ...prev, connectionStatus: 'none', friendshipId: null }));
+    } catch (err) {
+      setActionError(err.response?.data?.error || 'Failed to reject request.');
+    } finally {
+      setConnecting(false);
     }
   };
 
   const handleUnfriend = async () => {
+    if (!profile.friendshipId) return;
+    setConnecting(true);
+    setActionError(null);
     try {
-      await axios.delete(`/api/friendships/${friendship.id}`);
-      setFriendship(null);
-      fetchData();
+      await axios.delete(`/api/friendships/${profile.friendshipId}`);
+      setProfile(prev => ({ ...prev, connectionStatus: 'none', friendshipId: null }));
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to unfriend');
+      setActionError(err.response?.data?.error || 'Failed to unfriend.');
+    } finally {
+      setConnecting(false);
     }
   };
 
-  const isPrivate = profile?.profileVisibility === 'private' && !profile?.courses;
+  const isPrivate = profile?.profileVisibility === 'private' && profile?.connectionStatus !== 'accepted';
 
   const renderActionButton = () => {
-    if (!friendship) {
-      if (isPrivate) return null;
+    if (!profile) return null;
+
+    if (profile.connectionStatus === 'none') {
       return (
         <button
-          onClick={handleAddFriend}
-          className="w-full py-2.5 text-sm font-semibold rounded-lg bg-[var(--color-purdue-gold)] text-black hover:bg-[var(--color-purdue-gold-light)] transition-colors"
+          onClick={handleConnect}
+          disabled={connecting}
+          className="w-full py-2.5 text-sm font-semibold rounded-lg bg-[var(--color-purdue-gold)] text-black hover:bg-[var(--color-purdue-gold-light)] transition-colors disabled:opacity-50"
         >
-          Add Friend
+          {connecting ? 'Sending...' : (isPrivate ? 'Send Friend Request' : 'Connect')}
         </button>
       );
     }
-    if (friendship.status === 'accepted') {
+
+    if (profile.connectionStatus === 'pending_outgoing') {
       return (
         <button
-          onClick={handleUnfriend}
-          className="w-full py-2.5 text-sm font-semibold rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+          onClick={handleCancelRequest}
+          disabled={connecting}
+          className="w-full py-2.5 text-sm font-semibold rounded-lg bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors disabled:opacity-50"
         >
-          Unfriend
+          {connecting ? 'Cancelling...' : 'Request Pending — Cancel'}
         </button>
       );
     }
-    if (friendship.status === 'pending' && friendship.direction === 'outgoing') {
+
+    if (profile.connectionStatus === 'pending_incoming') {
       return (
-        <div className="w-full py-2.5 text-sm font-semibold rounded-lg bg-yellow-500/20 text-yellow-400 text-center">
-          Request Pending
+        <div className="flex gap-2 w-full">
+          <button
+            onClick={handleAcceptRequest}
+            disabled={connecting}
+            className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-[var(--color-purdue-gold)] text-black hover:bg-[var(--color-purdue-gold-light)] transition-colors disabled:opacity-50"
+          >
+            {connecting ? 'Accepting...' : 'Accept Request'}
+          </button>
+          <button
+            onClick={handleRejectRequest}
+            disabled={connecting}
+            className="px-4 py-2.5 text-sm font-semibold rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+          >
+            Decline
+          </button>
         </div>
       );
     }
-    if (friendship.status === 'pending' && friendship.direction === 'incoming') {
+
+    if (profile.connectionStatus === 'accepted') {
       return (
-        <button
-          onClick={handleAccept}
-          className="w-full py-2.5 text-sm font-semibold rounded-lg bg-[var(--color-purdue-gold)] text-black hover:bg-[var(--color-purdue-gold-light)] transition-colors"
-        >
-          Accept Friend Request
-        </button>
+        <div className="flex flex-col gap-2 w-full">
+          <div className="w-full py-2.5 text-sm font-semibold rounded-lg bg-green-500/20 text-green-500 text-center flex items-center justify-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Friends
+          </div>
+          <button
+            onClick={handleUnfriend}
+            disabled={connecting}
+            className="w-full py-2 text-xs rounded-lg text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+          >
+            {connecting ? 'Removing...' : 'Unfriend'}
+          </button>
+        </div>
       );
     }
+
     return null;
   };
 
   return (
-    <div className="background-blur" onClick={onClose}>
-      <div className="course-selector" style={{ maxWidth: '420px' }} onClick={e => e.stopPropagation()}>
-        <div className="flex justify-end mb-2">
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-[var(--color-surface-light)] border border-[var(--color-border)] rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-purdue-gold)] transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
 
         {loading && (
-          <div className="flex justify-center py-12">
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
             <div className="w-8 h-8 border-2 border-[var(--color-purdue-gold)]/30 border-t-[var(--color-purdue-gold)] rounded-full animate-spin" />
+            <p className="text-sm text-[var(--color-text-secondary)]">Loading profile...</p>
           </div>
         )}
 
@@ -167,10 +205,19 @@ export default function ClassmateProfile({ userId, onClose }) {
             ) : (
               <>
                 {/* Info */}
-                <div className="flex gap-4 text-sm text-[var(--color-text-secondary)]">
+                <div className="flex gap-4 text-sm text-[var(--color-text-secondary)] mb-2">
                   {profile.major && <span>{profile.major}</span>}
                   {profile.year && <span>{profile.year}</span>}
                 </div>
+
+                {/* Bio */}
+                {profile.bio && (
+                  <div className="w-full text-center px-2 mb-2">
+                    <p className="text-sm text-[var(--color-text-primary)] leading-relaxed italic opacity-90">
+                      "{profile.bio}"
+                    </p>
+                  </div>
+                )}
 
                 {/* Courses */}
                 {profile.courses && profile.courses.length > 0 && (
@@ -179,7 +226,7 @@ export default function ClassmateProfile({ userId, onClose }) {
                     <div className="flex flex-wrap gap-1.5">
                       {profile.courses.map(course => (
                         <span
-                          key={course._id}
+                          key={course._id || course}
                           className="px-2.5 py-1 text-xs rounded-md bg-[var(--color-purdue-gold)]/10 text-[var(--color-purdue-gold)] font-medium"
                         >
                           {course.courseCode || course}
@@ -192,7 +239,7 @@ export default function ClassmateProfile({ userId, onClose }) {
                 {/* Availability */}
                 {profile.availability && profile.availability.length > 0 && (
                   <div className="w-full mt-2">
-                    <h3 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Availability</h3>
+                    <h3 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Study Availability</h3>
                     <div className="flex flex-col gap-1">
                       {profile.availability.map((slot, i) => (
                         <div key={i} className="flex justify-between text-xs text-[var(--color-text-secondary)] px-1">
@@ -208,6 +255,7 @@ export default function ClassmateProfile({ userId, onClose }) {
 
             {/* Action button */}
             <div className="w-full mt-4">
+              {actionError && <p className="text-xs text-red-400 mb-2 text-center">{actionError}</p>}
               {renderActionButton()}
             </div>
           </div>

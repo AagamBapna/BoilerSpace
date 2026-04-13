@@ -15,7 +15,6 @@ import ClassmateDiscovery from './components/ClassmateDiscovery';
 import FriendRequests from './components/FriendRequests';
 import FriendsList from './components/FriendsList';
 import ClassmateProfile from './components/ClassmateProfile';
-import PublicProfile from './components/PublicProfile';
 import ClubList from './pages/ClubList';
 import ClubProfile from './pages/ClubProfile';
 import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
@@ -432,7 +431,7 @@ export default function App() {
         </button>
       </div>
 
-      <button onClick={() => navigate(`/profile/${user.id}`)} className="profile-button">
+      <button onClick={() => setShowProfile(true)} className="profile-button">
         {user.profilePictureUrl ? (
           <img src={user.profilePictureUrl} alt="" className="profile-avatar" style={{ objectFit: 'cover' }} />
         ) : (
@@ -529,21 +528,21 @@ export default function App() {
       {showClassmates && (
         <ClassmateDiscovery
           onClose={() => setShowClassmates(false)}
-          onViewProfile={(id) => { setShowClassmates(false); navigate(`/profile/${id}`); }}
+          onViewProfile={(id) => { setShowClassmates(false); setViewingClassmateId(id); }}
         />
       )}
 
       {showFriendRequests && (
         <FriendRequests
           onClose={() => { setShowFriendRequests(false); axios.get('/api/friendships/pending').then(r => setPendingRequestCount(r.data.incoming.length)).catch(() => {}); }}
-          onViewProfile={(id) => { setShowFriendRequests(false); navigate(`/profile/${id}`); }}
+          onViewProfile={(id) => { setShowFriendRequests(false); setViewingClassmateId(id); }}
         />
       )}
 
       {showFriendsList && (
         <FriendsList
           onClose={() => setShowFriendsList(false)}
-          onViewProfile={(id) => { setShowFriendsList(false); navigate(`/profile/${id}`); }}
+          onViewProfile={(id) => { setShowFriendsList(false); setViewingClassmateId(id); }}
         />
       )}
 
@@ -585,7 +584,6 @@ export default function App() {
         <Route path="/events" element={<ActivityPage initialTab="events" />} />
         <Route path="/events/:id" element={<EventPage user={user} />} />
         <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
-        <Route path="/profile/:userId" element={<PublicProfile user={user} onUserUpdate={(updatedUser) => setUser(prev => ({ ...prev, ...updatedUser }))} />} />
         <Route path="*" element={mapExperience} />
       </Routes>
     </div>
