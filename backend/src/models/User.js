@@ -62,6 +62,28 @@ const userSchema = new mongoose.Schema(
                 default: true,
             },
         }],
+        notificationSettings: {
+            sessionReminders: {
+                type: Boolean,
+                default: true,
+            },
+            messages: {
+                type: Boolean,
+                default: true,
+            },
+            events: {
+                type: Boolean,
+                default: true,
+            },
+            organizationUpdates: {
+                type: Boolean,
+                default: true,
+            },
+            globalMute: {
+                type: Boolean,
+                default: false,
+            },
+        },
         availability: [{
             day: {
                 type: String,
