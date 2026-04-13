@@ -11,6 +11,12 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
     const [year, setYear] = useState(user.year || '');
     const [bio, setBio] = useState(user.bio || '');
     const [profilePictureUrl, setProfilePictureUrl] = useState(user.profilePictureUrl || '');
+    const [studyStyle, setStudyStyle] = useState(user.studyPreferences?.studyStyle || '');
+    const [environment, setEnvironment] = useState(user.studyPreferences?.environment || '');
+    const [interests, setInterests] = useState(user.interests || []);
+    const [github, setGithub] = useState(user.linkedResources?.github || '');
+    const [linkedin, setLinkedin] = useState(user.linkedResources?.linkedin || '');
+    const [studyGoals, setStudyGoals] = useState(user.studyGoals || []);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -28,6 +34,10 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
                 major,
                 year,
                 bio,
+                studyPreferences: { studyStyle, environment },
+                interests,
+                linkedResources: { github, linkedin },
+                studyGoals
             });
             setSuccess(true);
             setEditing(false);
@@ -52,8 +62,28 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
         setMajor(user.major || '');
         setYear(user.year || '');
         setBio(user.bio || '');
+        setStudyStyle(user.studyPreferences?.studyStyle || '');
+        setEnvironment(user.studyPreferences?.environment || '');
+        setInterests(user.interests || []);
+        setGithub(user.linkedResources?.github || '');
+        setLinkedin(user.linkedResources?.linkedin || '');
+        setStudyGoals(user.studyGoals || []);
         setEditing(false);
         setError(null);
+    };
+
+    const handleAddTag = (e, setter, array) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = e.target.value.trim();
+            if (val && !array.includes(val) && array.length < 10) {
+                setter([...array, val]);
+            }
+            e.target.value = '';
+        }
+    };
+    const handleRemoveTag = (index, setter, array) => {
+        setter(array.filter((_, i) => i !== index));
     };
 
     const handlePictureSelect = async (e) => {
@@ -251,7 +281,76 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
                     <option value="Sophomore">Sophomore</option>
                     <option value="Junior">Junior</option>
                     <option value="Senior">Senior</option>
+                    <option value="Graduate">Graduate</option>
                 </select>
+              </div>
+
+              {/* Study Preferences */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Study Style</label>
+                  <select value={studyStyle} onChange={(e) => setStudyStyle(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" >
+                      <option value="">Unspecified</option>
+                      <option value="solo">Solo</option>
+                      <option value="group">Group</option>
+                      <option value="mixed">Mixed</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Environment</label>
+                  <select value={environment} onChange={(e) => setEnvironment(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" >
+                      <option value="">Unspecified</option>
+                      <option value="quiet">Quiet</option>
+                      <option value="moderate">Moderate</option>
+                      <option value="collaborative">Collaborative</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Interests (Tags) */}
+              <div>
+                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Interests (Press Enter to add)</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {interests.map((tag, i) => (
+                    <span key={i} className="px-2 py-1 text-xs bg-[var(--color-purdue-gold)]/10 text-[var(--color-purdue-gold)] rounded flex items-center gap-1">
+                      {tag}
+                      <button type="button" onClick={() => handleRemoveTag(i, setInterests, interests)} className="hover:text-red-400">×</button>
+                    </span>
+                  ))}
+                </div>
+                <input type="text" onKeyDown={(e) => handleAddTag(e, setInterests, interests)} placeholder="e.g. AI, Climbing, Chess"
+                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+              </div>
+
+              {/* Linked Resources */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">GitHub Handle</label>
+                  <input type="text" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="username"
+                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+                </div>
+                <div>
+                  <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">LinkedIn Profile</label>
+                  <input type="text" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="in/username"
+                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+                </div>
+              </div>
+
+              {/* Study Goals (Tags) */}
+              <div>
+                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Study Goals (Press Enter to add)</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {studyGoals.map((goal, i) => (
+                    <span key={i} className="px-2 py-1 text-xs border border-[var(--color-border)] text-[var(--color-text-primary)] rounded flex items-center gap-1">
+                      {goal}
+                      <button type="button" onClick={() => handleRemoveTag(i, setStudyGoals, studyGoals)} className="hover:text-red-400">×</button>
+                    </span>
+                  ))}
+                </div>
+                <input type="text" onKeyDown={(e) => handleAddTag(e, setStudyGoals, studyGoals)} placeholder="e.g. Master React, Pass MA261"
+                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
               </div>
               <div className="flex gap-2 pt-2">
                 <button onClick={handleCancel}

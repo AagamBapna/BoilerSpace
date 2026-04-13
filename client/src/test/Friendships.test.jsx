@@ -292,6 +292,7 @@ describe('ClassmateProfile', () => {
                         year: 'Senior',
                         profilePictureUrl: '',
                         profileVisibility: 'public',
+                        connectionStatus: 'none',
                         courses: [{ _id: 'c1', courseCode: 'CS101' }],
                         availability: [{ day: 'Monday', startTime: '10:00', endTime: '12:00' }],
                     },
@@ -311,7 +312,7 @@ describe('ClassmateProfile', () => {
             expect(screen.getByText('Senior')).toBeInTheDocument();
             expect(screen.getByText('CS101')).toBeInTheDocument();
             expect(screen.getByText('Monday')).toBeInTheDocument();
-            expect(screen.getByText('Add Friend')).toBeInTheDocument();
+            expect(screen.getByText('Connect')).toBeInTheDocument();
         });
     });
 

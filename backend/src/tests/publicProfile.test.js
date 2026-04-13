@@ -131,3 +131,64 @@ describe('GET /api/users/:id - Public Profile Views & Privacy', () => {
         expect(res.body.friendshipId).toBe(friendship._id.toString());
     });
 });
+
+describe('PUT & GET /api/users/:id - Advanced Profile Fields (User Story 86)', () => {
+    test('Validates and saves studyPreferences, interests, goals, and links', async () => {
+        const payload = {
+            studyPreferences: { studyStyle: 'solo', environment: 'quiet' },
+            interests: ['React', 'Node.js'],
+            linkedResources: { github: 'testuser', linkedin: 'in/testuser' },
+            studyGoals: ['Pass CS307']
+        };
+
+        const putRes = await request(app)
+            .put(`/api/users/${user1.id}`)
+            .set('Authorization', `Bearer ${token1}`)
+            .send(payload);
+
+        expect(putRes.status).toBe(200);
+        expect(putRes.body.user.studyPreferences.studyStyle).toBe('solo');
+        expect(putRes.body.user.interests).toContain('React');
+        expect(putRes.body.user.linkedResources.github).toBe('testuser');
+
+        const getRes = await request(app)
+            .get(`/api/users/${user1.id}`)
+            .set('Authorization', `Bearer ${token1}`);
+
+        expect(getRes.status).toBe(200);
+        expect(getRes.body.studyPreferences.environment).toBe('quiet');
+        expect(getRes.body.studyGoals).toContain('Pass CS307');
+    });
+
+    test('Rejects invalid studyStyle Enum returning 400', async () => {
+        const payload = {
+            studyPreferences: { studyStyle: 'hacker' }
+        };
+
+        const res = await request(app)
+            .put(`/api/users/${user1.id}`)
+            .set('Authorization', `Bearer ${token1}`)
+            .send(payload);
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Invalid studyStyle.');
+    });
+
+    test('Private profile correctly strips complex properties when not friends', async () => {
+        // user3Private is Private. Apply data.
+        await User.findByIdAndUpdate(user3Private._id, {
+            interests: ['Secret Interest'],
+            linkedResources: { github: 'secretgithub' }
+        });
+
+        const res = await request(app)
+            .get(`/api/users/${user3Private._id}`)
+            .set('Authorization', `Bearer ${token1}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.displayName).toBe(user3Private.displayName);
+        // Stripped checks 
+        expect(res.body.interests).toBeUndefined();
+        expect(res.body.linkedResources).toBeUndefined();
+    });
+});

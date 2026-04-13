@@ -85,6 +85,108 @@ router.get('/search', protect, async (req, res) => {
     }
 });
 
+// GET /api/users/discovery, find classmates based on matching criteria
+router.get('/discovery', protect, async (req, res) => {
+    try {
+        const { q, interests, studyGoals, studyStyle, environment } = req.query;
+
+        // Base query: Public profiles only, excluding self
+        const query = {
+            profileVisibility: 'public',
+            _id: { $ne: req.user._id }
+        };
+
+        // If q is provided, filter by displayName
+        if (q && q.trim()) {
+            query.displayName = new RegExp(q.trim(), 'i');
+        }
+
+        const users = await User.find(query)
+            .select('displayName email major year bio profilePictureUrl studyPreferences interests studyGoals courses');
+
+        // Pre-fetch auth user courses for intersection
+        const myUser = await User.findById(req.user._id).select('courses studyPreferences interests studyGoals');
+        const myCourses = myUser.courses.map(c => c.toString());
+        const myInterests = myUser.interests || [];
+        const myGoals = myUser.studyGoals || [];
+        
+        // Define target constraints from query if provided, fallback to my profile preferences
+        const targetStudyStyle = studyStyle || myUser.studyPreferences?.studyStyle;
+        const targetEnvironment = environment || myUser.studyPreferences?.environment;
+        
+        // Process strings from comma separated queries
+        const targetInterests = interests ? interests.split(',').map(i => i.trim().toLowerCase()) : myInterests.map(i => i.toLowerCase());
+        const targetGoals = studyGoals ? studyGoals.split(',').map(g => g.trim().toLowerCase()) : myGoals.map(g => g.toLowerCase());
+
+        const scoredUsers = users.map(u => {
+            let score = 0;
+            const highlights = [];
+
+            // Style
+            if (targetStudyStyle && u.studyPreferences && u.studyPreferences.studyStyle === targetStudyStyle) {
+                score += 3;
+                highlights.push(`Study style match: ${targetStudyStyle}`);
+            }
+
+            // Environment
+            if (targetEnvironment && u.studyPreferences && u.studyPreferences.environment === targetEnvironment) {
+                score += 3;
+                highlights.push(`Environment match: ${targetEnvironment}`);
+            }
+
+            // Interests
+            if (u.interests && u.interests.length > 0 && targetInterests.length > 0) {
+                const uInterests = u.interests.map(i => i.toLowerCase());
+                const overlap = uInterests.filter(i => targetInterests.includes(i));
+                if (overlap.length > 0) {
+                    score += overlap.length * 2;
+                    highlights.push(`Shared interests: ${overlap.map(i => i.substring(0, 15)).join(', ')}`);
+                }
+            }
+
+            // Goals
+            if (u.studyGoals && u.studyGoals.length > 0 && targetGoals.length > 0) {
+                const uGoals = u.studyGoals.map(g => g.toLowerCase());
+                const overlap = uGoals.filter(g => targetGoals.includes(g));
+                if (overlap.length > 0) {
+                    score += overlap.length * 2;
+                    highlights.push(`Shared goals: ${overlap.map(g => g.substring(0, 15)).join(', ')}`);
+                }
+            }
+
+            // Courses
+            if (u.courses && u.courses.length > 0) {
+                const overlap = u.courses.filter(c => myCourses.includes(c.toString()));
+                if (overlap.length > 0) {
+                    score += overlap.length * 1;
+                    highlights.push(`Shared classes: ${overlap.length}`);
+                }
+            }
+
+            return {
+                user: u,
+                score,
+                matchHighlights: highlights
+            };
+        });
+
+        // Sort descending by score
+        scoredUsers.sort((a, b) => b.score - a.score);
+
+        // Map output
+        const results = scoredUsers.slice(0, 20).map(su => ({
+            ...su.user.toObject(),
+            matchScore: su.score,
+            matchHighlights: su.matchHighlights
+        }));
+
+        res.json(results);
+    } catch (err) {
+        console.error('Discovery search error:', err.message);
+        res.status(500).json({ error: 'Search failed' });
+    }
+});
+
 // GET /api/users/:id, get user by ID (with tiered privacy)
 router.get('/:id', protect, async (req, res) => {
     try {
@@ -140,15 +242,19 @@ router.get('/:id', protect, async (req, res) => {
         res.json({
             _id: user._id,
             displayName: user.displayName,
-            profilePictureUrl: user.profilePictureUrl,
-            profileVisibility: user.profileVisibility,
             major: user.major,
             year: user.year,
             bio: user.bio,
+            profilePictureUrl: user.profilePictureUrl,
+            profileVisibility: user.profileVisibility,
             courses: user.courses,
             availability: user.availability,
             connectionStatus,
             friendshipId,
+            studyPreferences: user.studyPreferences,
+            interests: user.interests,
+            linkedResources: user.linkedResources,
+            studyGoals: user.studyGoals,
         });
     } catch (err) {
         if (err.name === 'CastError') {
@@ -165,38 +271,60 @@ router.put('/:id', protect, async (req, res) => {
         if (req.user._id.toString() !== req.params.id) {
             return res.status(403).json({ error: 'You can only update your own profile' });
         }
-        const { displayName, major, year, bio } = req.body;
-        if (displayName !== undefined && (!displayName || displayName.trim().length === 0)) {
-            return res.status(400).json({ error: 'Display name cannot be empty' });
-        }
-        if (year !== undefined) {
+        if (req.body.year !== undefined) {
             const validYears = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'];
-            if (!validYears.includes(year)) {
+            if (!validYears.includes(req.body.year)) {
                 return res.status(400).json({ 
                 error: 'Year must be one of: Freshman, Sophomore, Junior, Senior, Graduate' 
             });
     }
         }
-        const user = await User.findById(req.params.id);
+        const { displayName, major, year, bio, profileVisibility, notificationPreferences, studyPreferences, interests, linkedResources, studyGoals } = req.body;
+
+    // Build update object based on what's provided
+    const updateData = {};
+    if (displayName !== undefined) {
+        if (!displayName.trim()) return res.status(400).json({ error: 'Display name cannot be empty' });
+        updateData.displayName = displayName.trim();
+    }
+    if (major !== undefined) updateData.major = major.trim();
+    if (year !== undefined) updateData.year = year.trim();
+    if (bio !== undefined) updateData.bio = bio.trim().substring(0, 300);
+    if (profileVisibility !== undefined) {
+        if (!['public', 'private'].includes(profileVisibility)) return res.status(400).json({ error: 'Invalid visibility setting.' });
+        updateData.profileVisibility = profileVisibility;
+    }
+    if (notificationPreferences !== undefined) updateData.notificationPreferences = notificationPreferences;
+
+    // Advanced User Story 86 Profile Fields
+    if (studyPreferences !== undefined) {
+        if (studyPreferences.studyStyle && !['solo', 'group', 'mixed', ''].includes(studyPreferences.studyStyle)) {
+            return res.status(400).json({ error: 'Invalid studyStyle.' });
+        }
+        if (studyPreferences.environment && !['quiet', 'moderate', 'collaborative', ''].includes(studyPreferences.environment)) {
+            return res.status(400).json({ error: 'Invalid environment.' });
+        }
+        updateData.studyPreferences = {
+            studyStyle: studyPreferences.studyStyle || '',
+            environment: studyPreferences.environment || ''
+        };
+    }
+    if (interests !== undefined && Array.isArray(interests)) {
+        updateData.interests = interests.map(i => i.trim()).filter(i => i).slice(0, 10);
+    }
+    if (linkedResources !== undefined) {
+        updateData.linkedResources = {
+            github: linkedResources.github ? linkedResources.github.trim() : '',
+            linkedin: linkedResources.linkedin ? linkedResources.linkedin.trim() : ''
+        };
+    }
+    if (studyGoals !== undefined && Array.isArray(studyGoals)) {
+        updateData.studyGoals = studyGoals.map(g => g.trim()).filter(g => g).slice(0, 10);
+    }
+        const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        if (displayName !== undefined) {
-            user.displayName = displayName.trim();
-        }
-        if (major !== undefined) {
-            user.major = major.trim();
-        }
-        if (year !== undefined) {
-            user.year = year;
-        }
-        if (bio !== undefined) {
-            if (bio.length > 300) {
-                return res.status(400).json({ error: 'Bio must be 300 characters or fewer' });
-            }
-            user.bio = bio.trim();
-        }
-        await user.save();
         res.json({
             message: 'Profile updated successfully',
             user: {
@@ -207,6 +335,10 @@ router.put('/:id', protect, async (req, res) => {
                 year: user.year,
                 bio: user.bio,
                 profilePictureUrl: user.profilePictureUrl,
+                studyPreferences: user.studyPreferences,
+                interests: user.interests,
+                linkedResources: user.linkedResources,
+                studyGoals: user.studyGoals
             }
         });
     } catch (err) {
