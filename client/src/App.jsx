@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, useInRouterContext, Link } from 'react-router-dom';
+import { Routes, Route, useInRouterContext, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
@@ -12,6 +12,7 @@ import ResetPasswordForm from './components/ResetPasswordForm';
 import EmailVerification from './components/EmailVerification';
 import DMInbox from './components/DMInbox';
 import ClassmateDiscovery from './components/ClassmateDiscovery';
+import ClassmateSearch from './components/ClassmateSearch';
 import FriendRequests from './components/FriendRequests';
 import FriendsList from './components/FriendsList';
 import ClassmateProfile from './components/ClassmateProfile';
@@ -27,6 +28,10 @@ import './index.css';
 
 export default function App() {
   const inRouterContext = useInRouterContext();
+  // useNavigate throws outside Router so guard it
+  let _nav = null;
+  try { _nav = useNavigate(); } catch { /* outside Router */ }
+  const navigate = _nav || (() => {});
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [authMode, setAuthMode] = useState('login');
@@ -46,9 +51,11 @@ export default function App() {
   const [recentBuildings, setRecentBuildings] = useState([])
   const [showDM, setShowDM] = useState(false);
   const [showClassmates, setShowClassmates] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [showFriendsList, setShowFriendsList] = useState(false);
   const [viewingClassmateId, setViewingClassmateId] = useState(null);
+  const [returnToScreen, setReturnToScreen] = useState(null);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const socketRef = useSocket(user);
 
@@ -391,6 +398,16 @@ export default function App() {
         </button>
         <button
           type="button"
+          onClick={() => setShowSearch(true)}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span>Find Match</span>
+        </button>
+        <button
+          type="button"
           onClick={() => setShowClassmates(true)}
           className="profile-button-like"
         >
@@ -524,28 +541,42 @@ export default function App() {
       {showClassmates && (
         <ClassmateDiscovery
           onClose={() => setShowClassmates(false)}
-          onViewProfile={(id) => { setShowClassmates(false); setViewingClassmateId(id); }}
+          onViewProfile={(id) => { setShowClassmates(false); setReturnToScreen('classmates'); setViewingClassmateId(id); }}
+        />
+      )}
+
+      {showSearch && (
+        <ClassmateSearch
+          onClose={() => setShowSearch(false)}
+          onViewProfile={(id) => { setShowSearch(false); setReturnToScreen('search'); setViewingClassmateId(id); }}
         />
       )}
 
       {showFriendRequests && (
         <FriendRequests
           onClose={() => { setShowFriendRequests(false); axios.get('/api/friendships/pending').then(r => setPendingRequestCount(r.data.incoming.length)).catch(() => {}); }}
-          onViewProfile={(id) => { setShowFriendRequests(false); setViewingClassmateId(id); }}
+          onViewProfile={(id) => { setShowFriendRequests(false); setReturnToScreen('requests'); setViewingClassmateId(id); }}
         />
       )}
 
       {showFriendsList && (
         <FriendsList
           onClose={() => setShowFriendsList(false)}
-          onViewProfile={(id) => { setShowFriendsList(false); setViewingClassmateId(id); }}
+          onViewProfile={(id) => { setShowFriendsList(false); setReturnToScreen('friends'); setViewingClassmateId(id); }}
         />
       )}
 
       {viewingClassmateId && (
         <ClassmateProfile
           userId={viewingClassmateId}
-          onClose={() => setViewingClassmateId(null)}
+          onClose={() => {
+            setViewingClassmateId(null);
+            if (returnToScreen === 'classmates') setShowClassmates(true);
+            else if (returnToScreen === 'search') setShowSearch(true);
+            else if (returnToScreen === 'requests') setShowFriendRequests(true);
+            else if (returnToScreen === 'friends') setShowFriendsList(true);
+            setReturnToScreen(null);
+          }}
         />
       )}
 
