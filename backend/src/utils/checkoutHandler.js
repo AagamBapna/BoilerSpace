@@ -1,7 +1,7 @@
 const Room = require('../models/Room');
 const User = require('../models/User');
-const Notification = require('../models/Notification');
 const CheckIn = require('../models/CheckIn');
+const { sendNotification } = require('../services/NotificationService');
 
 /**
  * Handles checking out a user, updating room occupancy,
@@ -43,8 +43,9 @@ async function handleCheckout(checkinId) {
             console.log(`[Checkout] Room ${room.name} | Old: ${oldOccupancy} | New: ${newOccupancy} | Threshold: ${thresholdDecimal}`);
 
             if (oldOccupancy >= thresholdDecimal && newOccupancy < thresholdDecimal) {
-                await Notification.create({
+                await sendNotification({
                     userId: u._id,
+                    type: 'roomCapacity',
                     roomId: room._id,
                     buildingId: room.buildingId,
                     message: `${room.name} is now under ${pref.threshold}% capacity (${room.currentOccupancy}/${room.capacity})`,

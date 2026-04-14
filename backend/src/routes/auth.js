@@ -33,20 +33,21 @@ router.post('/login', async (req, res) => {
         const token = signToken(user);
         res.json({
             token,
-            user: { 
-                id: user._id, 
-                email: user.email, 
-                displayName: user.displayName, 
-                major: user.major, 
-                year: user.year, 
-                emailVerified: user.emailVerified, 
+            user: {
+                id: user._id,
+                email: user.email,
+                displayName: user.displayName,
+                major: user.major,
+                year: user.year,
+                emailVerified: user.emailVerified,
                 profilePictureUrl: user.profilePictureUrl,
                 bio: user.bio,
                 profileVisibility: user.profileVisibility,
                 studyPreferences: user.studyPreferences,
                 interests: user.interests,
                 linkedResources: user.linkedResources,
-                studyGoals: user.studyGoals
+                studyGoals: user.studyGoals,
+                notificationSettings: user.notificationSettings,
             },
         });
     } catch (err) {
@@ -68,7 +69,8 @@ router.get('/me', protect, (req, res) => {
         studyPreferences: req.user.studyPreferences,
         interests: req.user.interests,
         linkedResources: req.user.linkedResources,
-        studyGoals: req.user.studyGoals
+        studyGoals: req.user.studyGoals,
+        notificationSettings: req.user.notificationSettings,
     });
 });
 

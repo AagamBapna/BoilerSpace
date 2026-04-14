@@ -516,6 +516,49 @@ router.delete('/:id/profile-picture', protect, async (req, res) => {
     }
 });
 
+// PUT /api/users/:id/notifications/preferences — update notification settings
+router.put('/:id/notifications/preferences', protect, async (req, res) => {
+    try {
+        if (req.user._id.toString() !== req.params.id) {
+            return res.status(403).json({ error: 'You can only update your own notification preferences' });
+        }
+
+        const allowedFields = ['sessionReminders', 'messages', 'events', 'organizationUpdates', 'globalMute'];
+        const updates = {};
+
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                if (typeof req.body[field] !== 'boolean') {
+                    return res.status(400).json({ error: `${field} must be a boolean` });
+                }
+                updates[`notificationSettings.${field}`] = req.body[field];
+            }
+        }
+
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({ error: 'No valid notification preference fields provided' });
+        }
+
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { $set: updates },
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json({
+            message: 'Notification preferences updated',
+            notificationSettings: user.notificationSettings,
+        });
+    } catch (err) {
+        console.error('Error updating notification preferences:', err);
+        res.status(500).json({ error: 'Failed to update notification preferences' });
+    }
+});
+
 // POST /api/users/:id/courses — set user's courses for the semester
 router.post('/:id/courses', protect, handleCourseUpdate);
 
