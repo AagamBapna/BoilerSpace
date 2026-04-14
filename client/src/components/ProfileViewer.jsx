@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import axios from 'axios';
 import CourseSelector from './CourseSelector';
 import AvailabilityEditor from './AvailabilityEditor';
+import NotificationPreferences from './NotificationPreferences';
 import DeleteAccountModal from './DeleteAccountModal';
 
 export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onLogout }) {
@@ -285,6 +286,10 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
         <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
         <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Study Availability</h3>
         <AvailabilityEditor />
+
+        <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
+        <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Notification Preferences</h3>
+        <NotificationPreferences userId={userId} user={user} onUserUpdate={onUserUpdate} />
 
         <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
         <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Danger Zone</h3>
