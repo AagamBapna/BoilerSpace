@@ -33,7 +33,7 @@ router.post('/login', async (req, res) => {
         const token = signToken(user);
         res.json({
             token,
-            user: { id: user._id, email: user.email, displayName: user.displayName, major: user.major, year: user.year, emailVerified: user.emailVerified, profilePictureUrl: user.profilePictureUrl },
+            user: { id: user._id, email: user.email, displayName: user.displayName, major: user.major, year: user.year, emailVerified: user.emailVerified, profilePictureUrl: user.profilePictureUrl, notificationSettings: user.notificationSettings },
         });
     } catch (err) {
         console.error('Login error:', err.message);
@@ -49,6 +49,7 @@ router.get('/me', protect, (req, res) => {
         major: req.user.major,
         year: req.user.year,
         profilePictureUrl: req.user.profilePictureUrl,
+        notificationSettings: req.user.notificationSettings,
     });
 });
 
