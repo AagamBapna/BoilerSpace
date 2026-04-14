@@ -45,7 +45,7 @@ async function handleCheckout(checkinId) {
             if (oldOccupancy >= thresholdDecimal && newOccupancy < thresholdDecimal) {
                 await sendNotification({
                     userId: u._id,
-                    type: 'sessionReminder',
+                    type: 'roomCapacity',
                     roomId: room._id,
                     buildingId: room.buildingId,
                     message: `${room.name} is now under ${pref.threshold}% capacity (${room.currentOccupancy}/${room.capacity})`,

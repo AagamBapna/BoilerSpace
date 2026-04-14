@@ -46,7 +46,7 @@ async function sendNotification({ userId, type, message, roomId, buildingId }) {
     if (!allowed) return null;
 
     // Build notification document fields
-    const notificationData = { userId, message };
+    const notificationData = { userId, message, type: type || 'roomCapacity' };
     if (roomId) notificationData.roomId = roomId;
     if (buildingId) notificationData.buildingId = buildingId;
 
