@@ -25,10 +25,13 @@ describe('ClubList create popup', () => {
   });
 
   test('posts organizerIds from logged-in user and navigates with confirmation notice', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
 
-    axios.get.mockResolvedValueOnce({ data: [] });
-    axios.get.mockResolvedValueOnce({ data: { clubIds: [] } });
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/clubs') return Promise.resolve({ data: [] });
+      if (url === '/api/users/user-1') return Promise.resolve({ data: { clubIds: [] } });
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
     axios.post.mockResolvedValueOnce({ data: { id: 'club-1' } });
 
     render(
@@ -57,7 +60,9 @@ describe('ClubList create popup', () => {
       });
     });
 
-    expect(screen.getByText('Club created successfully.')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Club created successfully.')).toBeInTheDocument();
+    });
   });
 });
 

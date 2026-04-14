@@ -33,7 +33,22 @@ router.post('/login', async (req, res) => {
         const token = signToken(user);
         res.json({
             token,
-            user: { id: user._id, email: user.email, displayName: user.displayName, major: user.major, year: user.year, emailVerified: user.emailVerified, profilePictureUrl: user.profilePictureUrl, notificationSettings: user.notificationSettings },
+            user: {
+                id: user._id,
+                email: user.email,
+                displayName: user.displayName,
+                major: user.major,
+                year: user.year,
+                emailVerified: user.emailVerified,
+                profilePictureUrl: user.profilePictureUrl,
+                bio: user.bio,
+                profileVisibility: user.profileVisibility,
+                studyPreferences: user.studyPreferences,
+                interests: user.interests,
+                linkedResources: user.linkedResources,
+                studyGoals: user.studyGoals,
+                notificationSettings: user.notificationSettings,
+            },
         });
     } catch (err) {
         console.error('Login error:', err.message);
@@ -49,6 +64,12 @@ router.get('/me', protect, (req, res) => {
         major: req.user.major,
         year: req.user.year,
         profilePictureUrl: req.user.profilePictureUrl,
+        bio: req.user.bio,
+        profileVisibility: req.user.profileVisibility,
+        studyPreferences: req.user.studyPreferences,
+        interests: req.user.interests,
+        linkedResources: req.user.linkedResources,
+        studyGoals: req.user.studyGoals,
         notificationSettings: req.user.notificationSettings,
     });
 });

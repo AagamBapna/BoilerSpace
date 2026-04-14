@@ -33,6 +33,44 @@ const userSchema = new mongoose.Schema(
             required: [true, 'Year is required'],
             trim: true,
         },
+        bio: {
+            type: String,
+            default: '',
+            maxlength: [300, 'Bio must be 300 characters or fewer'],
+            trim: true,
+        },
+        studyPreferences: {
+            studyStyle: {
+                type: String,
+                enum: ['solo', 'group', 'mixed', ''],
+                default: '',
+            },
+            environment: {
+                type: String,
+                enum: ['quiet', 'moderate', 'collaborative', ''],
+                default: '',
+            }
+        },
+        interests: [{
+            type: String,
+            trim: true,
+        }],
+        linkedResources: {
+            github: {
+                type: String,
+                trim: true,
+                default: '',
+            },
+            linkedin: {
+                type: String,
+                trim: true,
+                default: '',
+            }
+        },
+        studyGoals: [{
+            type: String,
+            trim: true,
+        }],
         emailVerified: {
             type: Boolean,
             default: false,
