@@ -268,12 +268,31 @@ router.put('/:id/read', protect, async (req, res) => {
             return res.status(403).json({ error: 'Not a participant in this conversation' });
         }
 
+        const now = new Date();
+
         await Message.updateMany(
             {
                 conversationId: id,
+                sender: { $ne: req.user._id },
                 readBy: { $ne: req.user._id },
+                readAt: null,
             },
-            { $addToSet: { readBy: req.user._id } }
+            {
+                $addToSet: { readBy: req.user._id },
+                $set: { readAt: now },
+            }
+        );
+
+        await Message.updateMany(
+            {
+                conversationId: id,
+                sender: { $ne: req.user._id },
+                readBy: { $ne: req.user._id },
+                readAt: { $ne: null },
+            },
+            {
+                $addToSet: { readBy: req.user._id },
+            }
         );
 
         res.json({ message: 'Messages marked as read' });

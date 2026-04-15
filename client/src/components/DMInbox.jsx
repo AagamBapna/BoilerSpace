@@ -222,7 +222,7 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
                             </div>
                         )}
                         {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
-                            <p className="text-xs text-[#555] mt-2 px-1">No users found</p>
+                            <p className="text-xs text-[#555] mt-2 px-1">ERROR: No users found</p>
                         )}
                     </div>
                 )}

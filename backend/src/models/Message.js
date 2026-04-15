@@ -23,6 +23,10 @@ const messageSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
         }],
+        readAt: {
+            type: Date,
+            default: null,
+        },
         isDeleted: {
             type: Boolean,
             default: false,

@@ -270,6 +270,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                             onChange={(e) => setDisappearingDurationSeconds(Number(e.target.value))}
                             className="bg-[#111111] border border-[#CEB888]/20 rounded-lg px-2 py-1 text-xs text-[#f5f5f5] focus:outline-none focus:border-[#CEB888]/50"
                         >
+                            <option value={5}>5 sec</option>
                             <option value={30}>30 sec</option>
                             <option value={60}>1 min</option>
                             <option value={300}>5 min</option>

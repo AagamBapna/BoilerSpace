@@ -150,12 +150,31 @@ function initSocket(httpServer) {
                 if (!conversation) return;
                 if (!conversation.participants.some(p => p.toString() === socket.userId)) return;
 
+                const now = new Date();
+
                 await Message.updateMany(
                     {
                         conversationId,
+                        sender: { $ne: socket.userId },
                         readBy: { $ne: socket.userId },
+                        readAt: null,
                     },
-                    { $addToSet: { readBy: socket.userId } }
+                    {
+                        $addToSet: { readBy: socket.userId },
+                        $set: { readAt: now },
+                    }
+                );
+
+                await Message.updateMany(
+                    {
+                        conversationId,
+                        sender: { $ne: socket.userId },
+                        readBy: { $ne: socket.userId },
+                        readAt: { $ne: null },
+                    },
+                    {
+                        $addToSet: { readBy: socket.userId },
+                    }
                 );
 
                 const otherParticipants = conversation.participants
@@ -165,6 +184,7 @@ function initSocket(httpServer) {
                     io.to(participantId.toString()).emit('messagesRead', {
                         conversationId,
                         readBy: socket.userId,
+                        readAt: now,
                     });
                 });
             } catch (err) {

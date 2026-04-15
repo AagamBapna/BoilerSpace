@@ -43,7 +43,7 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
       return fileUrl;
     }
 
-    return `${window.location.protocol}//${window.location.hostname}:3000${fileUrl}`;
+    return `${window.location.protocol}//${window.location.hostname}:5001${fileUrl}`;
   };
 
   const handleDelete = async (noteId) => {
