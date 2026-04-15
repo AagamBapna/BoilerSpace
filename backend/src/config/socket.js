@@ -192,6 +192,52 @@ function initSocket(httpServer) {
             }
         });
 
+        socket.on('typing', async (data) => {
+            const { conversationId } = data;
+            if (!conversationId) return;
+
+            try {
+                const conversation = await Conversation.findById(conversationId);
+                if (!conversation) return;
+                if (!conversation.participants.some(p => p.toString() === socket.userId)) return;
+
+                const otherParticipants = conversation.participants
+                    .filter(p => p.toString() !== socket.userId);
+
+                otherParticipants.forEach(participantId => {
+                    io.to(participantId.toString()).emit('userTyping', {
+                        conversationId,
+                        userId: socket.userId,
+                    });
+                });
+            } catch (err) {
+                console.error('Socket typing error:', err.message);
+            }
+        });
+
+        socket.on('stopTyping', async (data) => {
+            const { conversationId } = data;
+            if (!conversationId) return;
+
+            try {
+                const conversation = await Conversation.findById(conversationId);
+                if (!conversation) return;
+                if (!conversation.participants.some(p => p.toString() === socket.userId)) return;
+
+                const otherParticipants = conversation.participants
+                    .filter(p => p.toString() !== socket.userId);
+
+                otherParticipants.forEach(participantId => {
+                    io.to(participantId.toString()).emit('userStopTyping', {
+                        conversationId,
+                        userId: socket.userId,
+                    });
+                });
+            } catch (err) {
+                console.error('Socket stopTyping error:', err.message);
+            }
+        });
+
         socket.on('disconnect', () => {});
     });
 
