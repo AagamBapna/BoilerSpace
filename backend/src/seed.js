@@ -10,7 +10,7 @@ const buildingsData = [
     {
         name: 'Electrical Engineering Building',
         abbreviation: 'EE',
-        latitude: 40.42883444389635, 
+        latitude: 40.42883444389635,
         longitude: -86.9119883321832,
         address: '465 Northwestern Ave, West Lafayette, IN 47907',
         amenities: ['Wi-Fi', 'Outlets', 'Computer Labs'],
@@ -26,7 +26,7 @@ const buildingsData = [
     {
         name: 'Hicks Undergraduate Library',
         abbreviation: 'HIKS',
-        latitude: 40.42454060856231, 
+        latitude: 40.42454060856231,
         longitude: -86.91262212919347,
         address: '504 W State St, West Lafayette, IN 47907',
         amenities: ['Wi-Fi', 'Outlets', 'Quiet Zones', 'Printers', 'Study Rooms'],
@@ -51,14 +51,14 @@ const buildingsData = [
         name: 'Lilly Hall of Life Sciences',
         abbreviation: 'LILY',
         latitude: 40.42344999072248,
-        longitude:  -86.9179316212151,
+        longitude: -86.9179316212151,
         address: '915 Mitch Daniels Blvd, West Lafayette, IN 47907',
         amenities: ['Wi-Fi', 'Outlets', 'Study Lounges', 'Labs'],
     },
     {
         name: 'Mathematical Sciences Building',
         abbreviation: 'MATH',
-        latitude: 40.42624094417116, 
+        latitude: 40.42624094417116,
         longitude: -86.91572329611937,
         address: '150 N University St, West Lafayette, IN 47907',
         amenities: ['Wi-Fi', 'Outlets', 'Whiteboards', 'Study Lounges'],
@@ -74,7 +74,7 @@ const buildingsData = [
     {
         name: 'Wilmeth Active Learning Center',
         abbreviation: 'WALC',
-        latitude: 40.42752991318529, 
+        latitude: 40.42752991318529,
         longitude: -86.91319136101905,
         address: '340 Centennial Mall Dr, West Lafayette, IN 47907',
         amenities: ['Wi-Fi', 'Outlets', 'Whiteboards', 'Cafe', 'Group Rooms'],
@@ -91,9 +91,9 @@ const buildingsData = [
         name: 'Hall of Data Science and AI',
         abbreviation: 'DSAI',
         latitude: 40.42900113393102,
-        longitude:  -86.91481479471226,
+        longitude: -86.91481479471226,
         address: '475 Stadium Mall Drive, West Lafayette, IN 47907',
-        amenities: ['Wi-Fi', 'Outlets', 'Whiteboards','Group Rooms'],
+        amenities: ['Wi-Fi', 'Outlets', 'Whiteboards', 'Group Rooms'],
     },
     {
         name: 'Dudley Hall',
@@ -101,7 +101,15 @@ const buildingsData = [
         latitude: 40.42723581771787,
         longitude: -86.91128030054516,
         address: '420 Central Dr, West Lafayette, IN 47907',
-        amenities: ['Wi-Fi', 'Outlets', 'Whiteboards','Group Rooms'],
+        amenities: ['Wi-Fi', 'Outlets', 'Whiteboards', 'Group Rooms'],
+    },
+    {
+        name: 'Shreve Hall',
+        abbreviation: 'SHRV',
+        latitude: 40.427142946981405,
+        longitude: -86.92464491677501,
+        address: '1275 3rd Street, West Lafayette, IN 47907',
+        amenities: ['Wi-Fi', 'Outlets', 'Whiteboards', 'Group Rooms'],
     },
 ];
 
@@ -168,47 +176,50 @@ const roomsData = {
         { name: 'ARMS 3001', floor: 3, capacity: 30, amenities: ['Whiteboard', 'Projector', 'Outlets'], noiseClassification: 'Moderate' },
         { name: 'ARMS 3041', floor: 3, capacity: 30, amenities: ['Whiteboard', 'Projector', 'Outlets'], noiseClassification: 'Moderate' },
     ],
+    SHRV: [
+        { name: 'SHRV 303', floor: 3, capacity: 3, amenities: ['Whiteboard', 'Projector', 'Outlets'], noiseClassification: 'Moderate' },
+    ],
 };
 
 // ─── Course Data ──────────────────────────────────────────────────────────────
 // Representative Purdue courses for Spring 2026
 const coursesData = [
     // Computer Science
-    { courseCode: 'CS 18000',  department: 'CS', title: 'Problem Solving And Object-Oriented Programming',        semester: 'Spring 2026', credits: 4 },
-    { courseCode: 'CS 18200',  department: 'CS', title: 'Foundations of Computer Science',                        semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'CS 24000',  department: 'CS', title: 'Programming in C',                                       semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'CS 25000',  department: 'CS', title: 'Computer Architecture',                                  semester: 'Spring 2026', credits: 4 },
-    { courseCode: 'CS 25100',  department: 'CS', title: 'Data Structures and Algorithms',                         semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'CS 30700',  department: 'CS', title: 'Software Engineering I',                                 semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'CS 35400',  department: 'CS', title: 'Operating Systems',                                      semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'CS 37300',  department: 'CS', title: 'Data Mining and Machine Learning',                       semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'CS 38100',  department: 'CS', title: 'Introduction to the Analysis of Algorithms',             semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'CS 40800',  department: 'CS', title: 'Software Testing',                                       semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'CS 42200',  department: 'CS', title: 'Computer Networks',                                      semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'CS 44800',  department: 'CS', title: 'Introduction to Relational Database Systems',            semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'CS 47100',  department: 'CS', title: 'Introduction to Artificial Intelligence',                semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 18000', department: 'CS', title: 'Problem Solving And Object-Oriented Programming', semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'CS 18200', department: 'CS', title: 'Foundations of Computer Science', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 24000', department: 'CS', title: 'Programming in C', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 25000', department: 'CS', title: 'Computer Architecture', semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'CS 25100', department: 'CS', title: 'Data Structures and Algorithms', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 30700', department: 'CS', title: 'Software Engineering I', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 35400', department: 'CS', title: 'Operating Systems', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 37300', department: 'CS', title: 'Data Mining and Machine Learning', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 38100', department: 'CS', title: 'Introduction to the Analysis of Algorithms', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 40800', department: 'CS', title: 'Software Testing', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 42200', department: 'CS', title: 'Computer Networks', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 44800', department: 'CS', title: 'Introduction to Relational Database Systems', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'CS 47100', department: 'CS', title: 'Introduction to Artificial Intelligence', semester: 'Spring 2026', credits: 3 },
     // Mathematics
-    { courseCode: 'MA 16100',  department: 'MA', title: 'Plane Analytic Geometry and Calculus I',                 semester: 'Spring 2026', credits: 5 },
-    { courseCode: 'MA 16200',  department: 'MA', title: 'Plane Analytic Geometry and Calculus II',                semester: 'Spring 2026', credits: 5 },
-    { courseCode: 'MA 26100',  department: 'MA', title: 'Multivariate Calculus',                                  semester: 'Spring 2026', credits: 4 },
-    { courseCode: 'MA 26500',  department: 'MA', title: 'Linear Algebra',                                         semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'MA 26600',  department: 'MA', title: 'Ordinary Differential Equations',                        semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'MA 34100',  department: 'MA', title: 'Foundations of Analysis',                                semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'MA 35100',  department: 'MA', title: 'Elementary Linear Algebra',                              semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'MA 16100', department: 'MA', title: 'Plane Analytic Geometry and Calculus I', semester: 'Spring 2026', credits: 5 },
+    { courseCode: 'MA 16200', department: 'MA', title: 'Plane Analytic Geometry and Calculus II', semester: 'Spring 2026', credits: 5 },
+    { courseCode: 'MA 26100', department: 'MA', title: 'Multivariate Calculus', semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'MA 26500', department: 'MA', title: 'Linear Algebra', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'MA 26600', department: 'MA', title: 'Ordinary Differential Equations', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'MA 34100', department: 'MA', title: 'Foundations of Analysis', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'MA 35100', department: 'MA', title: 'Elementary Linear Algebra', semester: 'Spring 2026', credits: 3 },
     // Electrical and Computer Engineering
-    { courseCode: 'ECE 20001', department: 'ECE', title: 'Electrical Engineering Fundamentals I',                 semester: 'Spring 2026', credits: 4 },
-    { courseCode: 'ECE 20002', department: 'ECE', title: 'Electrical Engineering Fundamentals II',                semester: 'Spring 2026', credits: 4 },
-    { courseCode: 'ECE 30100', department: 'ECE', title: 'Signals and Systems',                                   semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'ECE 36800', department: 'ECE', title: 'Data Structures',                                       semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'ECE 20001', department: 'ECE', title: 'Electrical Engineering Fundamentals I', semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'ECE 20002', department: 'ECE', title: 'Electrical Engineering Fundamentals II', semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'ECE 30100', department: 'ECE', title: 'Signals and Systems', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'ECE 36800', department: 'ECE', title: 'Data Structures', semester: 'Spring 2026', credits: 3 },
     // Statistics
-    { courseCode: 'STAT 35000', department: 'STAT', title: 'Introduction to Statistics',                          semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'STAT 41600', department: 'STAT', title: 'Probability',                                         semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'STAT 35000', department: 'STAT', title: 'Introduction to Statistics', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'STAT 41600', department: 'STAT', title: 'Probability', semester: 'Spring 2026', credits: 3 },
     // Physics
-    { courseCode: 'PHYS 17200', department: 'PHYS', title: 'Modern Mechanics',                                    semester: 'Spring 2026', credits: 4 },
-    { courseCode: 'PHYS 27200', department: 'PHYS', title: 'Electric and Magnetic Interactions',                  semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'PHYS 17200', department: 'PHYS', title: 'Modern Mechanics', semester: 'Spring 2026', credits: 4 },
+    { courseCode: 'PHYS 27200', department: 'PHYS', title: 'Electric and Magnetic Interactions', semester: 'Spring 2026', credits: 4 },
     // Management
-    { courseCode: 'MGMT 20000', department: 'MGMT', title: 'Introductory Accounting',                             semester: 'Spring 2026', credits: 3 },
-    { courseCode: 'MGMT 31000', department: 'MGMT', title: 'Financial Management',                                semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'MGMT 20000', department: 'MGMT', title: 'Introductory Accounting', semester: 'Spring 2026', credits: 3 },
+    { courseCode: 'MGMT 31000', department: 'MGMT', title: 'Financial Management', semester: 'Spring 2026', credits: 3 },
 ];
 
 async function seed() {

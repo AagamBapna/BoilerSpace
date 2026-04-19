@@ -175,9 +175,16 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
             label.textContent = building.abbreviation;
             el.appendChild(label);
 
+            const mapStatusColors = {
+                Quiet: '#22c55e',       
+                Moderate: '#eab308',    
+                Collaborative: '#ef4444', 
+            };
+            const dotColor = mapStatusColors[status] || 'rgba(255,255,255,0.85)';
+
             // Inner dot
             const dot = document.createElement('span');
-            dot.style.cssText = 'width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.85);';
+            dot.style.cssText = `width:12px;height:12px;border-radius:50%;background:${dotColor};box-shadow:0 0 10px ${dotColor}80;`;
             el.appendChild(dot);
 
             const marker = new mapboxgl.Marker({ element: el })
