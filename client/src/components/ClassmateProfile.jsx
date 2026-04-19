@@ -10,6 +10,23 @@ export default function ClassmateProfile({ userId, onClose }) {
   const [connecting, setConnecting] = useState(false);
   const [actionError, setActionError] = useState(null);
 
+  // ── Analytics Gamification ──
+  const [weeklyMinutes, setWeeklyMinutes] = useState(0);
+  const [fetchingAnalytics, setFetchingAnalytics] = useState(true);
+
+  // Week Boundary Helper
+  const getCurrentWeekBounds = () => {
+      const now = new Date();
+      const day = now.getDay();
+      const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(now.setDate(diffToMonday));
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      return { startDate: monday.toISOString(), endDate: sunday.toISOString() };
+  };
+
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -22,6 +39,14 @@ export default function ClassmateProfile({ userId, onClose }) {
         else setError('Failed to load profile.');
       })
       .finally(() => setLoading(false));
+
+    // Concurrently fetch Weekly Analytics
+    setFetchingAnalytics(true);
+    const { startDate, endDate } = getCurrentWeekBounds();
+    axios.get(`/api/analytics/weekly/${userId}`, { params: { startDate, endDate } })
+        .then(res => setWeeklyMinutes(res.data.totalWeeklyMinutes || 0))
+        .catch(err => console.error('Failed to load classmate analytics', err))
+        .finally(() => setFetchingAnalytics(false));
   }, [userId]);
 
   const handleConnect = async () => {
@@ -263,6 +288,26 @@ export default function ClassmateProfile({ userId, onClose }) {
                     <h3 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Study Goals</h3>
                     <p className="text-xs text-[var(--color-text-secondary)] italic">No study goals added yet.</p>
                   </div>
+                )}
+                
+                {/* Analytics Widget (Gamified) */}
+                {!fetchingAnalytics && weeklyMinutes > 0 && (
+                   <div className="w-full mt-4 p-3 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl relative overflow-hidden">
+                       <div className="flex justify-between items-end mb-1">
+                           <div>
+                               <p className="text-xl font-bold text-[var(--color-text-primary)] tracking-tight">
+                                   {Math.floor(weeklyMinutes / 60)}<span className="text-sm opacity-70">h</span> {weeklyMinutes % 60}<span className="text-sm opacity-70">m</span>
+                               </p>
+                               <p className="text-[10px] text-[var(--color-text-secondary)] uppercase tracking-widest mt-0.5">Studied This Week</p>
+                           </div>
+                           <div className="text-right">
+                               <p className="text-[10px] font-semibold text-[var(--color-purdue-gold)]">{Math.min(100, Math.round((weeklyMinutes / 600) * 100))}% Target Flow</p>
+                           </div>
+                       </div>
+                       <div className="w-full h-1.5 bg-[var(--color-surface)] rounded-full mt-2 overflow-hidden">
+                           <div className="h-full bg-[var(--color-purdue-gold)] rounded-full shadow-[0_0_8px_var(--color-purdue-gold)] transition-all" style={{ width: `${Math.min(100, (weeklyMinutes / 600) * 100)}%` }} />
+                       </div>
+                   </div>
                 )}
 
                 {/* Links */}
