@@ -6,6 +6,7 @@ import SnackIndicator from './SnackIndicator';
 import SnackReporter from './SnackReporter';
 import { formatRelative, formatAbsolute } from '../utils/formatRelative';
 import { useLocation } from '../contexts/LocationContext';
+import RoomReviews from './RoomReviews';
 
 
 export default function BuildingSidebar({ buildings, selectedBuilding, onSelectBuilding, onClose, user, onLogout, bookmarkedRoomIds = new Set(), onToggleBookmark, bookmarks = [], recentBuildings = [], onRefreshRecentBuildings, isQuietZonesOnly }) {
@@ -21,6 +22,7 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
     const { locationStatus, userLocation, requestLocationAccess, resetLocationStatus, disableLocationAccess } = useLocation();
     const [snackData, setSnackData] = useState(null);
     const [showSnackReporter, setShowSnackReporter] = useState(false);
+    const [expandedReviewsRoomId, setExpandedReviewsRoomId] = useState(null);
 
     useEffect(() => {
         if (!userLocation) {
@@ -384,163 +386,174 @@ export default function BuildingSidebar({ buildings, selectedBuilding, onSelectB
                                 {rooms
                                     .filter(r => !isQuietZonesOnly || r.noiseClassification === 'Quiet')
                                     .map((room) => (
-                                    <div
-                                        key={room._id}
-                                        className="rounded-xl border border-white/5 hover:border-[var(--color-purdue-gold)]/20"
-                                        style={{ padding: '16px', background: '#1a1a1a', transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease' }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                            e.currentTarget.style.boxShadow = '0 4px 16px rgba(206,184,136,0.15)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                            e.currentTarget.style.boxShadow = 'none';
-                                        }}
-                                    >
-                                        <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
-                                            <h4 className="font-semibold text-sm">{room.name}</h4>
-                                            <div className="flex items-center" style={{ gap: '8px' }}>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onToggleBookmark?.(room._id, bookmarkedRoomIds.has(room._id));
-                                                    }}
-                                                    className={`bookmark-btn ${bookmarkedRoomIds.has(room._id) ? 'active' : ''}`}
-                                                    aria-label={bookmarkedRoomIds.has(room._id) ? 'Remove bookmark' : 'Bookmark room'}
-                                                    title={bookmarkedRoomIds.has(room._id) ? 'Remove bookmark' : 'Bookmark room'}
-                                                >
-                                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill={bookmarkedRoomIds.has(room._id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2}>
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                                    </svg>
-                                                </button>
-                                                <span className="text-xs text-[var(--color-text-secondary)]">
-                                                    Floor {room.floor}
+                                        <div
+                                            key={room._id}
+                                            className="rounded-xl border border-white/5 hover:border-[var(--color-purdue-gold)]/20"
+                                            style={{ padding: '16px', background: '#1a1a1a', transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease' }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                                e.currentTarget.style.boxShadow = '0 4px 16px rgba(206,184,136,0.15)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.boxShadow = 'none';
+                                            }}
+                                        >
+                                            <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
+                                                <h4 className="font-semibold text-sm">{room.name}</h4>
+                                                <div className="flex items-center" style={{ gap: '8px' }}>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onToggleBookmark?.(room._id, bookmarkedRoomIds.has(room._id));
+                                                        }}
+                                                        className={`bookmark-btn ${bookmarkedRoomIds.has(room._id) ? 'active' : ''}`}
+                                                        aria-label={bookmarkedRoomIds.has(room._id) ? 'Remove bookmark' : 'Bookmark room'}
+                                                        title={bookmarkedRoomIds.has(room._id) ? 'Remove bookmark' : 'Bookmark room'}
+                                                    >
+                                                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill={bookmarkedRoomIds.has(room._id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                                        </svg>
+                                                    </button>
+                                                    <span className="text-xs text-[var(--color-text-secondary)]">
+                                                        Floor {room.floor}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center text-xs text-[var(--color-text-secondary)]" style={{ gap: '12px' }}>
+                                                <span>{room.capacity} seats</span>
+                                                <span>{noiseClassificationIcon[room.noiseClassification?.toLowerCase()] || '🗣️ Moderate'}</span>
+                                                <span>Current occupancy: {room.currentOccupancy}</span>
+                                                <span className="timestamp-tooltip" data-tooltip={formatAbsolute(room.lastStatusUpdate)} tabIndex={0}>
+                                                    Last updated: {formatRelative(room.lastStatusUpdate)}
                                                 </span>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center text-xs text-[var(--color-text-secondary)]" style={{ gap: '12px' }}>
-                                            <span>{room.capacity} seats</span>
-                                            <span>{noiseClassificationIcon[room.noiseClassification?.toLowerCase()] || '🗣️ Moderate'}</span>
-                                            <span>Current occupancy: {room.currentOccupancy}</span>
-                                            <span className="timestamp-tooltip" data-tooltip={formatAbsolute(room.lastStatusUpdate)} tabIndex={0}>
-                                                Last updated: {formatRelative(room.lastStatusUpdate)}
-                                            </span>
-                                        </div>
-                                        {room.amenities?.length > 0 && (
-                                            <div className="flex flex-wrap" style={{ gap: '4px', marginTop: '8px' }}>
-                                                {room.amenities.map((a, i) => (
-                                                    <span
-                                                        key={i}
-                                                        className="text-[var(--color-text-secondary)]"
-                                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)' }}
-                                                    >
-                                                        {amenityIcons[a] || '•'} {a}
-                                                    </span>
-                                                ))}
-                                            </div>
+                                            {room.amenities?.length > 0 && (
+                                                <div className="flex flex-wrap" style={{ gap: '4px', marginTop: '8px' }}>
+                                                    {room.amenities.map((a, i) => (
+                                                        <span
+                                                            key={i}
+                                                            className="text-[var(--color-text-secondary)]"
+                                                            style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)' }}
+                                                        >
+                                                            {amenityIcons[a] || '•'} {a}
+                                                        </span>
+                                                    ))}
+                                                </div>
 
-                                        )}
-                                        {thresholdRoom === room._id ? (
-                                            <div className="flex items-center justify-between" style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                <div className="flex items-center" style={{ gap: '8px' }}>
-                                                    <span className="text-xs text-[var(--color-text-secondary)] font-medium">Alert me at:</span>
-                                                    <div className="flex items-center relative">
-                                                        <input
-                                                            type="number"
-                                                            min="1"
-                                                            max="100"
-                                                            value={thresholdValue}
-                                                            onChange={(e) => setThresholdValue(Number(e.target.value))}
-                                                            className="text-sm font-semibold rounded-md text-white focus:outline-none focus:border-[var(--color-purdue-gold)] transition-colors"
-                                                            style={{ width: '64px', padding: '4px 8px', paddingRight: '20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)' }}
-                                                        />
-                                                        <span className="absolute right-2 text-xs text-[var(--color-text-secondary)] pointer-events-none">%</span>
+                                            )}
+                                            {thresholdRoom === room._id ? (
+                                                <div className="flex items-center justify-between" style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <div className="flex items-center" style={{ gap: '8px' }}>
+                                                        <span className="text-xs text-[var(--color-text-secondary)] font-medium">Alert me at:</span>
+                                                        <div className="flex items-center relative">
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                max="100"
+                                                                value={thresholdValue}
+                                                                onChange={(e) => setThresholdValue(Number(e.target.value))}
+                                                                className="text-sm font-semibold rounded-md text-white focus:outline-none focus:border-[var(--color-purdue-gold)] transition-colors"
+                                                                style={{ width: '64px', padding: '4px 8px', paddingRight: '20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                                            />
+                                                            <span className="absolute right-2 text-xs text-[var(--color-text-secondary)] pointer-events-none">%</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center" style={{ gap: '6px' }}>
+                                                        <button
+                                                            onClick={() => setThresholdRoom(null)}
+                                                            className="text-xs font-medium px-3 py-1.5 rounded-md text-[var(--color-text-secondary)] hover:text-white hover:bg-white/5 transition-colors"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await axios.post('/api/notifications/preferences', {
+                                                                        roomId: room._id,
+                                                                        threshold: thresholdValue,
+                                                                    });
+                                                                    setThresholdRoom(null);
+                                                                    alert('Alert saved!');
+                                                                } catch (err) {
+                                                                    alert(err.response?.data?.error || 'Failed to save alert');
+                                                                }
+                                                            }}
+                                                            className="text-xs font-bold px-4 py-1.5 rounded-md text-black transition-transform hover:scale-105"
+                                                            style={{ background: 'var(--color-purdue-gold)' }}
+                                                        >
+                                                            Save
+                                                        </button>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center" style={{ gap: '6px' }}>
-                                                    <button
-                                                        onClick={() => setThresholdRoom(null)}
-                                                        className="text-xs font-medium px-3 py-1.5 rounded-md text-[var(--color-text-secondary)] hover:text-white hover:bg-white/5 transition-colors"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                    <button
-                                                        onClick={async () => {
-                                                            try {
-                                                                await axios.post('/api/notifications/preferences', {
-                                                                    roomId: room._id,
-                                                                    threshold: thresholdValue,
-                                                                });
-                                                                setThresholdRoom(null);
-                                                                alert('Alert saved!');
-                                                            } catch (err) {
-                                                                alert(err.response?.data?.error || 'Failed to save alert');
-                                                            }
-                                                        }}
-                                                        className="text-xs font-bold px-4 py-1.5 rounded-md text-black transition-transform hover:scale-105"
-                                                        style={{ background: 'var(--color-purdue-gold)' }}
-                                                    >
-                                                        Save
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => { setThresholdRoom(room._id); setThresholdValue(50); }}
-                                                className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-purdue-gold)] transition-colors flex items-center gap-1.5"
-                                                style={{ marginTop: '12px' }}
-                                            >
-                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                                                </svg>
-                                                Set capacity alert
-                                            </button>
-                                        )}
-                                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
-                                            <button
-                                                onClick={async () => {
-                                                    try {
-                                                        if (activeCheckIn?.roomId === room._id) {
-                                                            await axios.delete(`/api/buildings/${activeCheckIn.buildingId}/rooms/${activeCheckIn.roomId}/checkins/${activeCheckIn._id}`);
-                                                            setActiveCheckIn(null);
-                                                        } else {
-                                                            if (activeCheckIn) {
+                                            ) : (
+                                                <button
+                                                    onClick={() => { setThresholdRoom(room._id); setThresholdValue(50); }}
+                                                    className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-purdue-gold)] transition-colors flex items-center gap-1.5"
+                                                    style={{ marginTop: '12px' }}
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                                    </svg>
+                                                    Set capacity alert
+                                                </button>
+                                            )}
+                                            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            if (activeCheckIn?.roomId === room._id) {
                                                                 await axios.delete(`/api/buildings/${activeCheckIn.buildingId}/rooms/${activeCheckIn.roomId}/checkins/${activeCheckIn._id}`);
+                                                                setActiveCheckIn(null);
+                                                            } else {
+                                                                if (activeCheckIn) {
+                                                                    await axios.delete(`/api/buildings/${activeCheckIn.buildingId}/rooms/${activeCheckIn.roomId}/checkins/${activeCheckIn._id}`);
+                                                                }
+                                                                const res = await axios.post(`/api/buildings/${selectedBuilding._id}/rooms/${room._id}/checkins`);
+                                                                setActiveCheckIn(res.data);
+                                                                if (onRefreshRecentBuildings) onRefreshRecentBuildings();
                                                             }
-                                                            const res = await axios.post(`/api/buildings/${selectedBuilding._id}/rooms/${room._id}/checkins`);
-                                                            setActiveCheckIn(res.data);
-                                                            if (onRefreshRecentBuildings) onRefreshRecentBuildings();
+                                                            await fetchRooms();
+                                                        } catch (err) {
+                                                            alert(err.response?.data?.error || 'Failed');
                                                         }
-                                                        await fetchRooms();
-                                                    } catch (err) {
-                                                        alert(err.response?.data?.error || 'Failed');
-                                                    }
-                                                }}
-                                                style={{
-                                                    padding: '8px 32px',
-                                                    borderRadius: '8px',
-                                                    fontSize: '12px',
-                                                    fontWeight: '600',
-                                                    cursor: 'pointer',
-                                                    border: 'none',
-                                                    transition: 'all 0.2s ease',
-                                                    background: activeCheckIn?.roomId === room._id ? '#ef4444' : 'var(--color-purdue-gold)',
-                                                    color: activeCheckIn?.roomId === room._id ? 'white' : 'black',
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.transform = 'scale(1.05)';
-                                                    e.currentTarget.style.opacity = '0.9';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.transform = 'scale(1)';
-                                                    e.currentTarget.style.opacity = '1';
-                                                }}
-                                            >
-                                                {activeCheckIn?.roomId === room._id ? 'Check Out' : 'Check In'}
-                                            </button>
+                                                    }}
+                                                    style={{
+                                                        padding: '8px 32px',
+                                                        borderRadius: '8px',
+                                                        fontSize: '12px',
+                                                        fontWeight: '600',
+                                                        cursor: 'pointer',
+                                                        border: 'none',
+                                                        transition: 'all 0.2s ease',
+                                                        background: activeCheckIn?.roomId === room._id ? '#ef4444' : 'var(--color-purdue-gold)',
+                                                        color: activeCheckIn?.roomId === room._id ? 'white' : 'black',
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.transform = 'scale(1.05)';
+                                                        e.currentTarget.style.opacity = '0.9';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.transform = 'scale(1)';
+                                                        e.currentTarget.style.opacity = '1';
+                                                    }}
+                                                >
+                                                    {activeCheckIn?.roomId === room._id ? 'Check Out' : 'Check In'}
+                                                </button>
+                                            </div>
+                                            <div style={{ marginTop: '12px' }}>
+                                                <button
+                                                    onClick={() => setExpandedReviewsRoomId(prev => prev === room._id ? null : room._id)}
+                                                    className="w-full text-center text-xs font-semibold py-2 rounded-lg bg-white/5 hover:bg-white/10 text-[var(--color-text-secondary)] hover:text-white transition-colors"
+                                                >
+                                                    {expandedReviewsRoomId === room._id ? 'Hide Reviews' : 'Show Reviews'}
+                                                </button>
+                                                {expandedReviewsRoomId === room._id && (
+                                                    <RoomReviews roomId={room._id} user={user} />
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
                             </div>
                         )}
                     </div>
