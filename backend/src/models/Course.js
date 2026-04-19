@@ -1,5 +1,25 @@
 const mongoose = require('mongoose');
 
+const examSchema = new mongoose.Schema(
+    {
+        title: {
+            type: String,
+            required: [true, 'Exam title is required'],
+            trim: true,
+        },
+        date: {
+            type: Date,
+            required: [true, 'Exam date is required'],
+        },
+        location: {
+            type: String,
+            default: '',
+            trim: true,
+        },
+    },
+    { timestamps: true }
+);
+
 const courseSchema = new mongoose.Schema(
     {
         courseCode: {
@@ -38,6 +58,10 @@ const courseSchema = new mongoose.Schema(
             type: String,
             default: '',
             trim: true,
+        },
+        exams: {
+            type: [examSchema],
+            default: [],
         },
     },
     { timestamps: true }
