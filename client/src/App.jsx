@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, useInRouterContext, Link } from 'react-router-dom';
+import { Routes, Route, useInRouterContext, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
@@ -12,6 +12,7 @@ import ResetPasswordForm from './components/ResetPasswordForm';
 import EmailVerification from './components/EmailVerification';
 import DMInbox from './components/DMInbox';
 import ClassmateDiscovery from './components/ClassmateDiscovery';
+import ClassmateSearch from './components/ClassmateSearch';
 import FriendRequests from './components/FriendRequests';
 import FriendsList from './components/FriendsList';
 import ClassmateProfile from './components/ClassmateProfile';
@@ -23,11 +24,17 @@ import EventPage from './pages/EventPage';
 import StudyPlanGenerator from './components/StudyPlanGenerator';
 import { getToken, setToken, clearToken } from './lib/auth';
 import NotificationBell from './components/NotificationBell';
+import StudyTimeWidget from './components/StudyTimeWidget';
+import StudyTimePill from './components/StudyTimePill';
 import { useSocket } from './lib/useSocket';
 import './index.css';
 
 export default function App() {
   const inRouterContext = useInRouterContext();
+  // useNavigate throws outside Router so guard it
+  let _nav = null;
+  try { _nav = useNavigate(); } catch { /* outside Router */ }
+  const navigate = _nav || (() => {});
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [authMode, setAuthMode] = useState('login');
@@ -47,11 +54,15 @@ export default function App() {
   const [recentBuildings, setRecentBuildings] = useState([])
   const [showDM, setShowDM] = useState(false);
   const [showClassmates, setShowClassmates] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [showFriendsList, setShowFriendsList] = useState(false);
   const [showStudyPlan, setShowStudyPlan] = useState(false);
   const [viewingClassmateId, setViewingClassmateId] = useState(null);
+  const [returnToScreen, setReturnToScreen] = useState(null);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
+  const [showStudyTime, setShowStudyTime] = useState(false);
+  const [studyTimeRefreshKey, setStudyTimeRefreshKey] = useState(0);
   const socketRef = useSocket(user);
 
 
@@ -380,6 +391,7 @@ export default function App() {
           </svg>
           <span>Course Notes</span>
         </button>
+<<<<<<< HEAD
         <button
           type="button"
           onClick={() => setShowStudyPlan(true)}
@@ -390,6 +402,13 @@ export default function App() {
           </svg>
           <span>Study Plan</span>
         </button>
+=======
+        <StudyTimePill
+          userId={user.id}
+          refreshKey={studyTimeRefreshKey}
+          onClick={() => setShowStudyTime(true)}
+        />
+>>>>>>> 90200ffa88133f13007e554526663faec3d4e388
         <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} />
         <button
           type="button"
@@ -400,6 +419,16 @@ export default function App() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
           </svg>
           <span>Messages</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowSearch(true)}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span>Find Match</span>
         </button>
         <button
           type="button"
@@ -525,6 +554,21 @@ export default function App() {
         />
       )}
 
+      {showStudyTime && (
+        <StudyTimeWidget
+          userId={user.id}
+          user={user}
+          onClose={() => {
+            setShowStudyTime(false);
+            // Bump the key so the top-bar pill refetches its weekly total
+            // (e.g. if the user logged a session inside the modal).
+            setStudyTimeRefreshKey((k) => k + 1);
+          }}
+          onUserUpdate={(updatedUser) => setUser((prev) => ({ ...prev, ...updatedUser }))}
+          onSessionLogged={() => setStudyTimeRefreshKey((k) => k + 1)}
+        />
+      )}
+
       {showDM && (
         <DMInbox
           currentUserId={user.id}
@@ -536,28 +580,42 @@ export default function App() {
       {showClassmates && (
         <ClassmateDiscovery
           onClose={() => setShowClassmates(false)}
-          onViewProfile={(id) => { setShowClassmates(false); setViewingClassmateId(id); }}
+          onViewProfile={(id) => { setShowClassmates(false); setReturnToScreen('classmates'); setViewingClassmateId(id); }}
+        />
+      )}
+
+      {showSearch && (
+        <ClassmateSearch
+          onClose={() => setShowSearch(false)}
+          onViewProfile={(id) => { setShowSearch(false); setReturnToScreen('search'); setViewingClassmateId(id); }}
         />
       )}
 
       {showFriendRequests && (
         <FriendRequests
           onClose={() => { setShowFriendRequests(false); axios.get('/api/friendships/pending').then(r => setPendingRequestCount(r.data.incoming.length)).catch(() => {}); }}
-          onViewProfile={(id) => { setShowFriendRequests(false); setViewingClassmateId(id); }}
+          onViewProfile={(id) => { setShowFriendRequests(false); setReturnToScreen('requests'); setViewingClassmateId(id); }}
         />
       )}
 
       {showFriendsList && (
         <FriendsList
           onClose={() => setShowFriendsList(false)}
-          onViewProfile={(id) => { setShowFriendsList(false); setViewingClassmateId(id); }}
+          onViewProfile={(id) => { setShowFriendsList(false); setReturnToScreen('friends'); setViewingClassmateId(id); }}
         />
       )}
 
       {viewingClassmateId && (
         <ClassmateProfile
           userId={viewingClassmateId}
-          onClose={() => setViewingClassmateId(null)}
+          onClose={() => {
+            setViewingClassmateId(null);
+            if (returnToScreen === 'classmates') setShowClassmates(true);
+            else if (returnToScreen === 'search') setShowSearch(true);
+            else if (returnToScreen === 'requests') setShowFriendRequests(true);
+            else if (returnToScreen === 'friends') setShowFriendsList(true);
+            setReturnToScreen(null);
+          }}
         />
       )}
       {showStudyPlan && (

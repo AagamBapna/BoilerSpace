@@ -1,7 +1,8 @@
 const Room = require('../models/Room');
 const User = require('../models/User');
-const Notification = require('../models/Notification');
 const CheckIn = require('../models/CheckIn');
+const StudySession = require('../models/StudySession');
+const { sendNotification } = require('../services/NotificationService');
 
 /**
  * Handles checking out a user, updating room occupancy,
@@ -13,6 +14,24 @@ async function handleCheckout(checkinId) {
 
     const room = await Room.findById(checkin.roomId);
     if (!room) return false;
+
+    // Calculate duration in minutes for Study Analytics
+    const checkoutTime = new Date();
+    const durationMinutes = Math.floor((checkoutTime - checkin.createdAt) / 60000);
+
+    // Create Study Session if duration is at least 1 minute
+    if (durationMinutes >= 1) {
+        try {
+            await StudySession.create({
+                userId: checkin.userId,
+                startTime: checkin.createdAt,
+                endTime: checkoutTime,
+                durationMinutes: durationMinutes
+            });
+        } catch (err) {
+            console.error('Failed to auto-log StudySession during checkout', err);
+        }
+    }
 
     // Remove the check-in document
     await checkin.deleteOne();
@@ -43,8 +62,9 @@ async function handleCheckout(checkinId) {
             console.log(`[Checkout] Room ${room.name} | Old: ${oldOccupancy} | New: ${newOccupancy} | Threshold: ${thresholdDecimal}`);
 
             if (oldOccupancy >= thresholdDecimal && newOccupancy < thresholdDecimal) {
-                await Notification.create({
+                await sendNotification({
                     userId: u._id,
+                    type: 'roomCapacity',
                     roomId: room._id,
                     buildingId: room.buildingId,
                     message: `${room.name} is now under ${pref.threshold}% capacity (${room.currentOccupancy}/${room.capacity})`,

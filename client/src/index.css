@@ -474,9 +474,12 @@ body {
 .map-top-actions {
   position: fixed;
   top: 16px;
-  right: 176px;
+  right: 160px;
+  left: 380px;
   display: flex;
-  align-items: center;
+  justify-content: flex-end;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 10px;
   z-index: 24;
 }
@@ -576,8 +579,11 @@ body {
     top: auto;
     right: 16px;
     bottom: 70px;
+    left: 16px;
     flex-direction: column;
     align-items: stretch;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
 
   .notes-button {

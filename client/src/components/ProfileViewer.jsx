@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import axios from 'axios';
 import CourseSelector from './CourseSelector';
 import AvailabilityEditor from './AvailabilityEditor';
+import NotificationPreferences from './NotificationPreferences';
 import DeleteAccountModal from './DeleteAccountModal';
 
 export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onLogout }) {
@@ -9,12 +10,20 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
     const [displayName, setDisplayName] = useState(user.displayName || '');
     const [major, setMajor] = useState(user.major || '');
     const [year, setYear] = useState(user.year || '');
+    const [bio, setBio] = useState(user.bio || '');
     const [profilePictureUrl, setProfilePictureUrl] = useState(user.profilePictureUrl || '');
+    const [studyStyle, setStudyStyle] = useState(user.studyPreferences?.studyStyle || '');
+    const [environment, setEnvironment] = useState(user.studyPreferences?.environment || '');
+    const [interests, setInterests] = useState(user.interests || []);
+    const [github, setGithub] = useState(user.linkedResources?.github || '');
+    const [linkedin, setLinkedin] = useState(user.linkedResources?.linkedin || '');
+    const [studyGoals, setStudyGoals] = useState(user.studyGoals || []);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadingPicture, setUploadingPicture] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+
     const fileInputRef = useRef(null);
 
     const handleSaveProfile = async () => {
@@ -26,6 +35,11 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
                 displayName,
                 major,
                 year,
+                bio,
+                studyPreferences: { studyStyle, environment },
+                interests,
+                linkedResources: { github, linkedin },
+                studyGoals
             });
             setSuccess(true);
             setEditing(false);
@@ -49,8 +63,29 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
         setDisplayName(user.displayName || '');
         setMajor(user.major || '');
         setYear(user.year || '');
+        setBio(user.bio || '');
+        setStudyStyle(user.studyPreferences?.studyStyle || '');
+        setEnvironment(user.studyPreferences?.environment || '');
+        setInterests(user.interests || []);
+        setGithub(user.linkedResources?.github || '');
+        setLinkedin(user.linkedResources?.linkedin || '');
+        setStudyGoals(user.studyGoals || []);
         setEditing(false);
         setError(null);
+    };
+
+    const handleAddTag = (e, setter, array) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = e.target.value.trim();
+            if (val && !array.includes(val) && array.length < 10) {
+                setter([...array, val]);
+            }
+            e.target.value = '';
+        }
+    };
+    const handleRemoveTag = (index, setter, array) => {
+        setter(array.filter((_, i) => i !== index));
     };
 
     const handlePictureSelect = async (e) => {
@@ -229,6 +264,12 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
                   className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
               </div>
               <div>
+                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Bio</label>
+                <textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={300} rows={2} placeholder="Tell others about yourself..."
+                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)] resize-none" />
+                <p className="text-xs text-[var(--color-text-secondary)] mt-1 text-right">{bio.length}/300</p>
+              </div>
+              <div>
                 <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Major</label>
                 <input type="text" value={major} onChange={(e) => setMajor(e.target.value)}
                   className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
@@ -242,7 +283,76 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
                     <option value="Sophomore">Sophomore</option>
                     <option value="Junior">Junior</option>
                     <option value="Senior">Senior</option>
+                    <option value="Graduate">Graduate</option>
                 </select>
+              </div>
+
+              {/* Study Preferences */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Study Style</label>
+                  <select value={studyStyle} onChange={(e) => setStudyStyle(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" >
+                      <option value="">Unspecified</option>
+                      <option value="solo">Solo</option>
+                      <option value="group">Group</option>
+                      <option value="mixed">Mixed</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Environment</label>
+                  <select value={environment} onChange={(e) => setEnvironment(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" >
+                      <option value="">Unspecified</option>
+                      <option value="quiet">Quiet</option>
+                      <option value="moderate">Moderate</option>
+                      <option value="collaborative">Collaborative</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Interests (Tags) */}
+              <div>
+                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Interests (Press Enter to add)</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {interests.map((tag, i) => (
+                    <span key={i} className="px-2 py-1 text-xs bg-[var(--color-purdue-gold)]/10 text-[var(--color-purdue-gold)] rounded flex items-center gap-1">
+                      {tag}
+                      <button type="button" onClick={() => handleRemoveTag(i, setInterests, interests)} className="hover:text-red-400">×</button>
+                    </span>
+                  ))}
+                </div>
+                <input type="text" onKeyDown={(e) => handleAddTag(e, setInterests, interests)} placeholder="e.g. AI, Climbing, Chess"
+                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+              </div>
+
+              {/* Linked Resources */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">GitHub Handle</label>
+                  <input type="text" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="username"
+                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+                </div>
+                <div>
+                  <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">LinkedIn Profile</label>
+                  <input type="text" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="in/username"
+                    className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+                </div>
+              </div>
+
+              {/* Study Goals (Tags) */}
+              <div>
+                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Study Goals (Press Enter to add)</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {studyGoals.map((goal, i) => (
+                    <span key={i} className="px-2 py-1 text-xs border border-[var(--color-border)] text-[var(--color-text-primary)] rounded flex items-center gap-1">
+                      {goal}
+                      <button type="button" onClick={() => handleRemoveTag(i, setStudyGoals, studyGoals)} className="hover:text-red-400">×</button>
+                    </span>
+                  ))}
+                </div>
+                <input type="text" onKeyDown={(e) => handleAddTag(e, setStudyGoals, studyGoals)} placeholder="e.g. Master React, Pass MA261"
+                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
               </div>
               <div className="flex gap-2 pt-2">
                 <button onClick={handleCancel}
@@ -277,7 +387,7 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
         </div>
         {/* ── Divider ── */}
         <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
-<h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>My Courses</h3>
+        <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>My Courses</h3>
         {/* ── Course Selector Section (existing component) ── */}
         <CourseSelector userId={userId} embedded={true} />
 
@@ -285,6 +395,10 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
         <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
         <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Study Availability</h3>
         <AvailabilityEditor />
+
+        <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
+        <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Notification Preferences</h3>
+        <NotificationPreferences userId={userId} user={user} onUserUpdate={onUserUpdate} />
 
         <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
         <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Danger Zone</h3>

@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const { usersExist, hasBlockedRelationship } = require('../utils/messageAccess');
+const { shouldNotify } = require('../services/NotificationService');
 
 let io;
 
@@ -121,12 +122,15 @@ function initSocket(httpServer) {
                 const otherParticipants = conversation.participants
                     .filter(p => p.toString() !== socket.userId);
 
-                otherParticipants.forEach(participantId => {
-                    io.to(participantId.toString()).emit('newMessage', {
-                        message: populated,
-                        conversationId,
-                    });
-                });
+                for (const participantId of otherParticipants) {
+                    const allowed = await shouldNotify(participantId.toString(), 'message');
+                    if (allowed) {
+                        io.to(participantId.toString()).emit('newMessage', {
+                            message: populated,
+                            conversationId,
+                        });
+                    }
+                }
 
                 socket.emit('messageSent', {
                     message: populated,
