@@ -5,7 +5,7 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../models/User');
 const { usersExist, hasBlockedRelationship, areFriends } = require('../utils/messageAccess');
-const { emitMessageDeleted } = require('../config/socket');
+const { emitMessageDeleted, emitConversationAccepted } = require('../config/socket');
 const DELETED_MESSAGE_PLACEHOLDER = 'This message was deleted';
 
 router.post('/', protect, async (req, res) => {
@@ -64,6 +64,7 @@ router.get('/', protect, async (req, res) => {
     try {
         const conversations = await Conversation.find({
             participants: req.user._id,
+            status: 'accepted',
         })
             .populate('participants', 'displayName email profilePictureUrl')
             .sort({ updatedAt: -1 });
@@ -83,6 +84,100 @@ router.get('/', protect, async (req, res) => {
     } catch (err) {
         console.error('List conversations error:', err.message);
         res.status(500).json({ error: 'Failed to load conversations' });
+    }
+});
+
+router.get('/requests', protect, async (req, res) => {
+    try {
+        const requests = await Conversation.find({
+            participants: req.user._id,
+            status: 'pending',
+            initiator: { $ne: req.user._id },
+        })
+            .populate('participants', 'displayName email profilePictureUrl')
+            .sort({ updatedAt: -1 });
+
+        const withPreview = await Promise.all(
+            requests.map(async (conv) => {
+                const firstMessage = await Message.findOne({ conversationId: conv._id })
+                    .sort({ createdAt: 1 })
+                    .select('text createdAt');
+                return { ...conv.toObject(), messagePreview: firstMessage };
+            })
+        );
+
+        res.json(withPreview);
+    } catch (err) {
+        console.error('List requests error:', err.message);
+        res.status(500).json({ error: 'Failed to load requests' });
+    }
+});
+
+router.post('/:id/accept', protect, async (req, res) => {
+    try {
+        const conversation = await Conversation.findById(req.params.id);
+        if (!conversation) {
+            return res.status(404).json({ error: 'Conversation not found' });
+        }
+
+        if (!conversation.participants.some(p => p.toString() === req.user._id.toString())) {
+            return res.status(403).json({ error: 'Not a participant in this conversation' });
+        }
+
+        if (conversation.initiator && conversation.initiator.toString() === req.user._id.toString()) {
+            return res.status(403).json({ error: 'Only the recipient can accept a conversation request' });
+        }
+
+        if (conversation.status !== 'pending') {
+            return res.status(400).json({ error: 'This conversation is not pending' });
+        }
+
+        conversation.status = 'accepted';
+        await conversation.save();
+
+        const populated = await Conversation.findById(conversation._id)
+            .populate('participants', 'displayName email profilePictureUrl');
+
+        if (conversation.initiator) {
+            emitConversationAccepted({
+                conversationId: conversation._id.toString(),
+                initiatorId: conversation.initiator.toString(),
+            });
+        }
+
+        res.json(populated);
+    } catch (err) {
+        console.error('Accept conversation error:', err.message);
+        res.status(500).json({ error: 'Failed to accept conversation' });
+    }
+});
+
+router.post('/:id/reject', protect, async (req, res) => {
+    try {
+        const conversation = await Conversation.findById(req.params.id);
+        if (!conversation) {
+            return res.status(404).json({ error: 'Conversation not found' });
+        }
+
+        if (!conversation.participants.some(p => p.toString() === req.user._id.toString())) {
+            return res.status(403).json({ error: 'Not a participant in this conversation' });
+        }
+
+        if (conversation.initiator && conversation.initiator.toString() === req.user._id.toString()) {
+            return res.status(403).json({ error: 'Only the recipient can reject a conversation request' });
+        }
+
+        if (conversation.status !== 'pending') {
+            return res.status(400).json({ error: 'This conversation is not pending' });
+        }
+
+        conversation.status = 'rejected';
+        await conversation.save();
+
+        res.json(conversation);
+    } catch (err) {
+        console.error('Reject conversation error:', err.message);
+        res.status(500).json({ error: 'Failed to reject conversation' });
     }
 });
 

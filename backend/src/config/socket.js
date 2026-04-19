@@ -29,6 +29,11 @@ function emitMessageDisappeared({ conversationId, messageId, participantIds }) {
     });
 }
 
+function emitConversationAccepted({ conversationId, initiatorId }) {
+    if (!io) return;
+    io.to(initiatorId.toString()).emit('conversationAccepted', { conversationId });
+}
+
 function initSocket(httpServer) {
     io = new Server(httpServer, {
         cors: {
@@ -126,6 +131,22 @@ function initSocket(httpServer) {
                     return;
                 }
 
+                if (conversation.status === 'rejected') {
+                    socket.emit('messageError', {
+                        conversationId,
+                        error: 'This conversation request was rejected',
+                    });
+                    return;
+                }
+
+                if (conversation.status === 'pending' && conversation.initiator && conversation.initiator.toString() !== socket.userId) {
+                    socket.emit('messageError', {
+                        conversationId,
+                        error: 'Cannot send messages — accept the request first',
+                    });
+                    return;
+                }
+
                 const message = await Message.create({
                     conversationId,
                     sender: socket.userId,
@@ -145,16 +166,18 @@ function initSocket(httpServer) {
                 const populated = await Message.findById(message._id)
                     .populate('sender', 'displayName email profilePictureUrl');
 
-                const otherParticipants = conversation.participants
-                    .filter(p => p.toString() !== socket.userId);
+                if (conversation.status === 'accepted') {
+                    const otherParticipants = conversation.participants
+                        .filter(p => p.toString() !== socket.userId);
 
-                for (const participantId of otherParticipants) {
-                    const allowed = await shouldNotify(participantId.toString(), 'message');
-                    if (allowed) {
-                        io.to(participantId.toString()).emit('newMessage', {
-                            message: populated,
-                            conversationId,
-                        });
+                    for (const participantId of otherParticipants) {
+                        const allowed = await shouldNotify(participantId.toString(), 'message');
+                        if (allowed) {
+                            io.to(participantId.toString()).emit('newMessage', {
+                                message: populated,
+                                conversationId,
+                            });
+                        }
                     }
                 }
 
@@ -293,4 +316,4 @@ function getIO() {
     return io;
 }
 
-module.exports = { initSocket, getIO, emitMessageDeleted, emitMessageDisappeared, onlineUsers };
+module.exports = { initSocket, getIO, emitMessageDeleted, emitMessageDisappeared, emitConversationAccepted, onlineUsers };
