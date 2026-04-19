@@ -71,6 +71,13 @@ const userSchema = new mongoose.Schema(
             type: String,
             trim: true,
         }],
+        // User-configurable weekly study time goal (in minutes). Default 600 = 10 hours.
+        weeklyStudyGoalMinutes: {
+            type: Number,
+            default: 600,
+            min: [0, 'Weekly study goal cannot be negative'],
+            max: [10080, 'Weekly study goal cannot exceed 10080 minutes (168 hours)'],
+        },
         emailVerified: {
             type: Boolean,
             default: false,

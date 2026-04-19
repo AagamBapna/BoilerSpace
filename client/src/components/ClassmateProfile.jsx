@@ -290,25 +290,38 @@ export default function ClassmateProfile({ userId, onClose }) {
                   </div>
                 )}
                 
-                {/* Analytics Widget (Gamified) */}
-                {!fetchingAnalytics && weeklyMinutes > 0 && (
-                   <div className="w-full mt-4 p-3 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl relative overflow-hidden">
-                       <div className="flex justify-between items-end mb-1">
-                           <div>
-                               <p className="text-xl font-bold text-[var(--color-text-primary)] tracking-tight">
-                                   {Math.floor(weeklyMinutes / 60)}<span className="text-sm opacity-70">h</span> {weeklyMinutes % 60}<span className="text-sm opacity-70">m</span>
-                               </p>
-                               <p className="text-[10px] text-[var(--color-text-secondary)] uppercase tracking-widest mt-0.5">Studied This Week</p>
-                           </div>
-                           <div className="text-right">
-                               <p className="text-[10px] font-semibold text-[var(--color-purdue-gold)]">{Math.min(100, Math.round((weeklyMinutes / 600) * 100))}% Target Flow</p>
-                           </div>
-                       </div>
-                       <div className="w-full h-1.5 bg-[var(--color-surface)] rounded-full mt-2 overflow-hidden">
-                           <div className="h-full bg-[var(--color-purdue-gold)] rounded-full shadow-[0_0_8px_var(--color-purdue-gold)] transition-all" style={{ width: `${Math.min(100, (weeklyMinutes / 600) * 100)}%` }} />
-                       </div>
-                   </div>
-                )}
+                {/* Analytics Widget — uses the user's own configured weekly goal */}
+                {!fetchingAnalytics && (() => {
+                    const goal = Number.isFinite(profile?.weeklyStudyGoalMinutes) ? profile.weeklyStudyGoalMinutes : 0;
+                    const pct = goal > 0 ? Math.min(100, Math.round((weeklyMinutes / goal) * 100)) : 0;
+                    const goalH = Math.floor(goal / 60);
+                    const goalM = goal % 60;
+                    return (
+                        <div className="w-full mt-4 p-3 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl relative overflow-hidden">
+                            <div className="flex justify-between items-end mb-1">
+                                <div>
+                                    <p className="text-xl font-bold text-[var(--color-text-primary)] tracking-tight">
+                                        {Math.floor(weeklyMinutes / 60)}<span className="text-sm opacity-70">h</span> {weeklyMinutes % 60}<span className="text-sm opacity-70">m</span>
+                                    </p>
+                                    <p className="text-[10px] text-[var(--color-text-secondary)] uppercase tracking-widest mt-0.5">Studied This Week</p>
+                                </div>
+                                <div className="text-right">
+                                    {goal > 0 ? (
+                                        <>
+                                            <p className="text-[10px] font-semibold text-[var(--color-purdue-gold)]">{pct}% of Weekly Goal</p>
+                                            <p className="text-[10px] text-[var(--color-text-secondary)]">Goal: {goalH}h {goalM}m</p>
+                                        </>
+                                    ) : (
+                                        <p className="text-[10px] text-[var(--color-text-secondary)]">No weekly goal set</p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="w-full h-2 bg-black/20 rounded-full mt-2 overflow-hidden border border-[var(--color-border)]">
+                                <div className="h-full bg-[var(--color-purdue-gold)] rounded-full shadow-[0_0_8px_var(--color-purdue-gold)] transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* Links */}
                 {profile.linkedResources && (profile.linkedResources.github || profile.linkedResources.linkedin) && (

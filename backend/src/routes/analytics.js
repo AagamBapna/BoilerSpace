@@ -17,8 +17,20 @@ router.post('/session', protect, async (req, res) => {
         const start = new Date(startTime);
         const end = new Date(endTime);
 
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+            return res.status(400).json({ error: 'Invalid date format provided.' });
+        }
+
         if (end <= start) {
             return res.status(400).json({ error: 'End time must be after start time!' });
+        }
+
+        // Disallow sessions that end (or start) in the future to keep weekly totals honest.
+        // 60s of clock-skew tolerance.
+        const now = new Date();
+        const skewMs = 60 * 1000;
+        if (end.getTime() > now.getTime() + skewMs || start.getTime() > now.getTime() + skewMs) {
+            return res.status(400).json({ error: 'Study sessions cannot be logged in the future.' });
         }
 
         const durationMinutes = Math.floor((end - start) / 60000);

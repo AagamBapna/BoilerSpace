@@ -38,8 +38,10 @@ describe('Analytics API', () => {
     describe('POST /api/analytics/session', () => {
 
         it('should successfully log a valid study session', async () => {
-            const start = new Date();
-            const end = new Date(start.getTime() + (120 * 60000)); // 2 hours
+            // A 2-hour session that ended 1 minute ago. Both endpoints must be in the past
+            // because future-dated sessions are rejected.
+            const end = new Date(Date.now() - 60 * 1000);
+            const start = new Date(end.getTime() - (120 * 60000));
 
             const res = await request(app)
                 .post('/api/analytics/session')
@@ -70,6 +72,23 @@ describe('Analytics API', () => {
 
             expect(res.status).toBe(400);
             expect(res.body.error).toBe('Study session must be at least 1 minute long.');
+        });
+
+        it('should reject a session whose end time is in the future', async () => {
+            const start = new Date();
+            // End 30 minutes in the future, well past the 60s clock-skew tolerance
+            const end = new Date(start.getTime() + (30 * 60000));
+
+            const res = await request(app)
+                .post('/api/analytics/session')
+                .set('Authorization', `Bearer ${token}`)
+                .send({
+                    startTime: start.toISOString(),
+                    endTime: end.toISOString()
+                });
+
+            expect(res.status).toBe(400);
+            expect(res.body.error).toBe('Study sessions cannot be logged in the future.');
         });
 
         it('should reject a session where start is after end', async () => {

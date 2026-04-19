@@ -255,6 +255,7 @@ router.get('/:id', protect, async (req, res) => {
             interests: user.interests,
             linkedResources: user.linkedResources,
             studyGoals: user.studyGoals,
+            weeklyStudyGoalMinutes: user.weeklyStudyGoalMinutes,
         });
     } catch (err) {
         if (err.name === 'CastError') {
@@ -279,7 +280,7 @@ router.put('/:id', protect, async (req, res) => {
             });
     }
         }
-        const { displayName, major, year, bio, profileVisibility, notificationPreferences, studyPreferences, interests, linkedResources, studyGoals } = req.body;
+        const { displayName, major, year, bio, profileVisibility, notificationPreferences, studyPreferences, interests, linkedResources, studyGoals, weeklyStudyGoalMinutes } = req.body;
 
     // Build update object based on what's provided
     const updateData = {};
@@ -321,6 +322,13 @@ router.put('/:id', protect, async (req, res) => {
     if (studyGoals !== undefined && Array.isArray(studyGoals)) {
         updateData.studyGoals = studyGoals.map(g => g.trim()).filter(g => g).slice(0, 10);
     }
+    if (weeklyStudyGoalMinutes !== undefined) {
+        const goal = Number(weeklyStudyGoalMinutes);
+        if (!Number.isFinite(goal) || goal < 0 || goal > 10080) {
+            return res.status(400).json({ error: 'Weekly study goal must be between 0 and 10080 minutes.' });
+        }
+        updateData.weeklyStudyGoalMinutes = Math.round(goal);
+    }
         const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
@@ -338,7 +346,8 @@ router.put('/:id', protect, async (req, res) => {
                 studyPreferences: user.studyPreferences,
                 interests: user.interests,
                 linkedResources: user.linkedResources,
-                studyGoals: user.studyGoals
+                studyGoals: user.studyGoals,
+                weeklyStudyGoalMinutes: user.weeklyStudyGoalMinutes,
             }
         });
     } catch (err) {

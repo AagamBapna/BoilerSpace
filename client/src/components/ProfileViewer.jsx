@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import axios from 'axios';
 import CourseSelector from './CourseSelector';
 import AvailabilityEditor from './AvailabilityEditor';
@@ -23,67 +23,8 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
     const [saving, setSaving] = useState(false);
     const [uploadingPicture, setUploadingPicture] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    
-    // Analytics State
-    const [weeklyMinutes, setWeeklyMinutes] = useState(0);
-    const [fetchingAnalytics, setFetchingAnalytics] = useState(true);
-    const [loggingSession, setLoggingSession] = useState(false);
 
     const fileInputRef = useRef(null);
-
-    // Week Boundary Helper
-    const getCurrentWeekBounds = () => {
-        const now = new Date();
-        const day = now.getDay();
-        const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
-        
-        const monday = new Date(now.setDate(diffToMonday));
-        monday.setHours(0, 0, 0, 0);
-        
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        sunday.setHours(23, 59, 59, 999);
-
-        return { startDate: monday.toISOString(), endDate: sunday.toISOString() };
-    };
-
-    const fetchWeeklyAnalytics = async () => {
-        try {
-            setFetchingAnalytics(true);
-            const { startDate, endDate } = getCurrentWeekBounds();
-            const res = await axios.get(`/api/analytics/weekly/${userId}`, {
-                params: { startDate, endDate }
-            });
-            setWeeklyMinutes(res.data.totalWeeklyMinutes || 0);
-        } catch (err) {
-            console.error('Failed to fetch analytics', err);
-        } finally {
-            setFetchingAnalytics(false);
-        }
-    };
-
-    const handleMockLogSession = async () => {
-        try {
-            setLoggingSession(true);
-            const end = new Date();
-            const start = new Date(end.getTime() - (120 * 60000)); // 2 hours ago
-            await axios.post('/api/analytics/session', {
-                startTime: start.toISOString(),
-                endTime: end.toISOString()
-            });
-            await fetchWeeklyAnalytics();
-        } catch (err) {
-            console.error('Failed to log mock session', err);
-        } finally {
-            setLoggingSession(false);
-        }
-    };
-
-    useEffect(() => {
-        if (userId) {
-            fetchWeeklyAnalytics();
-        }
-    }, [userId]);
 
     const handleSaveProfile = async () => {
         setSaving(true);
@@ -444,38 +385,6 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
             </div>
           )}
         </div>
-        {/* ── Analytics Widget ── */}
-        <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
-        <div className="flex items-center justify-between mb-3">
-          <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)'}}>Weekly Study Productivity</h3>
-          <button onClick={handleMockLogSession} disabled={loggingSession} className="px-3 py-1 bg-[var(--color-purdue-gold)]/10 text-[var(--color-purdue-gold)] hover:bg-[var(--color-purdue-gold)]/20 border border-[var(--color-purdue-gold)]/30 rounded text-xs font-semibold disabled:opacity-50 transition-colors">
-            {loggingSession ? 'Logging...' : '+ Log 2hr Mock Session'}
-          </button>
-        </div>
-        
-        <div className="p-4 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl relative overflow-hidden">
-           {fetchingAnalytics ? (
-               <div className="h-16 flex items-center justify-center animate-pulse"><div className="w-5 h-5 rounded-full border-2 border-[var(--color-purdue-gold)]/20 border-t-[var(--color-purdue-gold)] animate-spin" /></div>
-           ) : (
-               <>
-                   <div className="flex justify-between items-end mb-2 relative z-10">
-                       <div>
-                           <p className="text-3xl font-bold text-[var(--color-text-primary)] tracking-tight">
-                               {Math.floor(weeklyMinutes / 60)}<span className="text-lg opacity-70">h</span> {weeklyMinutes % 60}<span className="text-lg opacity-70">m</span>
-                           </p>
-                           <p className="text-xs text-[var(--color-text-secondary)] uppercase tracking-widest mt-1">Total Logic Recorded This Week</p>
-                       </div>
-                       <div className="text-right">
-                           <p className="text-sm font-semibold text-[var(--color-purdue-gold)]">{Math.min(100, Math.round((weeklyMinutes / 600) * 100))}% Goal</p>
-                       </div>
-                   </div>
-                   <div className="w-full h-2.5 bg-[var(--color-surface)] rounded-full mt-3 overflow-hidden relative z-10">
-                       <div className="h-full bg-[var(--color-purdue-gold)] transition-all duration-1000 ease-out rounded-full shadow-[0_0_10px_var(--color-purdue-gold)]" style={{ width: `${Math.min(100, (weeklyMinutes / 600) * 100)}%` }} />
-                   </div>
-               </>
-           )}
-        </div>
-
         {/* ── Divider ── */}
         <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
         <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>My Courses</h3>

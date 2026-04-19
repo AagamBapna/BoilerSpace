@@ -23,6 +23,8 @@ import ActivityPage from './pages/ActivityPage';
 import EventPage from './pages/EventPage';
 import { getToken, setToken, clearToken } from './lib/auth';
 import NotificationBell from './components/NotificationBell';
+import StudyTimeWidget from './components/StudyTimeWidget';
+import StudyTimePill from './components/StudyTimePill';
 import { useSocket } from './lib/useSocket';
 import './index.css';
 
@@ -57,6 +59,8 @@ export default function App() {
   const [viewingClassmateId, setViewingClassmateId] = useState(null);
   const [returnToScreen, setReturnToScreen] = useState(null);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
+  const [showStudyTime, setShowStudyTime] = useState(false);
+  const [studyTimeRefreshKey, setStudyTimeRefreshKey] = useState(0);
   const socketRef = useSocket(user);
 
 
@@ -385,6 +389,11 @@ export default function App() {
           </svg>
           <span>Course Notes</span>
         </button>
+        <StudyTimePill
+          userId={user.id}
+          refreshKey={studyTimeRefreshKey}
+          onClick={() => setShowStudyTime(true)}
+        />
         <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} />
         <button
           type="button"
@@ -527,6 +536,21 @@ export default function App() {
           onClose={() => setShowProfile(false)}
           onUserUpdate={(updatedUser) => setUser(prev => ({ ...prev, ...updatedUser }))}
           onLogout={handleLogout}
+        />
+      )}
+
+      {showStudyTime && (
+        <StudyTimeWidget
+          userId={user.id}
+          user={user}
+          onClose={() => {
+            setShowStudyTime(false);
+            // Bump the key so the top-bar pill refetches its weekly total
+            // (e.g. if the user logged a session inside the modal).
+            setStudyTimeRefreshKey((k) => k + 1);
+          }}
+          onUserUpdate={(updatedUser) => setUser((prev) => ({ ...prev, ...updatedUser }))}
+          onSessionLogged={() => setStudyTimeRefreshKey((k) => k + 1)}
         />
       )}
 

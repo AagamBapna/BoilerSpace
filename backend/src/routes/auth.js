@@ -71,6 +71,7 @@ router.get('/me', protect, (req, res) => {
         linkedResources: req.user.linkedResources,
         studyGoals: req.user.studyGoals,
         notificationSettings: req.user.notificationSettings,
+        weeklyStudyGoalMinutes: req.user.weeklyStudyGoalMinutes,
     });
 });
 
