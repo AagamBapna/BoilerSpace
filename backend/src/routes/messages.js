@@ -4,7 +4,7 @@ const { protect } = require('../middleware/auth');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../models/User');
-const { usersExist, hasBlockedRelationship } = require('../utils/messageAccess');
+const { usersExist, hasBlockedRelationship, areFriends } = require('../utils/messageAccess');
 const { emitMessageDeleted } = require('../config/socket');
 const DELETED_MESSAGE_PLACEHOLDER = 'This message was deleted';
 
@@ -37,10 +37,19 @@ router.post('/', protect, async (req, res) => {
         }).populate('participants', 'displayName email profilePictureUrl');
 
         if (conversation) {
+            if (conversation.status === 'rejected') {
+                return res.status(403).json({ error: 'Cannot start conversation — request was previously rejected' });
+            }
             return res.json(conversation);
         }
 
-        conversation = await Conversation.create({ participants: sorted });
+        const friends = await areFriends(req.user._id, participantId);
+
+        conversation = await Conversation.create({
+            participants: sorted,
+            status: friends ? 'accepted' : 'pending',
+            initiator: friends ? null : req.user._id,
+        });
         conversation = await Conversation.findById(conversation._id)
             .populate('participants', 'displayName email profilePictureUrl');
 
