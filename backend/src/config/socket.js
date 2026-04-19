@@ -7,6 +7,7 @@ const { usersExist, hasBlockedRelationship } = require('../utils/messageAccess')
 const { shouldNotify } = require('../services/NotificationService');
 
 let io;
+const onlineUsers = new Map();
 
 function emitMessageDeleted({ conversationId, message, participantIds }) {
     if (!io) return;
@@ -55,8 +56,33 @@ function initSocket(httpServer) {
         }
     });
 
-    io.on('connection', (socket) => {
+    io.on('connection', async (socket) => {
         socket.join(socket.userId);
+
+        onlineUsers.set(socket.userId, socket.id);
+
+        try {
+            const conversations = await Conversation.find({ participants: socket.userId });
+            const relevantUserIds = new Set();
+            conversations.forEach(conv => {
+                conv.participants.forEach(p => {
+                    const pid = p.toString();
+                    if (pid !== socket.userId) relevantUserIds.add(pid);
+                });
+            });
+
+            relevantUserIds.forEach(uid => {
+                io.to(uid).emit('userOnline', { userId: socket.userId });
+            });
+
+            const currentlyOnline = [];
+            relevantUserIds.forEach(uid => {
+                if (onlineUsers.has(uid)) currentlyOnline.push(uid);
+            });
+            socket.emit('onlineUsers', currentlyOnline);
+        } catch (err) {
+            console.error('Socket presence connect error:', err.message);
+        }
 
         socket.on('sendMessage', async (data) => {
             const {
@@ -238,7 +264,26 @@ function initSocket(httpServer) {
             }
         });
 
-        socket.on('disconnect', () => {});
+        socket.on('disconnect', async () => {
+            onlineUsers.delete(socket.userId);
+
+            try {
+                const conversations = await Conversation.find({ participants: socket.userId });
+                const relevantUserIds = new Set();
+                conversations.forEach(conv => {
+                    conv.participants.forEach(p => {
+                        const pid = p.toString();
+                        if (pid !== socket.userId) relevantUserIds.add(pid);
+                    });
+                });
+
+                relevantUserIds.forEach(uid => {
+                    io.to(uid).emit('userOffline', { userId: socket.userId });
+                });
+            } catch (err) {
+                console.error('Socket presence disconnect error:', err.message);
+            }
+        });
     });
 
     return io;
@@ -248,4 +293,4 @@ function getIO() {
     return io;
 }
 
-module.exports = { initSocket, getIO, emitMessageDeleted, emitMessageDisappeared };
+module.exports = { initSocket, getIO, emitMessageDeleted, emitMessageDisappeared, onlineUsers };
