@@ -10,6 +10,7 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
+    const [onlineUserIds, setOnlineUserIds] = useState(new Set());
 
     useEffect(() => {
         loadConversations();
@@ -70,16 +71,42 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
             loadConversations();
         };
 
+        const handleOnlineUsers = (userIds) => {
+            setOnlineUserIds(new Set(userIds));
+        };
+
+        const handleUserOnline = (data) => {
+            setOnlineUserIds(prev => {
+                const next = new Set(prev);
+                next.add(data.userId);
+                return next;
+            });
+        };
+
+        const handleUserOffline = (data) => {
+            setOnlineUserIds(prev => {
+                const next = new Set(prev);
+                next.delete(data.userId);
+                return next;
+            });
+        };
+
         s.on('newMessage', handleNewMessage);
         s.on('messageSent', handleSent);
         s.on('messageDeleted', handleDeleted);
         s.on('messageDisappeared', handleDisappeared);
+        s.on('onlineUsers', handleOnlineUsers);
+        s.on('userOnline', handleUserOnline);
+        s.on('userOffline', handleUserOffline);
 
         return () => {
             s.off('newMessage', handleNewMessage);
             s.off('messageSent', handleSent);
             s.off('messageDeleted', handleDeleted);
             s.off('messageDisappeared', handleDisappeared);
+            s.off('onlineUsers', handleOnlineUsers);
+            s.off('userOnline', handleUserOnline);
+            s.off('userOffline', handleUserOffline);
         };
     }, [socket, activeConversation]);
 
@@ -151,6 +178,7 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
                             loadConversations();
                         }}
                         onMessagesRead={handleMessagesRead}
+                        onlineUserIds={onlineUserIds}
                     />
                 </div>
             </div>
@@ -251,19 +279,25 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
                         <div className="flex flex-col">
                             {conversations.map(conv => {
                                 const other = conv.participants.find(p => p._id !== currentUserId);
+                                const isOnline = other ? onlineUserIds.has(other._id) : false;
                                 return (
                                     <button
                                         key={conv._id}
                                         onClick={() => setActiveConversation(conv)}
                                         className="flex items-center gap-3 px-4 py-3 hover:bg-[#ffffff05] transition-colors text-left border-b border-[#ffffff06]"
                                     >
-                                        {other?.profilePictureUrl ? (
-                                            <img src={other.profilePictureUrl} alt="" className="w-11 h-11 rounded-full object-cover flex-shrink-0" />
-                                        ) : (
-                                            <div className="w-11 h-11 rounded-full bg-[#CEB888]/15 flex items-center justify-center text-sm font-bold text-[#CEB888] flex-shrink-0">
-                                                {other?.displayName?.[0] || '?'}
-                                            </div>
-                                        )}
+                                        <div className="relative flex-shrink-0">
+                                            {other?.profilePictureUrl ? (
+                                                <img src={other.profilePictureUrl} alt="" className="w-11 h-11 rounded-full object-cover" />
+                                            ) : (
+                                                <div className="w-11 h-11 rounded-full bg-[#CEB888]/15 flex items-center justify-center text-sm font-bold text-[#CEB888]">
+                                                    {other?.displayName?.[0] || '?'}
+                                                </div>
+                                            )}
+                                            <span
+                                                className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#141414] ${isOnline ? 'bg-[#22c55e]' : 'bg-[#555]'}`}
+                                            />
+                                        </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-sm font-semibold text-[#f5f5f5] truncate">{other?.displayName || 'User'}</p>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
-export default function ChatWindow({ conversation, currentUserId, socket, onBack, onMessagesRead }) {
+export default function ChatWindow({ conversation, currentUserId, socket, onBack, onMessagesRead, onlineUserIds }) {
     const [messages, setMessages] = useState([]);
     const [text, setText] = useState('');
     const [isDisappearing, setIsDisappearing] = useState(false);
@@ -11,11 +11,16 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [isOtherTyping, setIsOtherTyping] = useState(false);
     const bottomRef = useRef(null);
     const containerRef = useRef(null);
     const isInitialLoad = useRef(true);
+    const typingTimeoutRef = useRef(null);
 
     const otherUser = conversation.participants.find(p => p._id !== currentUserId);
+    const isOtherOnline = onlineUserIds instanceof Set
+        ? onlineUserIds.has(otherUser?._id)
+        : false;
 
     useEffect(() => {
         loadMessages(1, true);
@@ -62,18 +67,56 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
             }
         };
 
+        const handleMessagesRead = (data) => {
+            if (data.conversationId === conversation._id) {
+                setMessages(prev => prev.map(msg => {
+                    const senderId = msg.sender?._id || msg.sender;
+                    if (senderId === currentUserId && !msg.readAt) {
+                        return { ...msg, readAt: data.readAt, readBy: [...(msg.readBy || []), data.readBy] };
+                    }
+                    return msg;
+                }));
+            }
+        };
+
+        const handleUserTyping = (data) => {
+            if (data.conversationId === conversation._id) {
+                setIsOtherTyping(true);
+            }
+        };
+
+        const handleUserStopTyping = (data) => {
+            if (data.conversationId === conversation._id) {
+                setIsOtherTyping(false);
+            }
+        };
+
         s.on('newMessage', handleNewMessage);
         s.on('messageSent', handleSent);
         s.on('messageDeleted', handleDeleted);
         s.on('messageDisappeared', handleDisappeared);
+        s.on('messagesRead', handleMessagesRead);
+        s.on('userTyping', handleUserTyping);
+        s.on('userStopTyping', handleUserStopTyping);
 
         return () => {
             s.off('newMessage', handleNewMessage);
             s.off('messageSent', handleSent);
             s.off('messageDeleted', handleDeleted);
             s.off('messageDisappeared', handleDisappeared);
+            s.off('messagesRead', handleMessagesRead);
+            s.off('userTyping', handleUserTyping);
+            s.off('userStopTyping', handleUserStopTyping);
         };
     }, [socket, conversation._id]);
+
+    useEffect(() => {
+        return () => {
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const loadMessages = async (p, initial = false) => {
         try {
@@ -119,9 +162,24 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
         } catch { }
     };
 
+    const handleTyping = () => {
+        if (socket?.current?.connected) {
+            socket.current.emit('typing', { conversationId: conversation._id });
+            clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => {
+                socket.current.emit('stopTyping', { conversationId: conversation._id });
+            }, 2000);
+        }
+    };
+
     const handleSend = async (e) => {
         e.preventDefault();
         if (!text.trim() || sending) return;
+
+        clearTimeout(typingTimeoutRef.current);
+        if (socket?.current?.connected) {
+            socket.current.emit('stopTyping', { conversationId: conversation._id });
+        }
 
         const trimmed = text.trim();
         setText('');
@@ -174,6 +232,29 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
         return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
 
+    const getLastOwnMessageIndex = () => {
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const senderId = messages[i].sender?._id || messages[i].sender;
+            if (senderId === currentUserId && !messages[i].isDeleted) {
+                return i;
+            }
+        }
+        return -1;
+    };
+
+    const lastOwnMsgIdx = getLastOwnMessageIndex();
+
+    const isMessageRead = (msg) => {
+        if (msg.readAt) return true;
+        if (msg.readBy && otherUser) {
+            return msg.readBy.some(id => {
+                const readId = typeof id === 'object' ? id.toString() : id;
+                return readId === otherUser._id;
+            });
+        }
+        return false;
+    };
+
     return (
         <div className="flex flex-col h-full">
             <div className="flex items-center gap-3 px-4 py-3 border-b border-[#CEB888]/10">
@@ -182,15 +263,21 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
-                {otherUser?.profilePictureUrl ? (
-                    <img src={otherUser.profilePictureUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
-                ) : (
-                    <div className="w-9 h-9 rounded-full bg-[#CEB888]/15 flex items-center justify-center text-sm font-bold text-[#CEB888]">
-                        {otherUser?.displayName?.[0] || '?'}
-                    </div>
-                )}
+                <div className="relative">
+                    {otherUser?.profilePictureUrl ? (
+                        <img src={otherUser.profilePictureUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
+                    ) : (
+                        <div className="w-9 h-9 rounded-full bg-[#CEB888]/15 flex items-center justify-center text-sm font-bold text-[#CEB888]">
+                            {otherUser?.displayName?.[0] || '?'}
+                        </div>
+                    )}
+                    <span
+                        className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#141414] ${isOtherOnline ? 'bg-[#22c55e]' : 'bg-[#555]'}`}
+                    />
+                </div>
                 <div className="min-w-0">
                     <p className="text-sm font-semibold text-[#f5f5f5] truncate">{otherUser?.displayName || 'User'}</p>
+                    <p className="text-[10px] text-[#777]">{isOtherOnline ? 'Online' : 'Offline'}</p>
                 </div>
             </div>
 
@@ -218,6 +305,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                         const isMine = msg.sender?._id === currentUserId || msg.sender === currentUserId;
                         const isDeleted = msg.isDeleted;
                         const showTime = i === 0 || (new Date(msg.createdAt) - new Date(messages[i - 1]?.createdAt)) > 300000;
+                        const showReceipt = isMine && !isDeleted && i === lastOwnMsgIdx;
                         return (
                             <div key={msg._id}>
                                 {showTime && (
@@ -246,12 +334,25 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                                         </button>
                                     )}
                                 </div>
+                                {showReceipt && (
+                                    <p className="text-[10px] text-right mt-0.5 mr-1 text-[#777]">
+                                        {isMessageRead(msg) ? 'Seen' : 'Delivered'}
+                                    </p>
+                                )}
                             </div>
                         );
                     })
                 )}
                 <div ref={bottomRef} />
             </div>
+
+            {isOtherTyping && (
+                <div className="px-4 py-1">
+                    <p className="text-xs text-[#CEB888] animate-pulse">
+                        {otherUser?.displayName || 'User'} is typing...
+                    </p>
+                </div>
+            )}
 
             <form onSubmit={handleSend} className="px-4 py-3 border-t border-[#CEB888]/10">
                 <div className="flex items-center gap-2 mb-2">
@@ -283,7 +384,10 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                     <input
                         type="text"
                         value={text}
-                        onChange={(e) => setText(e.target.value)}
+                        onChange={(e) => {
+                            setText(e.target.value);
+                            handleTyping();
+                        }}
                         placeholder="Type a message..."
                         maxLength={2000}
                         className="flex-1 bg-[#111111] border border-[#CEB888]/20 rounded-full px-4 py-2.5 text-sm text-[#f5f5f5] placeholder-[#555] focus:outline-none focus:border-[#CEB888]/50 transition-colors"
