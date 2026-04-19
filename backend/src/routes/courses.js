@@ -38,4 +38,24 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// GET /api/courses/:id/exams, exams for a course sorted chronologically
+router.get('/:id/exams', async (req, res) => {
+    try {
+        const course = await Course.findById(req.params.id).select('exams');
+        if (!course) {
+            return res.status(404).json({ error: 'Course not found' });
+        }
+        const exams = [...course.exams].sort(
+            (a, b) => new Date(a.date) - new Date(b.date)
+        );
+        res.json(exams);
+    } catch (err) {
+        if (err.name === 'CastError') {
+            return res.status(404).json({ error: 'Course not found' });
+        }
+        console.error('Error fetching course exams:', err);
+        res.status(500).json({ error: 'Failed to fetch course exams' });
+    }
+});
+
 module.exports = router;
