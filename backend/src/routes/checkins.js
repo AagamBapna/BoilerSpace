@@ -43,7 +43,10 @@ router.post('/:id/rooms/:roomId/checkins', protect,  async (req, res) => {
         }
         const checkin = await CheckIn.findOne({buildingId: req.params.id, roomId: req.params.roomId, expiresAt:{$gt: new Date()}, userId: req.user._id});
         if (!checkin) {
-            const new_checkin = new CheckIn({buildingId: req.params.id, roomId: req.params.roomId, expiresAt: new Date(Date.now() + 10 * 1000) ,userId: req.user._id});
+            // Default check-in lifetime: 2 hours. Long enough for a real study session,
+            // short enough that orphaned check-ins eventually clear via the expiration job.
+            const CHECKIN_DURATION_MS = 2 * 60 * 60 * 1000;
+            const new_checkin = new CheckIn({buildingId: req.params.id, roomId: req.params.roomId, expiresAt: new Date(Date.now() + CHECKIN_DURATION_MS) ,userId: req.user._id});
             await new_checkin.save();
             // Update recent buildings
             const user = await User.findById(req.user._id);

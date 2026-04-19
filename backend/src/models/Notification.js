@@ -10,12 +10,15 @@ const notificationSchema = new mongoose.Schema(
         roomId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Room',
-            required: true,
         },
         buildingId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Building',
-            required: true,
+        },
+        type: {
+            type: String,
+            enum: ['roomCapacity', 'sessionReminder', 'message', 'event', 'organizationUpdate'],
+            default: 'roomCapacity',
         },
         message: {
             type: String,

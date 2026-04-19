@@ -16,6 +16,7 @@ const aiRoutes = require('./routes/ai');
 const notificationRoutes = require('./routes/notifications');
 const friendshipRoutes = require('./routes/friendships');
 const roomRoutes = require('./routes/rooms');
+const analyticsRoutes = require('./routes/analytics');
 
 require('./config/passport');
 const userRoutes = require('./routes/users');
@@ -42,6 +43,7 @@ app.use('/api/announcements', announcementFeedRoutes);
 app.use('/api/courses', aiRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 app.use('/api/friendships', friendshipRoutes);
 app.use('/api/events', eventRoutes);
