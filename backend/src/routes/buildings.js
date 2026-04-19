@@ -11,12 +11,20 @@ router.get('/', async (req, res) => {
         const buildings = await Building.find().sort({ name: 1 });
         const buildingsWithStatus = await Promise.all(buildings.map(async b => {
             const rooms = await Room.find({ buildingId: b._id });
-            let noiseClassification = 'Collaborative';
-            if (rooms.some(r => r.noiseClassification === 'Quiet')) {
-                noiseClassification = 'Quiet';
-            } else if (rooms.some(r => r.noiseClassification === 'Moderate')) {
+            const roomIds = rooms.map(r => r._id);
+            const now = new Date();
+            const checkInsCount = await CheckIn.countDocuments({ roomId: { $in: roomIds }, expiresAt: { $gt: now } });
+            
+            const totalCapacity = rooms.reduce((sum, r) => sum + (r.capacity || 0), 0);
+            const ratio = totalCapacity > 0 ? checkInsCount / totalCapacity : 0;
+            
+            let noiseClassification = 'Quiet';
+            if (ratio > 0.6) {
+                noiseClassification = 'Collaborative';
+            } else if (ratio > 0.2) {
                 noiseClassification = 'Moderate';
             }
+
             return { ...b.toObject(), noiseClassification };
         }));
         res.json(buildingsWithStatus);
@@ -38,12 +46,20 @@ router.get('/nearby', async (req, res) => {
         const buildings = await Building.find();
         const buildingsWithStatus = await Promise.all(buildings.map(async b => {
             const rooms = await Room.find({ buildingId: b._id });
-            let noiseClassification = 'Collaborative';
-            if (rooms.some(r => r.noiseClassification === 'Quiet')) {
-                noiseClassification = 'Quiet';
-            } else if (rooms.some(r => r.noiseClassification === 'Moderate')) {
+            const roomIds = rooms.map(r => r._id);
+            const now = new Date();
+            const checkInsCount = await CheckIn.countDocuments({ roomId: { $in: roomIds }, expiresAt: { $gt: now } });
+            
+            const totalCapacity = rooms.reduce((sum, r) => sum + (r.capacity || 0), 0);
+            const ratio = totalCapacity > 0 ? checkInsCount / totalCapacity : 0;
+            
+            let noiseClassification = 'Quiet';
+            if (ratio > 0.6) {
+                noiseClassification = 'Collaborative';
+            } else if (ratio > 0.2) {
                 noiseClassification = 'Moderate';
             }
+
             return { ...b.toObject(), noiseClassification };
         }));
         
@@ -101,6 +117,17 @@ router.get('/:id/rooms', async (req, res) => {
                 });
                 const roomObj = room.toObject();
                 roomObj.currentOccupancy = count;
+                
+                const capacity = room.capacity || 0;
+                const ratio = capacity > 0 ? count / capacity : 0;
+                if (ratio > 0.6) {
+                    roomObj.noiseClassification = 'Collaborative';
+                } else if (ratio > 0.2) {
+                    roomObj.noiseClassification = 'Moderate';
+                } else {
+                    roomObj.noiseClassification = 'Quiet';
+                }
+                
                 return roomObj;
             })
         );
