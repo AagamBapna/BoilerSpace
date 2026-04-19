@@ -9,6 +9,7 @@ jest.mock('../config/socket', () => ({
     }),
     emitMessageDeleted: jest.fn(),
     emitMessageDisappeared: jest.fn(),
+    onlineUsers: new Map(),
 }));
 const app = require('../app');
 const User = require('../models/User');
@@ -793,5 +794,122 @@ describe('Message schema deletion and expiry metadata', () => {
         });
 
         await expect(deletedMessage.validate()).resolves.toBeUndefined();
+    });
+});
+
+describe('readAt field behavior', () => {
+    let convId;
+
+    beforeEach(async () => {
+        const conv = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+        convId = conv.body._id;
+    });
+
+    test('readAt is null on fresh messages', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Fresh message' });
+
+        expect(res.status).toBe(201);
+        const msg = await Message.findById(res.body._id);
+        expect(msg.readAt).toBeNull();
+    });
+
+    test('PUT /:id/read sets readAt timestamp on messages from other user', async () => {
+        await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Message from A' });
+
+        await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Another from A' });
+
+        const beforeRead = new Date();
+
+        await request(app)
+            .put(`/api/conversations/${convId}/read`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        const messages = await Message.find({ conversationId: convId });
+        messages.forEach(msg => {
+            expect(msg.readAt).not.toBeNull();
+            expect(new Date(msg.readAt).getTime()).toBeGreaterThanOrEqual(beforeRead.getTime() - 1000);
+        });
+    });
+
+    test('readAt is not overwritten on second mark-read call', async () => {
+        await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Will be read twice' });
+
+        await request(app)
+            .put(`/api/conversations/${convId}/read`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        const firstRead = await Message.findOne({ conversationId: convId, text: 'Will be read twice' });
+        const firstReadAt = firstRead.readAt;
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        await request(app)
+            .put(`/api/conversations/${convId}/read`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        const secondRead = await Message.findOne({ conversationId: convId, text: 'Will be read twice' });
+        expect(secondRead.readAt.getTime()).toBe(firstReadAt.getTime());
+    });
+
+    test('readAt stays null for messages sent by the reader', async () => {
+        await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'My own message' });
+
+        await request(app)
+            .put(`/api/conversations/${convId}/read`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        const msg = await Message.findOne({ conversationId: convId, text: 'My own message' });
+        expect(msg.readAt).toBeNull();
+    });
+
+    test('GET messages returns readAt field', async () => {
+        await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Check readAt in response' });
+
+        await request(app)
+            .put(`/api/conversations/${convId}/read`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        const res = await request(app)
+            .get(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.messages[0].readAt).toBeTruthy();
+    });
+
+    test('readAt defaults to null in schema', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const message = await Message.create({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Schema default check',
+            readBy: [userAId],
+        });
+
+        expect(message.readAt).toBeNull();
     });
 });
