@@ -50,6 +50,8 @@ const sampleNotes = [
 describe('CourseNotes — Loading & Display', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        // ExamDatesSection fires first (child effect); consume its mock slot with an empty list
+        axios.get.mockResolvedValueOnce({ data: [] });
     });
 
     test('shows loading spinner while fetching notes', () => {
@@ -126,6 +128,8 @@ describe('CourseNotes — Loading & Display', () => {
 describe('CourseNotes — Actions', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        // ExamDatesSection fires first (child effect); consume its mock slot with an empty list
+        axios.get.mockResolvedValueOnce({ data: [] });
     });
 
     test('calls onClose when close button is clicked', async () => {
@@ -225,6 +229,8 @@ describe('CourseNotes — Actions', () => {
 describe('CourseNotes — Upload Form Toggle', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        // ExamDatesSection fires first (child effect); consume its mock slot with an empty list
+        axios.get.mockResolvedValueOnce({ data: [] });
     });
 
     test('shows upload button in header', async () => {
@@ -280,6 +286,8 @@ describe('CourseNotes — Upload Form Toggle', () => {
 describe('CourseNotes — Comment Toggle', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        // ExamDatesSection fires first (child effect); consume its mock slot with an empty list
+        axios.get.mockResolvedValueOnce({ data: [] });
     });
 
     test('shows comment toggle button on each note', async () => {
