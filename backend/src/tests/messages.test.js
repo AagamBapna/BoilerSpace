@@ -11,12 +11,14 @@ jest.mock('../config/socket', () => ({
     emitMessageDisappeared: jest.fn(),
     emitConversationAccepted: jest.fn(),
     onlineUsers: new Map(),
+    emitMessageReactionUpdated: jest.fn(),
 }));
 const app = require('../app');
 const User = require('../models/User');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Friendship = require('../models/Friendship');
+const { emitMessageReactionUpdated } = require('../config/socket');
 
 jest.setTimeout(30000);
 
@@ -717,6 +719,115 @@ describe('PUT /api/conversations/:id/read', () => {
     });
 });
 
+describe('POST /api/messages/:id/reactions', () => {
+    let convId;
+    let messageId;
+
+    beforeEach(async () => {
+        emitMessageReactionUpdated.mockClear();
+
+        const conv = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+        convId = conv.body._id;
+
+        const message = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'React to me' });
+        messageId = message.body._id;
+    });
+
+    test('adds a reaction when user has not reacted yet', async () => {
+        const res = await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ reactionType: '👍' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.action).toBe('added');
+        expect(res.body.message.reactions).toHaveLength(1);
+        expect(res.body.message.reactions[0].reactionType).toBe('👍');
+
+        const stored = await Message.findById(messageId);
+        expect(stored.reactions).toHaveLength(1);
+        expect(stored.reactions[0].userId.toString()).toBe(userBId);
+        expect(stored.reactions[0].reactionType).toBe('👍');
+        expect(emitMessageReactionUpdated).toHaveBeenCalledTimes(1);
+    });
+
+    test('updates reaction when user selects a different reaction', async () => {
+        await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ reactionType: '👍' });
+
+        const res = await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ reactionType: '❤️' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.action).toBe('updated');
+        expect(res.body.message.reactions).toHaveLength(1);
+        expect(res.body.message.reactions[0].reactionType).toBe('❤️');
+
+        const stored = await Message.findById(messageId);
+        expect(stored.reactions).toHaveLength(1);
+        expect(stored.reactions[0].reactionType).toBe('❤️');
+    });
+
+    test('removes reaction when user selects the same reaction again', async () => {
+        await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ reactionType: '😂' });
+
+        const res = await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ reactionType: '😂' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.action).toBe('removed');
+        expect(res.body.message.reactions).toHaveLength(0);
+
+        const stored = await Message.findById(messageId);
+        expect(stored.reactions).toHaveLength(0);
+    });
+
+    test('keeps only one reaction entry per user', async () => {
+        await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ reactionType: '👍' });
+
+        await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ reactionType: '🎉' });
+
+        const stored = await Message.findById(messageId);
+        const userAReactions = stored.reactions.filter(
+            (reaction) => reaction.userId.toString() === userAId
+        );
+
+        expect(userAReactions).toHaveLength(1);
+        expect(userAReactions[0].reactionType).toBe('🎉');
+    });
+
+    test('returns 400 for unsupported reaction', async () => {
+        const res = await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ reactionType: '🔥' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Invalid reaction type');
+    });
+});
+
 describe('Message schema deletion and expiry metadata', () => {
     test('sets deletion and disappearing defaults', async () => {
         const conversation = await Conversation.create({
@@ -735,6 +846,7 @@ describe('Message schema deletion and expiry metadata', () => {
         expect(message.deletedBy).toBeNull();
         expect(message.isDisappearing).toBe(false);
         expect(message.expiresAt).toBeNull();
+        expect(message.reactions).toEqual([]);
     });
 
     test('requires expiresAt when isDisappearing is true', async () => {
