@@ -24,6 +24,7 @@ const bookmarkRoutes = require('./routes/bookmarks');
 const aiBookmarkRoutes = require('./routes/aiBookmarks');
 const messageRoutes = require('./routes/messages');
 const reviewRoutes = require('./routes/reviews');
+const messageReactionRoutes = require('./routes/messageReactions');
 
 const app = express();
 
@@ -51,8 +52,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/friendships', friendshipRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/conversations', messageRoutes);
-app.use('/api/messages', messageRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/messages', messageReactionRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
