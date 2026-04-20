@@ -2,6 +2,17 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { highlight } from '../utils/highlight.jsx';
 
+const REACTION_OPTIONS = ['👍', '❤️', '😂', '🎉', '😮', '😢'];
+
+function aggregateReactionCounts(reactions = []) {
+    return reactions.reduce((acc, reaction) => {
+        const key = reaction.reactionType;
+        if (!key) return acc;
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+    }, {});
+}
+
 export default function ChatWindow({ conversation, currentUserId, socket, onBack, onMessagesRead, onlineUserIds, initialJumpMessageId }) {
     const [messages, setMessages] = useState([]);
     const [text, setText] = useState('');
@@ -112,6 +123,17 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
             }
         };
 
+        const handleReactionUpdated = (data) => {
+            if (data.conversationId === conversation._id) {
+                setMessages(prev => prev.map((msg) => {
+                    if (msg._id === data.message._id) {
+                        return data.message;
+                    }
+                    return msg;
+                }));
+            }
+        };
+
         s.on('newMessage', handleNewMessage);
         s.on('messageSent', handleSent);
         s.on('messageDeleted', handleDeleted);
@@ -119,6 +141,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
         s.on('messagesRead', handleMessagesRead);
         s.on('userTyping', handleUserTyping);
         s.on('userStopTyping', handleUserStopTyping);
+        s.on('messageReactionUpdated', handleReactionUpdated);
 
         return () => {
             s.off('newMessage', handleNewMessage);
@@ -128,6 +151,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
             s.off('messagesRead', handleMessagesRead);
             s.off('userTyping', handleUserTyping);
             s.off('userStopTyping', handleUserStopTyping);
+            s.off('messageReactionUpdated', handleReactionUpdated);
         };
     }, [socket, conversation._id]);
 
@@ -344,6 +368,18 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
         } catch { }
     };
 
+    const handleReactToMessage = async (messageId, reactionType) => {
+        try {
+            const res = await axios.post(`/api/messages/${messageId}/reactions`, { reactionType });
+            setMessages(prev => prev.map((msg) => {
+                if (msg._id === messageId) {
+                    return res.data.message;
+                }
+                return msg;
+            }));
+        } catch { }
+    };
+
     const handleScroll = () => {
         if (containerRef.current?.scrollTop === 0 && page < totalPages && !loadingMore) {
             loadMessages(page + 1);
@@ -502,6 +538,10 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                         const showTime = i === 0 || (new Date(msg.createdAt) - new Date(messages[i - 1]?.createdAt)) > 300000;
                         const showReceipt = isMine && !isDeleted;
                         const isFlashing = jumpTargetId === msg._id;
+                        const reactionCounts = aggregateReactionCounts(msg.reactions);
+                        const userReactionType = (msg.reactions || []).find(
+                            (reaction) => (reaction.userId?._id || reaction.userId)?.toString() === currentUserId
+                        )?.reactionType;
                         return (
                             <div key={msg._id} id={`msg-${msg._id}`}>
                                 {showTime && (
@@ -534,6 +574,37 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                                     <p className={`text-[10px] text-right mt-0.5 mr-1 ${msg.isFailed ? 'text-red-400' : 'text-[#777]'}`}>
                                         {getReceiptLabel(msg)}
                                     </p>
+                                )}
+                                {!isDeleted && (
+                                    <div className={`mt-1 flex flex-wrap gap-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                                        {REACTION_OPTIONS.map((emoji) => (
+                                            <button
+                                                key={`${msg._id}-${emoji}`}
+                                                type="button"
+                                                onClick={() => handleReactToMessage(msg._id, emoji)}
+                                                className={`text-[14px] leading-none rounded-full px-2 py-1 border transition-colors ${userReactionType === emoji
+                                                        ? 'border-[#CEB888]/80 bg-[#CEB888]/20'
+                                                        : 'border-[#ffffff12] bg-[#111111] hover:bg-[#1d1d1d]'
+                                                    }`}
+                                                aria-label={`React with ${emoji}`}
+                                                title={`React with ${emoji}`}
+                                            >
+                                                {emoji}
+                                            </button>
+                                        ))}
+                                        {Object.entries(reactionCounts).map(([reactionType, count]) => (
+                                            <div
+                                                key={`${msg._id}-${reactionType}-count`}
+                                                className={`text-xs rounded-full px-2 py-1 border ${userReactionType === reactionType
+                                                        ? 'border-[#CEB888]/60 bg-[#CEB888]/15 text-[#f1d9a2]'
+                                                        : 'border-[#ffffff10] bg-[#151515] text-[#d0d0d0]'
+                                                    }`}
+                                                title={`${count} reaction${count > 1 ? 's' : ''}`}
+                                            >
+                                                {reactionType} {count}
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         );
