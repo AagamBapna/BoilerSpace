@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-export default function NotificationBell({ onSelectBuilding, buildings }) {
+export default function NotificationBell({ onSelectBuilding, buildings, socket, onOpenCourseNotes }) {
     const [notifications, setNotifications] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
 
@@ -20,6 +20,20 @@ export default function NotificationBell({ onSelectBuilding, buildings }) {
         return () => clearInterval(interval);
     }, []);
 
+    useEffect(() => {
+        if (!socket?.current) {
+            return;
+        }
+        const s = socket.current;
+        const handler = (data) => {
+            setNotifications((prev) => [data.notification, ...prev]);
+        };
+        s.on('notification', handler);
+        return () => {
+            s.off('notification', handler);
+        };
+    }, [socket]);
+
     const unreadCount = notifications.filter((n) => !n.read).length;
 
     const handleClick = async (notification) => {
@@ -28,13 +42,23 @@ export default function NotificationBell({ onSelectBuilding, buildings }) {
             setNotifications((prev) =>
                 prev.map((n) => n._id === notification._id ? { ...n, read: true } : n)
             );
-            const building = buildings.find(
-                (b) => b._id === notification.buildingId?._id || b._id === notification.buildingId
-            );
-            if (building) {
-                onSelectBuilding(building);
+            if (notification.type === 'noteUpload' && notification.courseId) {
+                const courseId = notification.courseId._id || notification.courseId;
+                onOpenCourseNotes(courseId);
             }
-            setIsOpen(false);
+            else if (notification.type === 'event' && notification.eventId) {
+                const eventId = notification.eventId._id || notification.eventId;
+                window.location.href = `/events/${eventId}`;
+            }
+            else {
+                const building = buildings.find(
+                    (b) => b._id === notification.buildingId?._id || b._id === notification.buildingId
+                );
+                if (building) {
+                    onSelectBuilding(building);
+                }
+                setIsOpen(false);
+            }
         } catch (err) {
             console.error('Failed to mark notification as read:', err);
         }

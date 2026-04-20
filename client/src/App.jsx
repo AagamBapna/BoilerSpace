@@ -406,7 +406,10 @@ export default function App() {
           refreshKey={studyTimeRefreshKey}
           onClick={() => setShowStudyTime(true)}
         />
-        <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} />
+        <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} socket={socketRef} onOpenCourseNotes={(courseId) => 
+        {
+          setNotesView({ step: 'notes', courseId, courseName: ''});
+        }} />
         <button
           type="button"
           onClick={() => setShowDM(true)}
