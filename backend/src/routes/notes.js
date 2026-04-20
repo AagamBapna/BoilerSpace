@@ -13,6 +13,7 @@ const { bucket, isGcsConfigured } = require('../config/gcs');
 const { extractTextFromPDF, chunkText, generateEmbeddings } = require('../utils/pdfExtractor');
 const { embeddingModel } = require('../config/gemini');
 const Embedding = require('../models/Embedding');
+const { notificationService } = require('../services/NotificationService');
 
 // POST /api/courses/:id/notes — upload a note to a course
 router.post('/:id/notes', protect, (req, res) => {
@@ -95,6 +96,22 @@ router.post('/:id/notes', protect, (req, res) => {
                 })();
             }
             res.status(201).json(note);
+            (async () => {
+                try {
+                    const enrolledUsers = await User.find({ courses: course._id, _id: { $ne: req.user._id } });
+                    for (const user of enrolledUsers) {
+                        await sendNotification({
+                            userId: user._id,
+                            type: 'noteUpload',
+                            message: `A new note "${note.title}" has been uploaded for ${course.department} ${course.courseCode}.`,
+                            courseId: course._id,
+                        });
+                    }
+                }
+                catch (error) {
+                    console.error('Error sending notifications for new note upload:', error);
+                }
+            })();
         } catch (error) {
             if (error.name === 'CastError') {
                 return res.status(404).json({ error: 'Course not found.' });

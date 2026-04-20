@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { getIO } = require('../config/socket');
+const { sendNotificationEmail } = require('../utils/mailer');
 
 // Maps notification types to their corresponding notificationSettings field
 const TYPE_TO_SETTING = {
@@ -8,6 +9,7 @@ const TYPE_TO_SETTING = {
     message: 'messages',
     event: 'events',
     organizationUpdate: 'organizationUpdates',
+    noteUpload: 'noteUploads',
 };
 
 /**
@@ -41,16 +43,26 @@ async function shouldNotify(userId, type) {
  * @param {string} [options.buildingId] - Associated building ID (if applicable)
  * @returns {Object|null} The created notification, or null if suppressed
  */
-async function sendNotification({ userId, type, message, roomId, buildingId }) {
+async function sendNotification({ userId, type, message, roomId, buildingId, courseId, eventId }) {
     const allowed = await shouldNotify(userId, type);
     if (!allowed) return null;
 
     // Build notification document fields
-    const notificationData = { userId, message, type: type || 'roomCapacity' };
+    const notificationData = { userId, message, type: type || 'roomCapacity', courseId, eventId };
     if (roomId) notificationData.roomId = roomId;
     if (buildingId) notificationData.buildingId = buildingId;
+    if (courseId) notificationData.courseId = courseId;
+    if (eventId) notificationData.eventId = eventId;
 
     const notification = await Notification.create(notificationData);
+    const recipientUser = await User.findById(userId).select('email');
+    (async () => {
+        try {
+            await sendNotificationEmail({ toEmail: recipientUser?.email, message });
+        } catch (error) {
+            console.error('Error sending notification email:', error);
+        }
+    })();
 
     // Emit real-time event via Socket.io if available
     const io = getIO();

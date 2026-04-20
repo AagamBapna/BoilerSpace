@@ -82,6 +82,8 @@ router.get('/', protect, async (req, res) => {
         const notifications = await Notification.find({ userId: req.user._id })
             .populate('roomId')
             .populate('buildingId')
+            .populate('courseId', 'courseCode title department')
+            .populate('eventId', 'title date')
             .sort({ createdAt: -1 })
             .limit(20);
         res.json(notifications);

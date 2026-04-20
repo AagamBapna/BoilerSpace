@@ -4,6 +4,8 @@ const Club = require('../models/Club');
 const Event = require('../models/Event');
 const Announcement = require('../models/Announcement');
 const { protect } = require('../middleware/auth'); // only protect now
+const User = require('../models/User');
+const { sendNotification } = require('../services/NotificationService');
 
 /**
  * GET /api/events
@@ -119,7 +121,22 @@ router.post('/', protect, async (req, res) => {
       club: doc.clubId,
       clubId: doc.clubId?._id?.toString(),
     };
-
+    (async () => {
+      try {
+        const members = await User.find({ clubIds: club._id.toString(), _id: { $ne: req.user.id } });
+        for (const member of members) {
+          await sendNotification({
+            userId: member._id,
+            type: 'event',
+            message: `New event "${event.title}" created in ${club.name}.`,
+            eventId: event._id,
+          });
+        }
+      }
+      catch (err) {
+        console.error('Failed to send notifications for new event:', err);
+      }
+    })();
     return res.status(201).json(normalized);
   } catch (err) {
     console.error(err);

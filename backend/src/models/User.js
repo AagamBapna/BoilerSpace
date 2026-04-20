@@ -124,6 +124,10 @@ const userSchema = new mongoose.Schema(
                 type: Boolean,
                 default: true,
             },
+            noteUploads: {
+                type: Boolean,
+                default: true,
+            },
             globalMute: {
                 type: Boolean,
                 default: false,
