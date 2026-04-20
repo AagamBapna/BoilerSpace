@@ -222,9 +222,12 @@ export default function ExamDatesSection({ courseId }) {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+                    <time
+                      dateTime={exam.date}
+                      className="block text-xs text-[var(--color-text-secondary)] mt-0.5"
+                    >
                       {formatExamDate(exam.date)}
-                    </p>
+                    </time>
                     {exam.location && (
                       <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
                         {exam.location}
