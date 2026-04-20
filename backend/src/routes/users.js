@@ -19,6 +19,102 @@ router.get('/me/availability', protect, async (req, res) => {
     }
 });
 
+// Canonical list of togglable per-field privacy keys. Kept in sync with the
+// User.fieldVisibility subdocument. displayName and profilePictureUrl are not
+// togglable — always visible so users remain identifiable.
+const TOGGLABLE_FIELDS = [
+    'email', 'major', 'year', 'bio',
+    'studyPreferences', 'interests', 'linkedResources', 'studyGoals',
+    'courses', 'availability', 'weeklyStudyGoalMinutes',
+];
+
+// GET /api/users/me/visibility — current visibility settings for the logged-in user
+router.get('/me/visibility', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.json({
+            profileVisibility: user.profileVisibility,
+            fieldVisibility: user.fieldVisibility,
+        });
+    } catch (err) {
+        console.error('Error fetching visibility:', err);
+        res.status(500).json({ error: 'Failed to fetch visibility' });
+    }
+});
+
+// PUT /api/users/me/visibility — update master toggle and/or per-field visibility.
+// Accepts partial updates. Body shape:
+//   { profileVisibility?: 'public'|'private',
+//     fieldVisibility?: { [fieldName]: 'public'|'private' } }
+router.put('/me/visibility', protect, async (req, res) => {
+    try {
+        const { profileVisibility, fieldVisibility } = req.body;
+
+        if (profileVisibility === undefined && fieldVisibility === undefined) {
+            return res.status(400).json({
+                error: 'Provide profileVisibility and/or fieldVisibility to update.',
+            });
+        }
+
+        if (profileVisibility !== undefined &&
+            !['public', 'private'].includes(profileVisibility)) {
+            return res.status(400).json({
+                error: "profileVisibility must be 'public' or 'private'.",
+            });
+        }
+
+        if (fieldVisibility !== undefined) {
+            if (typeof fieldVisibility !== 'object' || fieldVisibility === null ||
+                Array.isArray(fieldVisibility)) {
+                return res.status(400).json({
+                    error: 'fieldVisibility must be an object.',
+                });
+            }
+            for (const [key, value] of Object.entries(fieldVisibility)) {
+                if (!TOGGLABLE_FIELDS.includes(key)) {
+                    return res.status(400).json({
+                        error: `Unknown or non-togglable field: ${key}.`,
+                    });
+                }
+                if (!['public', 'private'].includes(value)) {
+                    return res.status(400).json({
+                        error: `fieldVisibility.${key} must be 'public' or 'private'.`,
+                    });
+                }
+            }
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        if (profileVisibility !== undefined) {
+            user.profileVisibility = profileVisibility;
+        }
+        if (fieldVisibility !== undefined) {
+            // Merge — callers may send a partial update (e.g. toggling just `bio`).
+            for (const [key, value] of Object.entries(fieldVisibility)) {
+                user.fieldVisibility[key] = value;
+            }
+        }
+
+        await user.save();
+
+        res.json({
+            message: 'Visibility updated',
+            profileVisibility: user.profileVisibility,
+            fieldVisibility: user.fieldVisibility,
+        });
+    } catch (err) {
+        if (err.name === 'ValidationError') {
+            const message = Object.values(err.errors).map(v => v.message).join(', ');
+            return res.status(400).json({ error: message });
+        }
+        console.error('Error updating visibility:', err);
+        res.status(500).json({ error: 'Failed to update visibility' });
+    }
+});
+
 // PUT /api/users/me/availability — update cur user's study availability
 router.put('/me/availability', protect, async (req, res) => {
     try {

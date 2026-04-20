@@ -143,6 +143,23 @@ const userSchema = new mongoose.Schema(
             enum: ['public', 'private'],
             default: 'public',
         },
+        // Per-field visibility toggles for non-friend viewers when profileVisibility is 'public'.
+        // displayName and profilePictureUrl are intentionally not togglable — they're always
+        // visible so users remain identifiable in search, DMs, and friend requests.
+        // Email defaults to 'private' because it is PII; everything else defaults to 'public'.
+        fieldVisibility: {
+            email: { type: String, enum: ['public', 'private'], default: 'private' },
+            major: { type: String, enum: ['public', 'private'], default: 'public' },
+            year: { type: String, enum: ['public', 'private'], default: 'public' },
+            bio: { type: String, enum: ['public', 'private'], default: 'public' },
+            studyPreferences: { type: String, enum: ['public', 'private'], default: 'public' },
+            interests: { type: String, enum: ['public', 'private'], default: 'public' },
+            linkedResources: { type: String, enum: ['public', 'private'], default: 'public' },
+            studyGoals: { type: String, enum: ['public', 'private'], default: 'public' },
+            courses: { type: String, enum: ['public', 'private'], default: 'public' },
+            availability: { type: String, enum: ['public', 'private'], default: 'public' },
+            weeklyStudyGoalMinutes: { type: String, enum: ['public', 'private'], default: 'public' },
+        },
         resetPasswordTokenHash: {
             type: String,
             select: false,
