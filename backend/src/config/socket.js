@@ -34,6 +34,16 @@ function emitConversationAccepted({ conversationId, initiatorId }) {
     io.to(initiatorId.toString()).emit('conversationAccepted', { conversationId });
 }
 
+function emitMessageReactionUpdated({ conversationId, message, participantIds }) {
+    if (!io) return;
+    participantIds.forEach((participantId) => {
+        io.to(participantId.toString()).emit('messageReactionUpdated', {
+            conversationId,
+            message,
+        });
+    });
+}
+
 function initSocket(httpServer) {
     io = new Server(httpServer, {
         cors: {
@@ -318,4 +328,12 @@ function getIO() {
     return io;
 }
 
-module.exports = { initSocket, getIO, emitMessageDeleted, emitMessageDisappeared, emitConversationAccepted, onlineUsers };
+module.exports = {
+    initSocket,
+    getIO,
+    emitMessageDeleted,
+    emitMessageDisappeared,
+    emitConversationAccepted,
+    emitMessageReactionUpdated,
+    onlineUsers,
+};
