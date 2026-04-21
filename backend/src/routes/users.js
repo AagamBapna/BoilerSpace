@@ -19,16 +19,42 @@ router.get('/me/availability', protect, async (req, res) => {
     }
 });
 
-// Canonical list of togglable per-field privacy keys. Kept in sync with the
-// User.fieldVisibility subdocument. displayName and profilePictureUrl are not
-// togglable — always visible so users remain identifiable.
 const TOGGLABLE_FIELDS = [
     'email', 'major', 'year', 'bio',
     'studyPreferences', 'interests', 'linkedResources', 'studyGoals',
     'courses', 'availability', 'weeklyStudyGoalMinutes',
 ];
 
-// GET /api/users/me/visibility — current visibility settings for the logged-in user
+// Fallback for legacy user docs.
+const DEFAULT_FIELD_VISIBILITY = {
+    email: 'private',
+    major: 'public',
+    year: 'public',
+    bio: 'public',
+    studyPreferences: 'public',
+    interests: 'public',
+    linkedResources: 'public',
+    studyGoals: 'public',
+    courses: 'public',
+    availability: 'public',
+    weeklyStudyGoalMinutes: 'public',
+};
+
+// Strip fields marked private. Mutates profile.
+function redactPrivateFields(profile, fieldVisibility) {
+    if (!profile) return profile;
+    const fv = fieldVisibility && typeof fieldVisibility === 'object'
+        ? fieldVisibility
+        : {};
+    for (const field of TOGGLABLE_FIELDS) {
+        const setting = fv[field] || DEFAULT_FIELD_VISIBILITY[field];
+        if (setting === 'private') {
+            delete profile[field];
+        }
+    }
+    return profile;
+}
+
 router.get('/me/visibility', protect, async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
@@ -43,10 +69,6 @@ router.get('/me/visibility', protect, async (req, res) => {
     }
 });
 
-// PUT /api/users/me/visibility — update master toggle and/or per-field visibility.
-// Accepts partial updates. Body shape:
-//   { profileVisibility?: 'public'|'private',
-//     fieldVisibility?: { [fieldName]: 'public'|'private' } }
 router.put('/me/visibility', protect, async (req, res) => {
     try {
         const { profileVisibility, fieldVisibility } = req.body;
@@ -92,7 +114,6 @@ router.put('/me/visibility', protect, async (req, res) => {
             user.profileVisibility = profileVisibility;
         }
         if (fieldVisibility !== undefined) {
-            // Merge — callers may send a partial update (e.g. toggling just `bio`).
             for (const [key, value] of Object.entries(fieldVisibility)) {
                 user.fieldVisibility[key] = value;
             }
@@ -164,17 +185,33 @@ router.get('/search', protect, async (req, res) => {
 
     try {
         const regex = new RegExp(q.trim(), 'i');
+        // Exclude private profiles.
         const users = await User.find({
             _id: { $ne: req.user._id },
+            profileVisibility: { $ne: 'private' },
             $or: [
                 { displayName: regex },
                 { email: regex },
             ],
         })
-            .select('displayName email profilePictureUrl')
+            .select('displayName email profilePictureUrl fieldVisibility')
             .limit(10);
 
-        res.json(users);
+        // Redact private email.
+        const sanitized = users.map((u) => {
+            const obj = u.toObject();
+            delete obj.fieldVisibility;
+            const fv = u.fieldVisibility && typeof u.fieldVisibility === 'object'
+                ? u.fieldVisibility
+                : {};
+            const emailSetting = fv.email || DEFAULT_FIELD_VISIBILITY.email;
+            if (emailSetting === 'private') {
+                delete obj.email;
+            }
+            return obj;
+        });
+
+        res.json(sanitized);
     } catch (err) {
         console.error('User search error:', err.message);
         res.status(500).json({ error: 'Search failed' });
@@ -198,7 +235,7 @@ router.get('/discovery', protect, async (req, res) => {
         }
 
         const users = await User.find(query)
-            .select('displayName email major year bio profilePictureUrl studyPreferences interests studyGoals courses');
+            .select('displayName email major year bio profilePictureUrl studyPreferences interests studyGoals courses fieldVisibility');
 
         // Pre-fetch auth user courses for intersection
         const myUser = await User.findById(req.user._id).select('courses studyPreferences interests studyGoals');
@@ -214,6 +251,13 @@ router.get('/discovery', protect, async (req, res) => {
         const targetInterests = interests ? interests.split(',').map(i => i.trim().toLowerCase()) : myInterests.map(i => i.toLowerCase());
         const targetGoals = studyGoals ? studyGoals.split(',').map(g => g.trim().toLowerCase()) : myGoals.map(g => g.toLowerCase());
 
+        // Is field public for u?
+        const fieldIsPublic = (u, field) => {
+            const fv = u.fieldVisibility && typeof u.fieldVisibility === 'object' ? u.fieldVisibility : {};
+            const setting = fv[field] || DEFAULT_FIELD_VISIBILITY[field];
+            return setting !== 'private';
+        };
+
         const scoredUsers = users.map(u => {
             let score = 0;
             const highlights = [];
@@ -221,13 +265,17 @@ router.get('/discovery', protect, async (req, res) => {
             // Style
             if (targetStudyStyle && u.studyPreferences && u.studyPreferences.studyStyle === targetStudyStyle) {
                 score += 3;
-                highlights.push(`Study style match: ${targetStudyStyle}`);
+                if (fieldIsPublic(u, 'studyPreferences')) {
+                    highlights.push(`Study style match: ${targetStudyStyle}`);
+                }
             }
 
             // Environment
             if (targetEnvironment && u.studyPreferences && u.studyPreferences.environment === targetEnvironment) {
                 score += 3;
-                highlights.push(`Environment match: ${targetEnvironment}`);
+                if (fieldIsPublic(u, 'studyPreferences')) {
+                    highlights.push(`Environment match: ${targetEnvironment}`);
+                }
             }
 
             // Interests
@@ -236,7 +284,9 @@ router.get('/discovery', protect, async (req, res) => {
                 const overlap = uInterests.filter(i => targetInterests.includes(i));
                 if (overlap.length > 0) {
                     score += overlap.length * 2;
-                    highlights.push(`Shared interests: ${overlap.map(i => i.substring(0, 15)).join(', ')}`);
+                    if (fieldIsPublic(u, 'interests')) {
+                        highlights.push(`Shared interests: ${overlap.map(i => i.substring(0, 15)).join(', ')}`);
+                    }
                 }
             }
 
@@ -246,7 +296,9 @@ router.get('/discovery', protect, async (req, res) => {
                 const overlap = uGoals.filter(g => targetGoals.includes(g));
                 if (overlap.length > 0) {
                     score += overlap.length * 2;
-                    highlights.push(`Shared goals: ${overlap.map(g => g.substring(0, 15)).join(', ')}`);
+                    if (fieldIsPublic(u, 'studyGoals')) {
+                        highlights.push(`Shared goals: ${overlap.map(g => g.substring(0, 15)).join(', ')}`);
+                    }
                 }
             }
 
@@ -255,7 +307,9 @@ router.get('/discovery', protect, async (req, res) => {
                 const overlap = u.courses.filter(c => myCourses.includes(c.toString()));
                 if (overlap.length > 0) {
                     score += overlap.length * 1;
-                    highlights.push(`Shared classes: ${overlap.length}`);
+                    if (fieldIsPublic(u, 'courses')) {
+                        highlights.push(`Shared classes: ${overlap.length}`);
+                    }
                 }
             }
 
@@ -269,12 +323,18 @@ router.get('/discovery', protect, async (req, res) => {
         // Sort descending by score
         scoredUsers.sort((a, b) => b.score - a.score);
 
-        // Map output
-        const results = scoredUsers.slice(0, 20).map(su => ({
-            ...su.user.toObject(),
-            matchScore: su.score,
-            matchHighlights: su.matchHighlights
-        }));
+        // Redact private fields per user.
+        const results = scoredUsers.slice(0, 20).map(su => {
+            const obj = su.user.toObject();
+            const fv = obj.fieldVisibility;
+            delete obj.fieldVisibility;
+            redactPrivateFields(obj, fv);
+            return {
+                ...obj,
+                matchScore: su.score,
+                matchHighlights: su.matchHighlights,
+            };
+        });
 
         res.json(results);
     } catch (err) {
@@ -334,25 +394,30 @@ router.get('/:id', protect, async (req, res) => {
             });
         }
 
-        // Public profile : return public fields only
-        res.json({
+        // Public profile. Strangers get fieldVisibility-redacted view.
+        const isFriend = connectionStatus === 'accepted';
+        const profile = {
             _id: user._id,
             displayName: user.displayName,
+            profilePictureUrl: user.profilePictureUrl,
+            profileVisibility: user.profileVisibility,
+            connectionStatus,
+            friendshipId,
             major: user.major,
             year: user.year,
             bio: user.bio,
-            profilePictureUrl: user.profilePictureUrl,
-            profileVisibility: user.profileVisibility,
             courses: user.courses,
             availability: user.availability,
-            connectionStatus,
-            friendshipId,
             studyPreferences: user.studyPreferences,
             interests: user.interests,
             linkedResources: user.linkedResources,
             studyGoals: user.studyGoals,
             weeklyStudyGoalMinutes: user.weeklyStudyGoalMinutes,
-        });
+        };
+        if (!isFriend) {
+            redactPrivateFields(profile, user.fieldVisibility);
+        }
+        res.json(profile);
     } catch (err) {
         if (err.name === 'CastError') {
             return res.status(404).json({ error: 'User not found' });
