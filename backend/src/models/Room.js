@@ -25,13 +25,13 @@ const roomSchema = new mongoose.Schema(
             type: [String],
             default: [],
         },
-        noiseLevel: {
+        noiseClassification: {
             type: String,
             enum: {
-                values: ['quiet', 'moderate', 'loud'],
-                message: 'noiseLevel must be quiet, moderate, or loud',
+                values: ['Quiet', 'Moderate', 'Collaborative'],
+                message: 'noiseClassification must be Quiet, Moderate, or Collaborative',
             },
-            default: 'moderate',
+            default: 'Moderate',
         },
         currentOccupancy: {
             type: Number,

@@ -22,6 +22,7 @@ require('./config/passport');
 const userRoutes = require('./routes/users');
 const bookmarkRoutes = require('./routes/bookmarks');
 const messageRoutes = require('./routes/messages');
+const reviewRoutes = require('./routes/reviews');
 
 const app = express();
 
@@ -48,6 +49,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/friendships', friendshipRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/conversations', messageRoutes);
+app.use('/api/reviews', reviewRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

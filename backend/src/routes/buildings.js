@@ -9,7 +9,25 @@ const { haversineDistance } = require('../utils/distance');
 router.get('/', async (req, res) => {
     try {
         const buildings = await Building.find().sort({ name: 1 });
-        res.json(buildings);
+        const buildingsWithStatus = await Promise.all(buildings.map(async b => {
+            const rooms = await Room.find({ buildingId: b._id });
+            const roomIds = rooms.map(r => r._id);
+            const now = new Date();
+            const checkInsCount = await CheckIn.countDocuments({ roomId: { $in: roomIds }, expiresAt: { $gt: now } });
+            
+            const totalCapacity = rooms.reduce((sum, r) => sum + (r.capacity || 0), 0);
+            const ratio = totalCapacity > 0 ? checkInsCount / totalCapacity : 0;
+            
+            let noiseClassification = 'Quiet';
+            if (ratio > 0.6) {
+                noiseClassification = 'Collaborative';
+            } else if (ratio > 0.2) {
+                noiseClassification = 'Moderate';
+            }
+
+            return { ...b.toObject(), noiseClassification };
+        }));
+        res.json(buildingsWithStatus);
     } catch (err) {
         console.error('Error fetching buildings:', err);
         res.status(500).json({ error: 'Failed to fetch buildings' });
@@ -26,9 +44,28 @@ router.get('/nearby', async (req, res) => {
         const userLat = parseFloat(lat);
         const userLon = parseFloat(lon);
         const buildings = await Building.find();
-        const sorted = buildings
+        const buildingsWithStatus = await Promise.all(buildings.map(async b => {
+            const rooms = await Room.find({ buildingId: b._id });
+            const roomIds = rooms.map(r => r._id);
+            const now = new Date();
+            const checkInsCount = await CheckIn.countDocuments({ roomId: { $in: roomIds }, expiresAt: { $gt: now } });
+            
+            const totalCapacity = rooms.reduce((sum, r) => sum + (r.capacity || 0), 0);
+            const ratio = totalCapacity > 0 ? checkInsCount / totalCapacity : 0;
+            
+            let noiseClassification = 'Quiet';
+            if (ratio > 0.6) {
+                noiseClassification = 'Collaborative';
+            } else if (ratio > 0.2) {
+                noiseClassification = 'Moderate';
+            }
+
+            return { ...b.toObject(), noiseClassification };
+        }));
+        
+        const sorted = buildingsWithStatus
             .map(b => ({
-                ...b.toObject(),
+                ...b,
                 distance: haversineDistance(userLat, userLon, b.latitude, b.longitude),
             }))
             .sort((a, b) => a.distance - b.distance);
@@ -80,6 +117,17 @@ router.get('/:id/rooms', async (req, res) => {
                 });
                 const roomObj = room.toObject();
                 roomObj.currentOccupancy = count;
+                
+                const capacity = room.capacity || 0;
+                const ratio = capacity > 0 ? count / capacity : 0;
+                if (ratio > 0.6) {
+                    roomObj.noiseClassification = 'Collaborative';
+                } else if (ratio > 0.2) {
+                    roomObj.noiseClassification = 'Moderate';
+                } else {
+                    roomObj.noiseClassification = 'Quiet';
+                }
+                
                 return roomObj;
             })
         );

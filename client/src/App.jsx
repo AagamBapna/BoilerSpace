@@ -61,6 +61,7 @@ export default function App() {
   const [viewingClassmateId, setViewingClassmateId] = useState(null);
   const [returnToScreen, setReturnToScreen] = useState(null);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
+  const [isQuietZonesOnly, setIsQuietZonesOnly] = useState(false);
   const [showStudyTime, setShowStudyTime] = useState(false);
   const [studyTimeRefreshKey, setStudyTimeRefreshKey] = useState(0);
   const socketRef = useSocket(user);
@@ -354,6 +355,7 @@ export default function App() {
           bookmarks={bookmarks}
           recentBuildings={recentBuildings}
           onRefreshRecentBuildings={refreshRecentBuildings}
+          isQuietZonesOnly={isQuietZonesOnly}
         />
 
       </div>
@@ -362,6 +364,8 @@ export default function App() {
         buildings={buildings}
         selectedBuilding={selectedBuilding}
         onSelectBuilding={handleSelectBuilding}
+        isQuietZonesOnly={isQuietZonesOnly}
+        setIsQuietZonesOnly={setIsQuietZonesOnly}
       />
 
       <div className="map-top-actions">
