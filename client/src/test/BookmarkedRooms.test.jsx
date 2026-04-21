@@ -110,9 +110,9 @@ describe('BookmarkedRooms', () => {
         test('shows room capacity and noise level', () => {
             renderBookmarkedRooms();
             expect(screen.getByText(/200 seats/)).toBeInTheDocument();
-            expect(screen.getByText(/loud/)).toBeInTheDocument();
+            expect(screen.getByText(/collaborative/i)).toBeInTheDocument();
             expect(screen.getByText(/30 seats/)).toBeInTheDocument();
-            expect(screen.getByText(/moderate/)).toBeInTheDocument();
+            expect(screen.getByText(/moderate/i)).toBeInTheDocument();
         });
 
         test('shows occupancy data', () => {

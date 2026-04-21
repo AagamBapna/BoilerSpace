@@ -8,7 +8,7 @@ const { protect } = require('../middleware/auth');
 router.post('/', protect, async (req, res) => { 
     try {
         const { rating, comment, roomId } = req.body;
-        if (!rating || !comment || !roomId) {
+        if (rating === undefined || rating === null || !comment || !roomId) {
             return res.status(400).json({ error: 'rating, comment, and roomId are required' });
         }
         const roomExists = await Room.findById(roomId);

@@ -1,34 +1,35 @@
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import CampusMap from '../components/CampusMap';
 
 // Mock mapbox-gl
-jest.mock('mapbox-gl', () => ({
-  Map: jest.fn(() => ({
-    addControl: jest.fn(),
-    on: jest.fn(),
-    remove: jest.fn(),
-    flyTo: jest.fn(),
+vi.mock('mapbox-gl', () => ({
+  Map: vi.fn(() => ({
+    addControl: vi.fn(),
+    on: vi.fn(),
+    remove: vi.fn(),
+    flyTo: vi.fn(),
   })),
-  NavigationControl: jest.fn(),
-  GeolocateControl: jest.fn(),
-  Marker: jest.fn(() => ({
-    setLngLat: jest.fn().mockReturnThis(),
-    addTo: jest.fn().mockReturnThis(),
-    remove: jest.fn(),
+  NavigationControl: vi.fn(),
+  GeolocateControl: vi.fn(),
+  Marker: vi.fn(() => ({
+    setLngLat: vi.fn().mockReturnThis(),
+    addTo: vi.fn().mockReturnThis(),
+    remove: vi.fn(),
   })),
-  Popup: jest.fn(() => ({
-    setLngLat: jest.fn().mockReturnThis(),
-    setHTML: jest.fn().mockReturnThis(),
-    addTo: jest.fn().mockReturnThis(),
-    remove: jest.fn(),
+  Popup: vi.fn(() => ({
+    setLngLat: vi.fn().mockReturnThis(),
+    setHTML: vi.fn().mockReturnThis(),
+    addTo: vi.fn().mockReturnThis(),
+    remove: vi.fn(),
   })),
 }));
 
 // Mock LocationContext
-jest.mock('../contexts/LocationContext', () => ({
+vi.mock('../contexts/LocationContext', () => ({
   useLocation: () => ({
-    requestLocationAccess: jest.fn(),
+    requestLocationAccess: vi.fn(),
     userLocation: null,
   }),
 }));
@@ -65,7 +66,7 @@ describe('CampusMap Quiet Zones Filter', () => {
   });
 
   it('calls setIsQuietZonesOnly when filter is clicked', () => {
-    const mockSetIsQuietZonesOnly = jest.fn();
+    const mockSetIsQuietZonesOnly = vi.fn();
     render(
       <CampusMap 
         buildings={buildings} 
