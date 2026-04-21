@@ -19,6 +19,102 @@ router.get('/me/availability', protect, async (req, res) => {
     }
 });
 
+// Canonical list of togglable per-field privacy keys. Kept in sync with the
+// User.fieldVisibility subdocument. displayName and profilePictureUrl are not
+// togglable — always visible so users remain identifiable.
+const TOGGLABLE_FIELDS = [
+    'email', 'major', 'year', 'bio',
+    'studyPreferences', 'interests', 'linkedResources', 'studyGoals',
+    'courses', 'availability', 'weeklyStudyGoalMinutes',
+];
+
+// GET /api/users/me/visibility — current visibility settings for the logged-in user
+router.get('/me/visibility', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.json({
+            profileVisibility: user.profileVisibility,
+            fieldVisibility: user.fieldVisibility,
+        });
+    } catch (err) {
+        console.error('Error fetching visibility:', err);
+        res.status(500).json({ error: 'Failed to fetch visibility' });
+    }
+});
+
+// PUT /api/users/me/visibility — update master toggle and/or per-field visibility.
+// Accepts partial updates. Body shape:
+//   { profileVisibility?: 'public'|'private',
+//     fieldVisibility?: { [fieldName]: 'public'|'private' } }
+router.put('/me/visibility', protect, async (req, res) => {
+    try {
+        const { profileVisibility, fieldVisibility } = req.body;
+
+        if (profileVisibility === undefined && fieldVisibility === undefined) {
+            return res.status(400).json({
+                error: 'Provide profileVisibility and/or fieldVisibility to update.',
+            });
+        }
+
+        if (profileVisibility !== undefined &&
+            !['public', 'private'].includes(profileVisibility)) {
+            return res.status(400).json({
+                error: "profileVisibility must be 'public' or 'private'.",
+            });
+        }
+
+        if (fieldVisibility !== undefined) {
+            if (typeof fieldVisibility !== 'object' || fieldVisibility === null ||
+                Array.isArray(fieldVisibility)) {
+                return res.status(400).json({
+                    error: 'fieldVisibility must be an object.',
+                });
+            }
+            for (const [key, value] of Object.entries(fieldVisibility)) {
+                if (!TOGGLABLE_FIELDS.includes(key)) {
+                    return res.status(400).json({
+                        error: `Unknown or non-togglable field: ${key}.`,
+                    });
+                }
+                if (!['public', 'private'].includes(value)) {
+                    return res.status(400).json({
+                        error: `fieldVisibility.${key} must be 'public' or 'private'.`,
+                    });
+                }
+            }
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        if (profileVisibility !== undefined) {
+            user.profileVisibility = profileVisibility;
+        }
+        if (fieldVisibility !== undefined) {
+            // Merge — callers may send a partial update (e.g. toggling just `bio`).
+            for (const [key, value] of Object.entries(fieldVisibility)) {
+                user.fieldVisibility[key] = value;
+            }
+        }
+
+        await user.save();
+
+        res.json({
+            message: 'Visibility updated',
+            profileVisibility: user.profileVisibility,
+            fieldVisibility: user.fieldVisibility,
+        });
+    } catch (err) {
+        if (err.name === 'ValidationError') {
+            const message = Object.values(err.errors).map(v => v.message).join(', ');
+            return res.status(400).json({ error: message });
+        }
+        console.error('Error updating visibility:', err);
+        res.status(500).json({ error: 'Failed to update visibility' });
+    }
+});
+
 // PUT /api/users/me/availability — update cur user's study availability
 router.put('/me/availability', protect, async (req, res) => {
     try {
@@ -85,7 +181,109 @@ router.get('/search', protect, async (req, res) => {
     }
 });
 
-// GET /api/users/:id, get user by ID (with privacy guard)
+// GET /api/users/discovery, find classmates based on matching criteria
+router.get('/discovery', protect, async (req, res) => {
+    try {
+        const { q, interests, studyGoals, studyStyle, environment } = req.query;
+
+        // Base query: Public profiles only, excluding self
+        const query = {
+            profileVisibility: 'public',
+            _id: { $ne: req.user._id }
+        };
+
+        // If q is provided, filter by displayName
+        if (q && q.trim()) {
+            query.displayName = new RegExp(q.trim(), 'i');
+        }
+
+        const users = await User.find(query)
+            .select('displayName email major year bio profilePictureUrl studyPreferences interests studyGoals courses');
+
+        // Pre-fetch auth user courses for intersection
+        const myUser = await User.findById(req.user._id).select('courses studyPreferences interests studyGoals');
+        const myCourses = myUser.courses.map(c => c.toString());
+        const myInterests = myUser.interests || [];
+        const myGoals = myUser.studyGoals || [];
+        
+        // Define target constraints from query if provided, fallback to my profile preferences
+        const targetStudyStyle = studyStyle || myUser.studyPreferences?.studyStyle;
+        const targetEnvironment = environment || myUser.studyPreferences?.environment;
+        
+        // Process strings from comma separated queries
+        const targetInterests = interests ? interests.split(',').map(i => i.trim().toLowerCase()) : myInterests.map(i => i.toLowerCase());
+        const targetGoals = studyGoals ? studyGoals.split(',').map(g => g.trim().toLowerCase()) : myGoals.map(g => g.toLowerCase());
+
+        const scoredUsers = users.map(u => {
+            let score = 0;
+            const highlights = [];
+
+            // Style
+            if (targetStudyStyle && u.studyPreferences && u.studyPreferences.studyStyle === targetStudyStyle) {
+                score += 3;
+                highlights.push(`Study style match: ${targetStudyStyle}`);
+            }
+
+            // Environment
+            if (targetEnvironment && u.studyPreferences && u.studyPreferences.environment === targetEnvironment) {
+                score += 3;
+                highlights.push(`Environment match: ${targetEnvironment}`);
+            }
+
+            // Interests
+            if (u.interests && u.interests.length > 0 && targetInterests.length > 0) {
+                const uInterests = u.interests.map(i => i.toLowerCase());
+                const overlap = uInterests.filter(i => targetInterests.includes(i));
+                if (overlap.length > 0) {
+                    score += overlap.length * 2;
+                    highlights.push(`Shared interests: ${overlap.map(i => i.substring(0, 15)).join(', ')}`);
+                }
+            }
+
+            // Goals
+            if (u.studyGoals && u.studyGoals.length > 0 && targetGoals.length > 0) {
+                const uGoals = u.studyGoals.map(g => g.toLowerCase());
+                const overlap = uGoals.filter(g => targetGoals.includes(g));
+                if (overlap.length > 0) {
+                    score += overlap.length * 2;
+                    highlights.push(`Shared goals: ${overlap.map(g => g.substring(0, 15)).join(', ')}`);
+                }
+            }
+
+            // Courses
+            if (u.courses && u.courses.length > 0) {
+                const overlap = u.courses.filter(c => myCourses.includes(c.toString()));
+                if (overlap.length > 0) {
+                    score += overlap.length * 1;
+                    highlights.push(`Shared classes: ${overlap.length}`);
+                }
+            }
+
+            return {
+                user: u,
+                score,
+                matchHighlights: highlights
+            };
+        });
+
+        // Sort descending by score
+        scoredUsers.sort((a, b) => b.score - a.score);
+
+        // Map output
+        const results = scoredUsers.slice(0, 20).map(su => ({
+            ...su.user.toObject(),
+            matchScore: su.score,
+            matchHighlights: su.matchHighlights
+        }));
+
+        res.json(results);
+    } catch (err) {
+        console.error('Discovery search error:', err.message);
+        res.status(500).json({ error: 'Search failed' });
+    }
+});
+
+// GET /api/users/:id, get user by ID (with tiered privacy)
 router.get('/:id', protect, async (req, res) => {
     try {
         const user = await User.findById(req.params.id)
@@ -95,27 +293,66 @@ router.get('/:id', protect, async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // If user is private and viewer is not their friend, return limited info
-        if (user.profileVisibility === 'private' && req.user._id.toString() !== user._id.toString()) {
-            const Friendship = require('../models/Friendship');
-            const friendship = await Friendship.findOne({
-                $or: [
-                    { requester: req.user._id, recipient: user._id, status: 'accepted' },
-                    { requester: user._id, recipient: req.user._id, status: 'accepted' },
-                ],
-            });
+        const isSelf = req.user._id.toString() === user._id.toString();
 
-            if (!friendship) {
-                return res.json({
-                    _id: user._id,
-                    displayName: user.displayName,
-                    profilePictureUrl: user.profilePictureUrl,
-                    profileVisibility: user.profileVisibility,
-                });
+        // Self-view: return full profile
+        if (isSelf) {
+            return res.json(user);
+        }
+
+        // Non-self: look up friendship status
+        const Friendship = require('../models/Friendship');
+        const friendship = await Friendship.findOne({
+            $or: [
+                { requester: req.user._id, recipient: user._id },
+                { requester: user._id, recipient: req.user._id },
+            ],
+        });
+
+        let connectionStatus = 'none';
+        let friendshipId = null;
+        if (friendship) {
+            friendshipId = friendship._id;
+            if (friendship.status === 'accepted') {
+                connectionStatus = 'accepted';
+            } else if (friendship.status === 'pending') {
+                connectionStatus = friendship.requester.toString() === req.user._id.toString()
+                    ? 'pending_outgoing'
+                    : 'pending_incoming';
             }
         }
 
-        res.json(user);
+        // Private profile and not friends: return minimal info
+        if (user.profileVisibility === 'private' && connectionStatus !== 'accepted') {
+            return res.json({
+                _id: user._id,
+                displayName: user.displayName,
+                profilePictureUrl: user.profilePictureUrl,
+                profileVisibility: user.profileVisibility,
+                connectionStatus,
+                friendshipId,
+            });
+        }
+
+        // Public profile : return public fields only
+        res.json({
+            _id: user._id,
+            displayName: user.displayName,
+            major: user.major,
+            year: user.year,
+            bio: user.bio,
+            profilePictureUrl: user.profilePictureUrl,
+            profileVisibility: user.profileVisibility,
+            courses: user.courses,
+            availability: user.availability,
+            connectionStatus,
+            friendshipId,
+            studyPreferences: user.studyPreferences,
+            interests: user.interests,
+            linkedResources: user.linkedResources,
+            studyGoals: user.studyGoals,
+            weeklyStudyGoalMinutes: user.weeklyStudyGoalMinutes,
+        });
     } catch (err) {
         if (err.name === 'CastError') {
             return res.status(404).json({ error: 'User not found' });
@@ -131,32 +368,67 @@ router.put('/:id', protect, async (req, res) => {
         if (req.user._id.toString() !== req.params.id) {
             return res.status(403).json({ error: 'You can only update your own profile' });
         }
-        const { displayName, major, year } = req.body;
-        if (displayName !== undefined && (!displayName || displayName.trim().length === 0)) {
-            return res.status(400).json({ error: 'Display name cannot be empty' });
-        }
-        if (year !== undefined) {
+        if (req.body.year !== undefined) {
             const validYears = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'];
-            if (!validYears.includes(year)) {
+            if (!validYears.includes(req.body.year)) {
                 return res.status(400).json({ 
                 error: 'Year must be one of: Freshman, Sophomore, Junior, Senior, Graduate' 
             });
     }
         }
-        const user = await User.findById(req.params.id);
+        const { displayName, major, year, bio, profileVisibility, notificationPreferences, studyPreferences, interests, linkedResources, studyGoals, weeklyStudyGoalMinutes } = req.body;
+
+    // Build update object based on what's provided
+    const updateData = {};
+    if (displayName !== undefined) {
+        if (!displayName.trim()) return res.status(400).json({ error: 'Display name cannot be empty' });
+        updateData.displayName = displayName.trim();
+    }
+    if (major !== undefined) updateData.major = major.trim();
+    if (year !== undefined) updateData.year = year.trim();
+    if (bio !== undefined) updateData.bio = bio.trim().substring(0, 300);
+    if (profileVisibility !== undefined) {
+        if (!['public', 'private'].includes(profileVisibility)) return res.status(400).json({ error: 'Invalid visibility setting.' });
+        updateData.profileVisibility = profileVisibility;
+    }
+    if (notificationPreferences !== undefined) updateData.notificationPreferences = notificationPreferences;
+
+    // Advanced User Story 86 Profile Fields
+    if (studyPreferences !== undefined) {
+        if (studyPreferences.studyStyle && !['solo', 'group', 'mixed', ''].includes(studyPreferences.studyStyle)) {
+            return res.status(400).json({ error: 'Invalid studyStyle.' });
+        }
+        if (studyPreferences.environment && !['quiet', 'moderate', 'collaborative', ''].includes(studyPreferences.environment)) {
+            return res.status(400).json({ error: 'Invalid environment.' });
+        }
+        updateData.studyPreferences = {
+            studyStyle: studyPreferences.studyStyle || '',
+            environment: studyPreferences.environment || ''
+        };
+    }
+    if (interests !== undefined && Array.isArray(interests)) {
+        updateData.interests = interests.map(i => i.trim()).filter(i => i).slice(0, 10);
+    }
+    if (linkedResources !== undefined) {
+        updateData.linkedResources = {
+            github: linkedResources.github ? linkedResources.github.trim() : '',
+            linkedin: linkedResources.linkedin ? linkedResources.linkedin.trim() : ''
+        };
+    }
+    if (studyGoals !== undefined && Array.isArray(studyGoals)) {
+        updateData.studyGoals = studyGoals.map(g => g.trim()).filter(g => g).slice(0, 10);
+    }
+    if (weeklyStudyGoalMinutes !== undefined) {
+        const goal = Number(weeklyStudyGoalMinutes);
+        if (!Number.isFinite(goal) || goal < 0 || goal > 10080) {
+            return res.status(400).json({ error: 'Weekly study goal must be between 0 and 10080 minutes.' });
+        }
+        updateData.weeklyStudyGoalMinutes = Math.round(goal);
+    }
+        const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        if (displayName !== undefined) {
-            user.displayName = displayName.trim();
-        }
-        if (major !== undefined) {
-            user.major = major.trim();
-        }
-        if (year !== undefined) {
-            user.year = year;
-        }
-        await user.save();
         res.json({
             message: 'Profile updated successfully',
             user: {
@@ -165,7 +437,13 @@ router.put('/:id', protect, async (req, res) => {
                 displayName: user.displayName,
                 major: user.major,
                 year: user.year,
+                bio: user.bio,
                 profilePictureUrl: user.profilePictureUrl,
+                studyPreferences: user.studyPreferences,
+                interests: user.interests,
+                linkedResources: user.linkedResources,
+                studyGoals: user.studyGoals,
+                weeklyStudyGoalMinutes: user.weeklyStudyGoalMinutes,
             }
         });
     } catch (err) {
@@ -340,6 +618,49 @@ router.delete('/:id/profile-picture', protect, async (req, res) => {
     } catch (error) {
         console.error('Error removing profile picture:', error);
         res.status(500).json({ error: 'Failed to remove profile picture.' });
+    }
+});
+
+// PUT /api/users/:id/notifications/preferences — update notification settings
+router.put('/:id/notifications/preferences', protect, async (req, res) => {
+    try {
+        if (req.user._id.toString() !== req.params.id) {
+            return res.status(403).json({ error: 'You can only update your own notification preferences' });
+        }
+
+        const allowedFields = ['sessionReminders', 'messages', 'events', 'organizationUpdates', 'globalMute'];
+        const updates = {};
+
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                if (typeof req.body[field] !== 'boolean') {
+                    return res.status(400).json({ error: `${field} must be a boolean` });
+                }
+                updates[`notificationSettings.${field}`] = req.body[field];
+            }
+        }
+
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({ error: 'No valid notification preference fields provided' });
+        }
+
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { $set: updates },
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json({
+            message: 'Notification preferences updated',
+            notificationSettings: user.notificationSettings,
+        });
+    } catch (err) {
+        console.error('Error updating notification preferences:', err);
+        res.status(500).json({ error: 'Failed to update notification preferences' });
     }
 });
 

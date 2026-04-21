@@ -18,7 +18,7 @@ describe('CourseQA', () => {
   });
 
   test('asks a question and displays the AI answer', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     axios.post.mockResolvedValueOnce({
       data: {
         answer: 'The notes explain that a recurrence relation defines a sequence recursively.',
@@ -36,7 +36,11 @@ describe('CourseQA', () => {
       });
     });
 
-    expect(screen.getByText('The notes explain that a recurrence relation defines a sequence recursively.')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText('The notes explain that a recurrence relation defines a sequence recursively.')
+      ).toBeInTheDocument();
+    });
   });
 
   test('shows no-notes backend error', async () => {

@@ -4,6 +4,8 @@ const Note = require('../models/Note');
 const Course = require('../models/Course');
 const Embedding = require('../models/Embedding');
 const StudyGuide = require('../models/StudyGuide');
+const StudyPlan = require('../models/StudyPlan');
+const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const { model, embeddingModel } = require('../config/gemini');
 const { extractTextFromPDF, chunkText, cosineSimilarity } = require('../utils/pdfExtractor');
@@ -339,6 +341,165 @@ router.post('/:id/qa', protect, async (req, res) => {
     } catch (err) {
         console.error('Error generating course Q&A:', err);
         return res.status(500).json({ error: 'Failed to answer question' });
+    }
+});
+
+// POST /api/study-plan/generate, generate a personalized study plan for the user based on their courses and preferences
+router.post('/study-plan/generate', protect, async (req, res) => {
+    try {
+        if (!model) {
+            return res.status(500).json({ error: 'AI model not configured' });
+        }
+        const { courses, preferredStudyHours, busySlots, weekStartDate } = req.body;
+        if (!Array.isArray(courses) || courses.length === 0) {
+            return res.status(400).json({ error: 'At least one course is required' });
+        }
+        for (const course of courses) {
+            if (!course.courseId || !course.examDate) {
+                return res.status(400).json({ error: 'Each course must have courseId and examDate' });
+            }
+        }
+        const courseIds = courses.map((c) => c.courseId);
+        const courseDocs = await Course.find({ _id: { $in: courseIds } });
+        if (courseDocs.length === 0) {
+            return res.status(404).json({ error: 'No valid courses found' });
+        }
+        const courseMap = {};
+        courseDocs.forEach((course) => {
+            courseMap[course._id.toString()] = course;
+        });
+        const user = await User.findById(req.user._id);
+        const existingAvailability = user?.availability || [];
+        const allBusySlots = [...(busySlots || [])];
+        existingAvailability.forEach((slot) => {
+            allBusySlots.push({
+                day: slot.day,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                label: slot.label || 'Commitment',
+            });
+        });
+        const courseInfo = courses.map((c) => {
+            const courseDoc = courseMap[c.courseId];
+            if (!courseDoc) {
+                return null;
+            }
+            return `- ${courseDoc.department} ${courseDoc.courseCode}: ${courseDoc.title}, exam on ${new Date(c.examDate).toLocaleDateString()}, priority: ${c.priority}`;
+        }).filter(Boolean).join('\n');
+        const busyInfo = allBusySlots.length > 0 ? allBusySlots.map((slot) => `- ${slot.day} from ${slot.startTime} to ${slot.endTime} (${slot.label || 'Busy'})`).join('\n') : 'None';
+        const studyStart = preferredStudyHours?.startTime;
+        const studyEnd = preferredStudyHours?.endTime;
+        const prompt = `You are a study planner for a college student at Purdue University. Create a weekly study study plan.
+        Only return a valid JSOn object with exactly this shape:
+        {
+            "blocks": [
+                { "day": "Monday", "startTime": "09:00", "endTime": "10:30", "courseCode": "CS 381", "topic": "Graph Algorithms Review" }
+            ]
+        }
+        Rules:
+        - Days are one of Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+        - Study blocks must be between the preferred study hours ${studyStart} - ${studyEnd})
+        - Do not schedule study blocks during busy times: ${busyInfo}
+        - Times must be in EST and 24 hour format
+        - Each study block should be between 30-120 minutes long
+        - Include short breaks of 10-15 minutes between study blocks
+        - Spread study for each course out over the week (max 5 hours per day), with more focus on courses with higher priority and sooner exam dates
+        - Provide specific study topics for each block based on the course content and exam focus areas
+        
+        Courses to study: ${courseInfo}`;
+        const response = await model.generateContent(prompt);
+        const rawText = response.response.text();
+        let parsed;
+        try {
+            const cleaned = rawText
+                .replace(/^```json\s*/i, '')
+                .replace(/^```\s*/i, '')
+                .replace(/```$/i, '')
+                .trim();
+            parsed = JSON.parse(cleaned);
+        } catch (err) {
+            console.error('Failed to parse AI response as JSON:', err);
+            return res.status(502).json({ error: 'AI returned an invalid study plan format' });
+        }
+        if (!parsed || !Array.isArray(parsed.blocks)) {
+            return res.status(502).json({ error: 'AI returned an invalid study plan format' });
+        }
+        const courseCodeToId = {};
+        courseDocs.forEach((course) => {
+            courseCodeToId[`${course.department} ${course.courseCode}`] = course._id;
+            courseCodeToId[course.courseCode] = course._id;
+        });
+        const blocks = parsed.blocks.map((block) => ({
+            day: block.day,
+            startTime: block.startTime,
+            endTime: block.endTime,
+            courseId: courseCodeToId[block.courseCode] || null,
+            courseCode: block.courseCode,
+            topic: block.topic || '',
+        }));
+        const studyPlan = await StudyPlan.create({
+            userId: req.user._id,
+            title: `Study Plan - ${new Date().toLocaleDateString()}`,
+            courses: courses.map((course) => ({
+                courseId: course.courseId,
+                examDate: new Date(course.examDate),
+                priority: course.priority,  
+            })),
+            preferredStudyHours: {
+                startTime: studyStart,
+                endTime: studyEnd,
+            },
+            busySlots: allBusySlots,
+            blocks,
+            weekStartDate: weekStartDate ? new Date(weekStartDate) : new Date(),
+        });
+        const populatedPlan = await StudyPlan.findById(studyPlan._id)
+            .populate('courses.courseId', 'courseCode title department')
+            .populate('blocks.courseId', 'courseCode title department');
+        res.json(populatedPlan);
+    } catch (err) {
+        console.error('Error generating study plan:', err);
+        res.status(500).json({ error: 'Failed to generate study plan' });
+    }
+});
+
+// GET /api/courses/study-plan/history, get user's past study plans
+router.get('/study-plan/history', protect, async (req, res) => {
+    try {
+        const plans = await StudyPlan.find({ userId: req.user._id })
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .populate('courses.courseId', 'courseCode title department')
+            .populate('blocks.courseId', 'courseCode title department');
+        res.json(plans);
+    } catch (err) {
+        console.error('Error fetching study plan history:', err);
+        res.status(500).json({ error: 'Failed to fetch study plan history' });
+    }
+});
+
+router.put('/study-plan/:planId', protect, async (req, res) => {
+    try {
+        const studyPlan = await StudyPlan.findById(req.params.planId);
+        if (!studyPlan) {
+            return res.status(404).json({ error: 'Study plan not found' });
+        }
+        if (studyPlan.userId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'You can only view your own study plans' });
+        }
+        const { blocks } = req.body;
+        if (!Array.isArray(blocks)) {
+            return res.status(400).json({ error: 'Blocks must be an array' });
+        }
+        studyPlan.blocks = blocks;
+        await studyPlan.save();
+        const populatedPlan = await StudyPlan.findById(studyPlan._id)
+            .populate('courses.courseId', 'courseCode title department')
+            .populate('blocks.courseId', 'courseCode title department');
+        res.json(populatedPlan);
+    } catch (err) {
+        console.error('Error updating study plan:', err);
+        res.status(500).json({ error: 'Failed to update study plan' });
     }
 });
 

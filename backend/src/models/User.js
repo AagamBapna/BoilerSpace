@@ -33,6 +33,51 @@ const userSchema = new mongoose.Schema(
             required: [true, 'Year is required'],
             trim: true,
         },
+        bio: {
+            type: String,
+            default: '',
+            maxlength: [300, 'Bio must be 300 characters or fewer'],
+            trim: true,
+        },
+        studyPreferences: {
+            studyStyle: {
+                type: String,
+                enum: ['solo', 'group', 'mixed', ''],
+                default: '',
+            },
+            environment: {
+                type: String,
+                enum: ['quiet', 'moderate', 'collaborative', ''],
+                default: '',
+            }
+        },
+        interests: [{
+            type: String,
+            trim: true,
+        }],
+        linkedResources: {
+            github: {
+                type: String,
+                trim: true,
+                default: '',
+            },
+            linkedin: {
+                type: String,
+                trim: true,
+                default: '',
+            }
+        },
+        studyGoals: [{
+            type: String,
+            trim: true,
+        }],
+        // User-configurable weekly study time goal (in minutes). Default 600 = 10 hours.
+        weeklyStudyGoalMinutes: {
+            type: Number,
+            default: 600,
+            min: [0, 'Weekly study goal cannot be negative'],
+            max: [10080, 'Weekly study goal cannot exceed 10080 minutes (168 hours)'],
+        },
         emailVerified: {
             type: Boolean,
             default: false,
@@ -62,6 +107,28 @@ const userSchema = new mongoose.Schema(
                 default: true,
             },
         }],
+        notificationSettings: {
+            sessionReminders: {
+                type: Boolean,
+                default: true,
+            },
+            messages: {
+                type: Boolean,
+                default: true,
+            },
+            events: {
+                type: Boolean,
+                default: true,
+            },
+            organizationUpdates: {
+                type: Boolean,
+                default: true,
+            },
+            globalMute: {
+                type: Boolean,
+                default: false,
+            },
+        },
         availability: [{
             day: {
                 type: String,
@@ -75,6 +142,23 @@ const userSchema = new mongoose.Schema(
             type: String,
             enum: ['public', 'private'],
             default: 'public',
+        },
+        // Per-field visibility toggles for non-friend viewers when profileVisibility is 'public'.
+        // displayName and profilePictureUrl are intentionally not togglable — they're always
+        // visible so users remain identifiable in search, DMs, and friend requests.
+        // Email defaults to 'private' because it is PII; everything else defaults to 'public'.
+        fieldVisibility: {
+            email: { type: String, enum: ['public', 'private'], default: 'private' },
+            major: { type: String, enum: ['public', 'private'], default: 'public' },
+            year: { type: String, enum: ['public', 'private'], default: 'public' },
+            bio: { type: String, enum: ['public', 'private'], default: 'public' },
+            studyPreferences: { type: String, enum: ['public', 'private'], default: 'public' },
+            interests: { type: String, enum: ['public', 'private'], default: 'public' },
+            linkedResources: { type: String, enum: ['public', 'private'], default: 'public' },
+            studyGoals: { type: String, enum: ['public', 'private'], default: 'public' },
+            courses: { type: String, enum: ['public', 'private'], default: 'public' },
+            availability: { type: String, enum: ['public', 'private'], default: 'public' },
+            weeklyStudyGoalMinutes: { type: String, enum: ['public', 'private'], default: 'public' },
         },
         resetPasswordTokenHash: {
             type: String,

@@ -474,9 +474,12 @@ body {
 .map-top-actions {
   position: fixed;
   top: 16px;
-  right: 176px;
+  right: 160px;
+  left: 380px;
   display: flex;
-  align-items: center;
+  justify-content: flex-end;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 10px;
   z-index: 24;
 }
@@ -576,8 +579,11 @@ body {
     top: auto;
     right: 16px;
     bottom: 70px;
+    left: 16px;
     flex-direction: column;
     align-items: stretch;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
 
   .notes-button {
@@ -701,4 +707,80 @@ body {
   margin-bottom: 40px;
   /* Float slightly above bottom edge */
   margin-left: 20px;
+}
+
+/* ── Study Plan Calendar Grid ─────────────────────────────────── */
+.study-plan-grid {
+    display: grid;
+    grid-template-columns: 50px repeat(7, 1fr);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.study-plan-header-cell {
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-purdue-gold);
+    background: var(--color-surface-light);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.study-plan-time-label {
+    padding: 4px 6px;
+    font-size: 10px;
+    color: var(--color-text-secondary);
+    text-align: right;
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.study-plan-cell {
+    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    border-right: 1px solid rgba(255, 255, 255, 0.03);
+    height: 28px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.study-plan-cell:hover {
+    background: rgba(206, 184, 136, 0.05);
+}
+
+.study-plan-block {
+    position: absolute;
+    top: 0;
+    left: 2px;
+    right: 2px;
+    border-radius: 4px;
+    padding: 2px 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.15s;
+}
+
+.study-plan-block:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10 !important;
+}
+
+.study-plan-block.busy {
+    background: repeating-linear-gradient(
+        45deg,
+        var(--color-surface-elevated),
+        var(--color-surface-elevated) 4px,
+        var(--color-border) 4px,
+        var(--color-border) 8px
+    ) !important;
+    border-left: 3px solid var(--color-text-secondary) !important;
+    opacity: 0.5;
 }
