@@ -31,6 +31,8 @@ beforeEach(async () => {
         email: 'test@purdue.edu',
         password: 'password123',
         displayName: 'TestUser',
+        major: 'Computer Science',
+        year: 'Senior',
     });
     token = signToken(user);
 
