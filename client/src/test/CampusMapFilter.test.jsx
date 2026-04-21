@@ -5,25 +5,34 @@ import CampusMap from '../components/CampusMap';
 
 // Mock mapbox-gl
 vi.mock('mapbox-gl', () => ({
-  Map: vi.fn(() => ({
-    addControl: vi.fn(),
-    on: vi.fn(),
-    remove: vi.fn(),
-    flyTo: vi.fn(),
-  })),
-  NavigationControl: vi.fn(),
-  GeolocateControl: vi.fn(),
-  Marker: vi.fn(() => ({
-    setLngLat: vi.fn().mockReturnThis(),
-    addTo: vi.fn().mockReturnThis(),
-    remove: vi.fn(),
-  })),
-  Popup: vi.fn(() => ({
-    setLngLat: vi.fn().mockReturnThis(),
-    setHTML: vi.fn().mockReturnThis(),
-    addTo: vi.fn().mockReturnThis(),
-    remove: vi.fn(),
-  })),
+  default: {
+    accessToken: '',
+    Map: vi.fn().mockImplementation(function() {
+      return {
+        addControl: vi.fn(),
+        on: vi.fn(),
+        remove: vi.fn(),
+        flyTo: vi.fn(),
+      };
+    }),
+    NavigationControl: vi.fn(),
+    GeolocateControl: vi.fn(),
+    Marker: vi.fn().mockImplementation(function() {
+      return {
+        setLngLat: vi.fn().mockReturnThis(),
+        addTo: vi.fn().mockReturnThis(),
+        remove: vi.fn(),
+      };
+    }),
+    Popup: vi.fn().mockImplementation(function() {
+      return {
+        setLngLat: vi.fn().mockReturnThis(),
+        setHTML: vi.fn().mockReturnThis(),
+        addTo: vi.fn().mockReturnThis(),
+        remove: vi.fn(),
+      };
+    }),
+  }
 }));
 
 // Mock LocationContext
@@ -56,10 +65,10 @@ describe('CampusMap Quiet Zones Filter', () => {
 
   it('renders Quiet Zones toggle filter', () => {
     render(
-      <CampusMap 
-        buildings={buildings} 
-        isQuietZonesOnly={false} 
-        setIsQuietZonesOnly={() => {}} 
+      <CampusMap
+        buildings={buildings}
+        isQuietZonesOnly={false}
+        setIsQuietZonesOnly={() => { }}
       />
     );
     expect(screen.getByText('Quiet Zones Only')).toBeInTheDocument();
@@ -68,13 +77,13 @@ describe('CampusMap Quiet Zones Filter', () => {
   it('calls setIsQuietZonesOnly when filter is clicked', () => {
     const mockSetIsQuietZonesOnly = vi.fn();
     render(
-      <CampusMap 
-        buildings={buildings} 
-        isQuietZonesOnly={false} 
-        setIsQuietZonesOnly={mockSetIsQuietZonesOnly} 
+      <CampusMap
+        buildings={buildings}
+        isQuietZonesOnly={false}
+        setIsQuietZonesOnly={mockSetIsQuietZonesOnly}
       />
     );
-    
+
     // Find the toggle button which has aria-pressed
     const toggleButton = screen.getByRole('button', { pressed: false });
     fireEvent.click(toggleButton);

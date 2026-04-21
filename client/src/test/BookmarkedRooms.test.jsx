@@ -112,7 +112,7 @@ describe('BookmarkedRooms', () => {
             expect(screen.getByText(/200 seats/)).toBeInTheDocument();
             expect(screen.getByText(/collaborative/i)).toBeInTheDocument();
             expect(screen.getByText(/30 seats/)).toBeInTheDocument();
-            expect(screen.getByText(/moderate/i)).toBeInTheDocument();
+            expect(screen.getAllByText(/moderate/i).length).toBeGreaterThan(0);
         });
 
         test('shows occupancy data', () => {
