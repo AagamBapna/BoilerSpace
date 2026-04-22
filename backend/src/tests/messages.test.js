@@ -9,6 +9,7 @@ jest.mock('../config/socket', () => ({
     }),
     emitMessageDeleted: jest.fn(),
     emitMessageDisappeared: jest.fn(),
+    emitConversationAccepted: jest.fn(),
     onlineUsers: new Map(),
 }));
 const app = require('../app');
@@ -911,5 +912,299 @@ describe('readAt field behavior', () => {
         });
 
         expect(message.readAt).toBeNull();
+    });
+});
+
+describe('Conversation request status', () => {
+    test('conversation between friends is created with status accepted', async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'accepted',
+        });
+
+        const res = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+
+        expect(res.status).toBe(201);
+        expect(res.body.status).toBe('accepted');
+        expect(res.body.initiator).toBeNull();
+    });
+
+    test('conversation between non-friends is created with status pending', async () => {
+        const res = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+
+        expect(res.status).toBe(201);
+        expect(res.body.status).toBe('pending');
+        expect(res.body.initiator).toBe(userAId);
+    });
+
+    test('rejected conversation blocks new conversation creation', async () => {
+        const conv = await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'rejected',
+            initiator: userAId,
+        });
+
+        const res = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toContain('previously rejected');
+    });
+
+    test('GET / only returns accepted conversations', async () => {
+        await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+
+        await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'accepted',
+        });
+
+        const res = await request(app)
+            .get('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(200);
+        res.body.forEach(conv => {
+            expect(conv.status).toBe('accepted');
+        });
+    });
+});
+
+describe('POST /api/conversations/:id/accept', () => {
+    let convId;
+
+    beforeEach(async () => {
+        const conv = await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+        convId = conv._id.toString();
+    });
+
+    test('recipient can accept a pending request', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/accept`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe('accepted');
+    });
+
+    test('initiator cannot accept their own request', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/accept`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toContain('Only the recipient');
+    });
+
+    test('returns 400 for already accepted conversation', async () => {
+        await Conversation.findByIdAndUpdate(convId, { status: 'accepted' });
+
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/accept`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    test('returns 404 for non-existent conversation', async () => {
+        const fakeId = new mongoose.Types.ObjectId();
+        const res = await request(app)
+            .post(`/api/conversations/${fakeId}/accept`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('POST /api/conversations/:id/reject', () => {
+    let convId;
+
+    beforeEach(async () => {
+        const conv = await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+        convId = conv._id.toString();
+    });
+
+    test('recipient can reject a pending request', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/reject`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe('rejected');
+    });
+
+    test('initiator cannot reject their own request', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/reject`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(403);
+    });
+
+    test('returns 400 for already rejected conversation', async () => {
+        await Conversation.findByIdAndUpdate(convId, { status: 'rejected' });
+
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/reject`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(400);
+    });
+});
+
+describe('GET /api/conversations/requests', () => {
+    test('returns only pending conversations where user is recipient', async () => {
+        await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+
+        const res = await request(app)
+            .get('/api/conversations/requests')
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(1);
+        expect(res.body[0].status).toBe('pending');
+    });
+
+    test('does not return requests the user initiated', async () => {
+        await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+
+        const res = await request(app)
+            .get('/api/conversations/requests')
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(0);
+    });
+
+    test('returns empty array when no pending requests', async () => {
+        const res = await request(app)
+            .get('/api/conversations/requests')
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(0);
+    });
+
+    test('includes message preview', async () => {
+        const conv = await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+
+        await Message.create({
+            conversationId: conv._id,
+            sender: userAId,
+            text: 'Hey there',
+            readBy: [userAId],
+        });
+
+        const res = await request(app)
+            .get('/api/conversations/requests')
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body[0].messagePreview.text).toBe('Hey there');
+    });
+});
+
+describe('Message gating on pending conversations', () => {
+    let convId;
+
+    beforeEach(async () => {
+        const conv = await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+        convId = conv._id.toString();
+    });
+
+    test('initiator can send messages to pending conversation', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Hello from initiator' });
+
+        expect(res.status).toBe(201);
+        expect(res.body.text).toBe('Hello from initiator');
+    });
+
+    test('recipient cannot send messages to pending conversation', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ text: 'Should not work' });
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toContain('accept the request first');
+    });
+
+    test('neither party can send messages to rejected conversation', async () => {
+        await Conversation.findByIdAndUpdate(convId, { status: 'rejected' });
+
+        const resA = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Rejected A' });
+
+        expect(resA.status).toBe(403);
+        expect(resA.body.error).toContain('rejected');
+
+        const resB = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ text: 'Rejected B' });
+
+        expect(resB.status).toBe(403);
+    });
+
+    test('messages flow normally after acceptance', async () => {
+        await request(app)
+            .post(`/api/conversations/${convId}/accept`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        const resA = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'After accept from A' });
+
+        expect(resA.status).toBe(201);
+
+        const resB = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ text: 'After accept from B' });
+
+        expect(resB.status).toBe(201);
     });
 });

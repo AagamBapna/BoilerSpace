@@ -386,3 +386,144 @@ describe('ChatWindow Component', () => {
         });
     });
 });
+
+describe('DMInbox Requests Tab', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    const mockSocket = {
+        current: {
+            on: vi.fn(),
+            off: vi.fn(),
+            emit: vi.fn(),
+        }
+    };
+
+    it('shows Requests tab with badge count', async () => {
+        axios.get.mockImplementation((url) => {
+            if (url === '/api/conversations') return Promise.resolve({ data: [] });
+            if (url === '/api/conversations/requests') return Promise.resolve({
+                data: [
+                    {
+                        _id: 'req1',
+                        participants: [{ _id: 'other456', displayName: 'Jane Doe' }],
+                        messagePreview: { text: 'let me message you' }
+                    }
+                ]
+            });
+        });
+
+        render(<DMInbox currentUserId="user123" socket={mockSocket} onClose={vi.fn()} />);
+
+        await waitFor(() => {
+            expect(screen.getByText('Requests')).toBeInTheDocument();
+            const badge = screen.getByText('1');
+            expect(badge).toBeInTheDocument();
+        });
+    });
+
+    it('accept button moves conversation to inbox', async () => {
+        axios.get.mockImplementation((url) => {
+            if (url === '/api/conversations') return Promise.resolve({ data: [] });
+            if (url === '/api/conversations/requests') return Promise.resolve({
+                data: [
+                    {
+                        _id: 'req1',
+                        participants: [{ _id: 'other456', displayName: 'Jane Doe' }],
+                        messagePreview: { text: 'let me message you' }
+                    }
+                ]
+            });
+        });
+
+        axios.post.mockImplementation((url) => {
+            if (url === '/api/conversations/req1/accept') {
+                return Promise.resolve({
+                    data: {
+                        _id: 'req1',
+                        participants: [{ _id: 'other456', displayName: 'Jane Doe' }],
+                        lastMessage: { text: 'let me message you' },
+                        updatedAt: new Date().toISOString()
+                    }
+                });
+            }
+        });
+
+        render(<DMInbox currentUserId="user123" socket={mockSocket} onClose={vi.fn()} />);
+
+        await waitFor(() => {
+            fireEvent.click(screen.getByText(/Requests/i));
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('Accept')).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByText('Accept'));
+
+        await waitFor(() => {
+            expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+            expect(screen.queryByText('Accept')).not.toBeInTheDocument();
+        });
+    });
+
+    it('reject button removes conversation from requests', async () => {
+        axios.get.mockImplementation((url) => {
+            if (url === '/api/conversations') return Promise.resolve({ data: [] });
+            if (url === '/api/conversations/requests') return Promise.resolve({
+                data: [
+                    {
+                        _id: 'req1',
+                        participants: [{ _id: 'other456', displayName: 'Jane Doe' }],
+                        messagePreview: { text: 'let me message you' }
+                    }
+                ]
+            });
+        });
+
+        axios.post.mockResolvedValueOnce({ data: { message: 'rejected' } });
+
+        render(<DMInbox currentUserId="user123" socket={mockSocket} onClose={vi.fn()} />);
+
+        await waitFor(() => {
+            fireEvent.click(screen.getByText(/Requests/i));
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('Reject')).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByText('Reject'));
+
+        await waitFor(() => {
+            expect(screen.queryByText('Jane Doe')).not.toBeInTheDocument();
+            expect(screen.getByText('No message requests')).toBeInTheDocument();
+        });
+    });
+
+    it('requests tab shows message preview', async () => {
+        axios.get.mockImplementation((url) => {
+            if (url === '/api/conversations') return Promise.resolve({ data: [] });
+            if (url === '/api/conversations/requests') return Promise.resolve({
+                data: [
+                    {
+                        _id: 'req1',
+                        participants: [{ _id: 'other456', displayName: 'Jane Doe' }],
+                        messagePreview: { text: 'A preview of the message' }
+                    }
+                ]
+            });
+        });
+
+        render(<DMInbox currentUserId="user123" socket={mockSocket} onClose={vi.fn()} />);
+
+        await waitFor(() => {
+            fireEvent.click(screen.getByText(/Requests/i));
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('A preview of the message')).toBeInTheDocument();
+        });
+    });
+});
