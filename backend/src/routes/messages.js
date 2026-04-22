@@ -5,7 +5,7 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../models/User');
 const { usersExist, hasBlockedRelationship, areFriends } = require('../utils/messageAccess');
-const { emitMessageDeleted, emitConversationAccepted } = require('../config/socket');
+const { emitMessageDeleted, emitConversationAccepted, getIO } = require('../config/socket');
 const DELETED_MESSAGE_PLACEHOLDER = 'This message was deleted';
 
 router.post('/', protect, async (req, res) => {
@@ -138,6 +138,19 @@ router.post('/:id/accept', protect, async (req, res) => {
         const populated = await Conversation.findById(conversation._id)
             .populate('participants', 'displayName email profilePictureUrl');
 
+        const queuedMessages = await Message.find({ conversationId: conversation._id })
+            .sort({ createdAt: 1 })
+            .populate('sender', 'displayName email profilePictureUrl');
+
+        const io = getIO();
+        if (io && queuedMessages.length > 0) {
+            io.to(req.user._id.toString()).emit('conversationAccepted', {
+                conversationId: conversation._id.toString(),
+                conversation: populated,
+                messages: queuedMessages,
+            });
+        }
+
         if (conversation.initiator) {
             emitConversationAccepted({
                 conversationId: conversation._id.toString(),
@@ -253,6 +266,14 @@ router.post('/:id/messages', protect, async (req, res) => {
 
         if (!conversation.participants.some(p => p.toString() === req.user._id.toString())) {
             return res.status(403).json({ error: 'Not a participant in this conversation' });
+        }
+
+        if (conversation.status === 'rejected') {
+            return res.status(403).json({ error: 'This conversation request was rejected' });
+        }
+
+        if (conversation.status === 'pending' && conversation.initiator && conversation.initiator.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'Cannot send messages — accept the request first' });
         }
 
         const participantIds = conversation.participants.map((p) => p.toString());
