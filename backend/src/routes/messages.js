@@ -234,6 +234,79 @@ router.get('/:id/messages', protect, async (req, res) => {
     }
 });
 
+router.get('/:id/search', protect, async (req, res) => {
+    const { id } = req.params;
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 50);
+
+    if (!q) {
+        return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    try {
+        const conversation = await Conversation.findById(id);
+        if (!conversation) {
+            return res.status(404).json({ error: 'Conversation not found' });
+        }
+
+        if (!conversation.participants.some(p => p.toString() === req.user._id.toString())) {
+            return res.status(403).json({ error: 'Not a participant in this conversation' });
+        }
+
+        const participantIds = conversation.participants.map((p) => p.toString());
+        const allParticipantsExist = await usersExist(participantIds);
+        if (!allParticipantsExist) {
+            return res.status(404).json({ error: 'Conversation has a participant that no longer exists' });
+        }
+
+        const filter = {
+            conversationId: id,
+            isDeleted: false,
+            $text: { $search: q },
+        };
+
+        const total = await Message.countDocuments(filter);
+        const matches = await Message.find(filter, { score: { $meta: 'textScore' } })
+            .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .populate('sender', 'displayName email profilePictureUrl');
+
+        const results = await Promise.all(matches.map(async (match) => {
+            const [above, below] = await Promise.all([
+                Message.findOne({
+                    conversationId: id,
+                    isDeleted: false,
+                    createdAt: { $lt: match.createdAt },
+                })
+                    .sort({ createdAt: -1 })
+                    .populate('sender', 'displayName email profilePictureUrl'),
+                Message.findOne({
+                    conversationId: id,
+                    isDeleted: false,
+                    createdAt: { $gt: match.createdAt },
+                })
+                    .sort({ createdAt: 1 })
+                    .populate('sender', 'displayName email profilePictureUrl'),
+            ]);
+
+            return { match, above, below };
+        }));
+
+        res.json({
+            results,
+            page,
+            totalPages: Math.max(Math.ceil(total / limit), 1),
+            total,
+            query: q,
+        });
+    } catch (err) {
+        console.error('Conversation search error:', err.message);
+        res.status(500).json({ error: 'Failed to search conversation' });
+    }
+});
+
 router.post('/:id/messages', protect, async (req, res) => {
     const { id } = req.params;
     const { text, isDisappearing = false, disappearingDurationSeconds } = req.body;

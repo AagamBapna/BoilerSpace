@@ -60,6 +60,8 @@ messageSchema.index(
     }
 );
 
+messageSchema.index({ text: 'text' });
+
 messageSchema.path('expiresAt').validate(function validateExpiresAt(value) {
     if (this.isDisappearing) {
         return value instanceof Date;
