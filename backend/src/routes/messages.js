@@ -87,6 +87,81 @@ router.get('/', protect, async (req, res) => {
     }
 });
 
+router.get('/search', protect, async (req, res) => {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 50);
+
+    if (!q) {
+        return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    try {
+        const conversations = await Conversation.find({
+            participants: req.user._id,
+            status: 'accepted',
+        }).populate('participants', 'displayName email profilePictureUrl');
+
+        if (conversations.length === 0) {
+            return res.json({ groups: [], page, totalPages: 1, total: 0, query: q });
+        }
+
+        const convMap = new Map();
+        const convIds = [];
+        conversations.forEach((conv) => {
+            const other = conv.participants.find(
+                (p) => p._id.toString() !== req.user._id.toString()
+            );
+            convMap.set(conv._id.toString(), {
+                _id: conv._id,
+                otherUser: other || null,
+                updatedAt: conv.updatedAt,
+            });
+            convIds.push(conv._id);
+        });
+
+        const filter = {
+            conversationId: { $in: convIds },
+            isDeleted: false,
+            $text: { $search: q },
+        };
+
+        const total = await Message.countDocuments(filter);
+        const matches = await Message.find(filter, { score: { $meta: 'textScore' } })
+            .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .populate('sender', 'displayName email profilePictureUrl');
+
+        const grouped = new Map();
+        matches.forEach((msg) => {
+            const key = msg.conversationId.toString();
+            if (!grouped.has(key)) {
+                grouped.set(key, {
+                    conversation: convMap.get(key),
+                    matches: [],
+                });
+            }
+            grouped.get(key).matches.push(msg);
+        });
+
+        const groups = Array.from(grouped.values()).sort(
+            (a, b) => new Date(b.conversation.updatedAt) - new Date(a.conversation.updatedAt)
+        );
+
+        res.json({
+            groups,
+            page,
+            totalPages: Math.max(Math.ceil(total / limit), 1),
+            total,
+            query: q,
+        });
+    } catch (err) {
+        console.error('Global message search error:', err.message);
+        res.status(500).json({ error: 'Failed to search messages' });
+    }
+});
+
 router.get('/requests', protect, async (req, res) => {
     try {
         const requests = await Conversation.find({
