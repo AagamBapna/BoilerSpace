@@ -4,6 +4,7 @@ import CourseSelector from './CourseSelector';
 import AvailabilityEditor from './AvailabilityEditor';
 import NotificationPreferences from './NotificationPreferences';
 import DeleteAccountModal from './DeleteAccountModal';
+import PrivacySettings from './PrivacySettings';
 
 export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onLogout }) {
     const [editing, setEditing] = useState(false);
@@ -399,6 +400,13 @@ export default function ProfileViewer({ userId, user, onClose, onUserUpdate, onL
         <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
         <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Notification Preferences</h3>
         <NotificationPreferences userId={userId} user={user} onUserUpdate={onUserUpdate} />
+
+        <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
+        <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Privacy</h3>
+        <PrivacySettings
+          user={user}
+          onUpdate={(vis) => onUserUpdate && onUserUpdate({ ...user, ...vis })}
+        />
 
         <div style={{borderTop: '1px solid var(--color-border)', margin: '1.5rem 0'}} />
         <h3 style={{fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.75rem'}}>Danger Zone</h3>
