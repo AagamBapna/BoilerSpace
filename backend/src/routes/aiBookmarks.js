@@ -3,6 +3,18 @@ const router = express.Router();
 const AIBookmark = require('../models/AIBookmark');
 const { protect } = require('../middleware/auth');
 
+// GET /api/users/bookmarks/ai: list the current user's AI bookmarks, newest first
+router.get('/bookmarks/ai', protect, async (req, res) => {
+    try {
+        const bookmarks = await AIBookmark.find({ userId: req.user._id })
+            .sort({ createdAt: -1 });
+        res.json(bookmarks);
+    } catch (err) {
+        console.error('Error fetching AI bookmarks:', err);
+        res.status(500).json({ error: 'Failed to fetch AI bookmarks' });
+    }
+});
+
 // POST /api/users/bookmarks/ai: save an AI Q&A response to the current user's bookmarks
 router.post('/bookmarks/ai', protect, async (req, res) => {
     try {
