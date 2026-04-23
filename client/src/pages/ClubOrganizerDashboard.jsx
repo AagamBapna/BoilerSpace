@@ -17,6 +17,20 @@ export default function ClubOrganizerDashboard({ user }) {
   const [savingMemberId, setSavingMemberId] = useState(null);
   const [newPositionName, setNewPositionName] = useState('');
   const [positionsSaving, setPositionsSaving] = useState(false);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [editingEventScope, setEditingEventScope] = useState('single');
+  const [savingEventId, setSavingEventId] = useState(null);
+  const [editEventForm, setEditEventForm] = useState({
+    title: '',
+    description: '',
+    date: '',
+    time: '',
+    location: '',
+    recurrenceType: 'none',
+    recurrenceInterval: 1,
+    recurrenceEndDate: '',
+  });
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [clubForm, setClubForm] = useState({
@@ -294,16 +308,76 @@ export default function ClubOrganizerDashboard({ user }) {
   };
 
   const handleDeleteEvent = async (eventId) => {
-    const confirmed = window.confirm('Delete this event? This will also delete its announcements.');
+    const selectedEvent = events.find((event) => String(event.id) === String(eventId));
+    const isRecurring = Boolean(selectedEvent?.recurrence?.type && selectedEvent.recurrence.type !== 'none');
+    const scope = isRecurring
+      ? (window.prompt('Delete scope: single, future, or all?', 'single') || 'single').toLowerCase()
+      : 'single';
+    const confirmed = window.confirm(
+      scope === 'all'
+        ? 'Delete the entire series? This will also delete its announcements.'
+        : scope === 'future'
+          ? 'Delete this event and all future occurrences? This will also delete their announcements.'
+          : 'Delete this event? This will also delete its announcements.'
+    );
     if (!confirmed) return;
     try {
       setNotice(null);
       setError(null);
-      await axios.delete(`/api/events/${eventId}`);
+      await axios.delete(`/api/events/${eventId}?scope=${encodeURIComponent(scope)}`);
       await loadData();
       setNotice('Event deleted.');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete event.');
+    }
+  };
+
+  const handleEditEventClick = (event) => {
+    setNotice(null);
+    setError(null);
+    setEditingEvent(event);
+    setEditingEventScope('single');
+    setEditEventForm({
+      title: event.title || '',
+      description: event.description || '',
+      date: event.date || '',
+      time: event.time || '',
+      location: event.location || '',
+      recurrenceType: event.recurrence?.type || 'none',
+      recurrenceInterval: event.recurrence?.interval || 1,
+      recurrenceEndDate: event.recurrence?.endDate || '',
+    });
+    setShowEditEventModal(true);
+  };
+
+  const handleSaveEvent = async () => {
+    if (!editingEvent) return;
+    try {
+      setSavingEventId(String(editingEvent.id));
+      setNotice(null);
+      setError(null);
+      await axios.patch(`/api/events/${editingEvent.id}?scope=${encodeURIComponent(editingEventScope)}`, {
+        title: editEventForm.title,
+        description: editEventForm.description,
+        date: editEventForm.date,
+        time: editEventForm.time,
+        location: editEventForm.location,
+        recurrence: editEventForm.recurrenceType === 'none'
+          ? { type: 'none' }
+          : {
+              type: editEventForm.recurrenceType,
+              interval: Number(editEventForm.recurrenceInterval) || 1,
+              endDate: editEventForm.recurrenceEndDate,
+            },
+      });
+      setShowEditEventModal(false);
+      setEditingEvent(null);
+      await loadData();
+      setNotice('Event updated.');
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to update event.');
+    } finally {
+      setSavingEventId(null);
     }
   };
 
@@ -556,7 +630,10 @@ export default function ClubOrganizerDashboard({ user }) {
                     <p className="text-sm font-medium truncate">{event.title}</p>
                     <p className="text-xs text-[var(--color-text-secondary)] truncate">{event.date} {event.time ? `· ${event.time}` : ''}</p>
                   </div>
-                  <button onClick={() => handleDeleteEvent(event.id)} className="text-xs text-red-300 hover:text-red-200">Delete</button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => handleEditEventClick(event)} className="text-xs text-[var(--color-purdue-gold)] hover:text-[var(--color-purdue-gold-light)]">Edit</button>
+                    <button onClick={() => handleDeleteEvent(event.id)} className="text-xs text-red-300 hover:text-red-200">Delete</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -642,6 +719,110 @@ export default function ClubOrganizerDashboard({ user }) {
                   {savingClub ? 'Saving...' : 'Save Club Details'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditEventModal && editingEvent && (
+        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-6">
+          <div className="w-full max-w-2xl rounded-2xl bg-[var(--color-surface-light)] p-7 sm:p-8 flex flex-col gap-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Edit Event</h2>
+              <button
+                onClick={() => !savingEventId && setShowEditEventModal(false)}
+                className="profile-button-like px-5 py-2.5 text-base"
+                disabled={Boolean(savingEventId)}
+              >
+                Close
+              </button>
+            </div>
+
+            {(editingEvent?.recurrence?.type && editingEvent.recurrence.type !== 'none') && (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[var(--color-text-secondary)]">Apply changes to</label>
+                <select
+                  value={editingEventScope}
+                  onChange={(e) => setEditingEventScope(e.target.value)}
+                  className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
+                >
+                  <option value="single">This event only</option>
+                  <option value="future">This and future events</option>
+                  <option value="all">Entire series</option>
+                </select>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-[var(--color-text-secondary)]">Title</label>
+                  <Input value={editEventForm.title} onChange={(v) => setEditEventForm((prev) => ({ ...prev, title: v }))} placeholder="Event title" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-[var(--color-text-secondary)]">Location</label>
+                  <Input value={editEventForm.location} onChange={(v) => setEditEventForm((prev) => ({ ...prev, location: v }))} placeholder="Location" />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[var(--color-text-secondary)]">Description</label>
+                <textarea
+                  rows={4}
+                  value={editEventForm.description}
+                  onChange={(e) => setEditEventForm((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Event description"
+                  className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-[var(--color-text-secondary)]">Date</label>
+                  <Input value={editEventForm.date} onChange={(v) => setEditEventForm((prev) => ({ ...prev, date: v }))} placeholder="YYYY-MM-DD" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-[var(--color-text-secondary)]">Time</label>
+                  <Input value={editEventForm.time} onChange={(v) => setEditEventForm((prev) => ({ ...prev, time: v }))} placeholder="HH:mm" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-[var(--color-text-secondary)]">Recurrence</label>
+                  <select
+                    value={editEventForm.recurrenceType}
+                    onChange={(e) => setEditEventForm((prev) => ({ ...prev, recurrenceType: e.target.value }))}
+                    className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
+                  >
+                    <option value="none">None</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-[var(--color-text-secondary)]">Interval</label>
+                  <Input value={String(editEventForm.recurrenceInterval)} onChange={(v) => setEditEventForm((prev) => ({ ...prev, recurrenceInterval: v }))} placeholder="1" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-[var(--color-text-secondary)]">End Date</label>
+                  <Input value={editEventForm.recurrenceEndDate} onChange={(v) => setEditEventForm((prev) => ({ ...prev, recurrenceEndDate: v }))} placeholder="YYYY-MM-DD" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowEditEventModal(false)}
+                disabled={Boolean(savingEventId)}
+                className="profile-button-like px-5 py-2.5 text-base"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEvent}
+                disabled={Boolean(savingEventId)}
+                className="px-5 py-2.5 bg-[var(--color-purdue-gold)] text-black rounded text-base font-semibold disabled:opacity-60"
+              >
+                {savingEventId ? 'Saving...' : 'Save Event'}
+              </button>
             </div>
           </div>
         </div>
