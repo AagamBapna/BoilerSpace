@@ -50,7 +50,7 @@ export default function GlobalEventBanner({ isMapPage }) {
   if (activeBroadcasts.length === 0) return null;
 
   return (
-    <div className={`fixed top-4 z-[35] flex flex-col gap-3 w-content max-w-[320px] sm:max-w-sm pointer-events-none transition-all duration-300 ${
+    <div className={`fixed top-4 z-[35] flex flex-col gap-3 w-full max-w-[320px] sm:max-w-sm pointer-events-none transition-all duration-300 ${
       isMapPage ? 'left-4 md:left-[384px]' : 'left-4 sm:left-6'
     }`}>
       {activeBroadcasts.map(broadcast => {
@@ -76,9 +76,8 @@ export default function GlobalEventBanner({ isMapPage }) {
             iconPath = <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />;
             break;
         }
-
-        const bannerBgClass = bgColorClass.split(' hover:')[0];
-        const hoverBgClass = bgColorClass.split(' ')[2];
+        const bannerBgClass = bgColorClass.split(' ').filter(c => !c.startsWith('hover:')).join(' ');
+        const hoverBgClass = bgColorClass.split(' ').find(c => c.startsWith('hover:')) || '';
 
         return (
           <div key={id} className={`w-full relative flex flex-col border ${bannerBgClass} transition-all duration-200 shadow-xl backdrop-blur-md rounded-2xl pointer-events-auto overflow-hidden`}>

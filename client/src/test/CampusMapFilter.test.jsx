@@ -1,13 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
+import mapboxgl from 'mapbox-gl';
 import CampusMap from '../components/CampusMap';
 
 // Mock mapbox-gl
 vi.mock('mapbox-gl', () => ({
   default: {
     accessToken: '',
-    Map: vi.fn().mockImplementation(function() {
+    Map: vi.fn().mockImplementation(function () {
       return {
         addControl: vi.fn(),
         on: vi.fn(),
@@ -17,14 +18,14 @@ vi.mock('mapbox-gl', () => ({
     }),
     NavigationControl: vi.fn(),
     GeolocateControl: vi.fn(),
-    Marker: vi.fn().mockImplementation(function() {
+    Marker: vi.fn().mockImplementation(function () {
       return {
         setLngLat: vi.fn().mockReturnThis(),
         addTo: vi.fn().mockReturnThis(),
         remove: vi.fn(),
       };
     }),
-    Popup: vi.fn().mockImplementation(function() {
+    Popup: vi.fn().mockImplementation(function () {
       return {
         setLngLat: vi.fn().mockReturnThis(),
         setHTML: vi.fn().mockReturnThis(),
@@ -63,30 +64,34 @@ describe('CampusMap Quiet Zones Filter', () => {
     }
   ];
 
-  it('renders Quiet Zones toggle filter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('adds markers for all buildings when isQuietZonesOnly is false', () => {
     render(
       <CampusMap
         buildings={buildings}
         isQuietZonesOnly={false}
         setIsQuietZonesOnly={() => { }}
+        onSelectBuilding={() => { }}
       />
     );
-    expect(screen.getByText('Quiet Zones Only')).toBeInTheDocument();
+
+    expect(mapboxgl.Marker).toHaveBeenCalledTimes(2);
   });
 
-  it('calls setIsQuietZonesOnly when filter is clicked', () => {
-    const mockSetIsQuietZonesOnly = vi.fn();
+  it('adds markers only for quiet buildings when isQuietZonesOnly is true', () => {
     render(
       <CampusMap
         buildings={buildings}
-        isQuietZonesOnly={false}
-        setIsQuietZonesOnly={mockSetIsQuietZonesOnly}
+        isQuietZonesOnly={true}
+        setIsQuietZonesOnly={() => { }}
+        onSelectBuilding={() => { }}
       />
     );
 
-    // Find the toggle button which has aria-pressed
-    const toggleButton = screen.getByRole('button', { pressed: false });
-    fireEvent.click(toggleButton);
-    expect(mockSetIsQuietZonesOnly).toHaveBeenCalledWith(true);
+    // Only 1 building has "Quiet", so only 1 mapbox marker should be instantiated
+    expect(mapboxgl.Marker).toHaveBeenCalledTimes(1);
   });
 });

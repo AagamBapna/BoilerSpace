@@ -46,6 +46,15 @@ vi.mock('mapbox-gl', () => {
     };
 });
 
+vi.mock('react-router-dom', () => ({
+    useInRouterContext: vi.fn(() => false),
+    useNavigate: vi.fn(() => vi.fn()),
+    useLocation: vi.fn(() => ({ pathname: '/' })),
+    Link: ({ children, to, onClick }) => <a href={to} onClick={onClick}>{children}</a>,
+    Routes: ({ children }) => <div>{children}</div>,
+    Route: () => null,
+}));
+
 vi.mock('../contexts/LocationContext', () => ({
     useLocation: vi.fn(() => ({
         locationStatus: 'granted',
