@@ -106,7 +106,7 @@ describe('Room Schema Validation', () => {
             name: 'WALC 1018',
             floor: 1,
             capacity: 30,
-            noiseLevel: 'moderate',
+            noiseClassification: 'Moderate',
         });
         const saved = await room.save();
         expect(saved._id).toBeDefined();
@@ -123,11 +123,11 @@ describe('Room Schema Validation', () => {
         await expect(room.save()).rejects.toThrow();
     });
 
-    test('rejects invalid noiseLevel enum value', async () => {
+    test('rejects invalid noiseClassification enum value', async () => {
         const room = new Room({
             buildingId: building._id,
             name: 'WALC 999',
-            noiseLevel: 'deafening',
+            noiseClassification: 'deafening',
         });
         await expect(room.save()).rejects.toThrow();
     });
@@ -138,9 +138,9 @@ describe('Room Schema Validation', () => {
         await expect(dup.save()).rejects.toThrow();
     });
 
-    test('defaults noiseLevel to moderate', async () => {
+    test('defaults noiseClassification to moderate', async () => {
         const room = await Room.create({ buildingId: building._id, name: 'WALC 1055', floor: 1 });
-        expect(room.noiseLevel).toBe('moderate');
+        expect(room.noiseClassification).toBe('Moderate');
     });
 });
 
@@ -223,13 +223,13 @@ describe('GET /api/buildings/:id/rooms', () => {
 
         // Rooms for WALC
         await Room.insertMany([
-            { buildingId: walc._id, name: 'WALC 3087', floor: 3, capacity: 40, noiseLevel: 'loud' },
-            { buildingId: walc._id, name: 'WALC 1018', floor: 1, capacity: 30, noiseLevel: 'moderate' },
-            { buildingId: walc._id, name: 'WALC 1055', floor: 1, capacity: 20, noiseLevel: 'quiet' },
+            { buildingId: walc._id, name: 'WALC 3087', floor: 3, capacity: 40, noiseClassification: 'Collaborative' },
+            { buildingId: walc._id, name: 'WALC 1018', floor: 1, capacity: 30, noiseClassification: 'Moderate' },
+            { buildingId: walc._id, name: 'WALC 1055', floor: 1, capacity: 20, noiseClassification: 'Quiet' },
         ]);
 
         // Room for LWSN — should NOT appear in WALC results
-        await Room.create({ buildingId: lwsn._id, name: 'LWSN B134', floor: 0, capacity: 200, noiseLevel: 'loud' });
+        await Room.create({ buildingId: lwsn._id, name: 'LWSN B134', floor: 0, capacity: 200, noiseClassification: 'Collaborative' });
     });
 
     // Acceptance Criteria: only rooms belonging to selected building are shown
@@ -271,10 +271,10 @@ describe('GET /api/buildings/:id/rooms — amenity filtering', () => {
     beforeEach(async () => {
         walc = await Building.create(sampleBuildings[0]);
         await Room.insertMany([
-            { buildingId: walc._id, name: 'WALC 1018', floor: 1, capacity: 30, amenities: ['Whiteboard', 'Projector'], noiseLevel: 'moderate' },
-            { buildingId: walc._id, name: 'WALC 1055', floor: 1, capacity: 20, amenities: ['Outlets', 'Whiteboard'], noiseLevel: 'quiet' },
-            { buildingId: walc._id, name: 'WALC 2051', floor: 2, capacity: 50, amenities: ['Projector', 'Outlets'], noiseLevel: 'moderate' },
-            { buildingId: walc._id, name: 'WALC 3087', floor: 3, capacity: 40, amenities: ['Outlets'], noiseLevel: 'loud' },
+            { buildingId: walc._id, name: 'WALC 1018', floor: 1, capacity: 30, amenities: ['Whiteboard', 'Projector'], noiseClassification: 'Moderate' },
+            { buildingId: walc._id, name: 'WALC 1055', floor: 1, capacity: 20, amenities: ['Outlets', 'Whiteboard'], noiseClassification: 'Quiet' },
+            { buildingId: walc._id, name: 'WALC 2051', floor: 2, capacity: 50, amenities: ['Projector', 'Outlets'], noiseClassification: 'Moderate' },
+            { buildingId: walc._id, name: 'WALC 3087', floor: 3, capacity: 40, amenities: ['Outlets'], noiseClassification: 'Collaborative' },
         ]);
     });
     test('returns all rooms when no amenity filter is provided', async () => {

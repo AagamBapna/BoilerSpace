@@ -14,14 +14,23 @@ router.get('/classmates', protect, async (req, res) => {
 
         const courseIds = me.courses.map(c => c._id);
 
-        // Find all public users sharing at least one course (excluding self)
+        // Public users sharing a course (excl. self).
         const classmates = await User.find({
             _id: { $ne: me._id },
             courses: { $in: courseIds },
             profileVisibility: { $ne: 'private' },
         })
-            .select('displayName major year profilePictureUrl courses')
+            .select('displayName major year profilePictureUrl courses fieldVisibility')
             .populate('courses', 'courseCode title');
+
+        // Legacy-doc fallbacks.
+        const FIELD_DEFAULTS = { major: 'public', year: 'public' };
+        const isPrivate = (user, field) => {
+            const fv = user.fieldVisibility && typeof user.fieldVisibility === 'object'
+                ? user.fieldVisibility
+                : {};
+            return (fv[field] || FIELD_DEFAULTS[field]) === 'private';
+        };
 
         // Get all friendships involving current user
         const friendships = await Friendship.find({
@@ -66,13 +75,14 @@ router.get('/classmates', protect, async (req, res) => {
             const classmateData = {
                 _id: user._id,
                 displayName: user.displayName,
-                major: user.major,
-                year: user.year,
                 profilePictureUrl: user.profilePictureUrl,
                 friendship: friendship
                     ? { id: friendship.id, status: friendship.status, direction: friendship.direction }
                     : null,
             };
+            // Respect per-field privacy.
+            if (!isPrivate(user, 'major')) classmateData.major = user.major;
+            if (!isPrivate(user, 'year')) classmateData.year = user.year;
 
             for (const cid of sharedCourseIds) {
                 if (grouped[cid]) {

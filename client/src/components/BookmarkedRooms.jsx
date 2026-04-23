@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { formatRelative, formatAbsolute } from '../utils/formatRelative';
 
 export default function BookmarkedRooms({ bookmarks = [], onToggleBookmark, onSelectBuilding, buildings }) {
-    const noiseLevelIcon = {
+    const noiseClassificationIcon = {
         quiet: 'Quiet',
         moderate: 'Moderate',
         loud: 'Loud',
@@ -84,7 +84,7 @@ export default function BookmarkedRooms({ bookmarks = [], onToggleBookmark, onSe
                             {/* Room details */}
                             <div className="flex items-center gap-3 text-xs text-[var(--color-text-secondary)] mb-2">
                                 <span>{room.capacity} seats</span>
-                                <span>{noiseLevelIcon[room.noiseLevel] || 'Moderate'} {room.noiseLevel}</span>
+                                <span>{noiseClassificationIcon[room.noiseClassification] || 'Moderate'} {room.noiseClassification}</span>
                                 <span>Floor {room.floor}</span>
                             </div>
 

@@ -7,13 +7,9 @@ import { useLocation } from '../contexts/LocationContext';
 const PURDUE_CENTER = [-86.9125, 40.4237];
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
-// Random status for MVP (will be replaced by real check-in data later)
-function getRandomStatus() {
-    const statuses = ['open', 'moderate', 'busy'];
-    return statuses[Math.floor(Math.random() * statuses.length)];
-}
 
-export default function CampusMap({ buildings, selectedBuilding, onSelectBuilding }) {
+
+export default function CampusMap({ buildings, selectedBuilding, onSelectBuilding, isQuietZonesOnly, setIsQuietZonesOnly }) {
     const mapContainer = useRef(null);
     const [isRouting, setIsRouting] = useState(false);
     const [routeSteps, setRouteSteps] = useState([]);
@@ -159,12 +155,16 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
         markersRef.current.forEach((m) => m.remove());
         markersRef.current = [];
 
-        buildings.forEach((building) => {
-            const status = getRandomStatus();
+        const filteredBuildings = isQuietZonesOnly 
+            ? buildings.filter(b => b.noiseClassification === 'Quiet') 
+            : buildings;
+
+        filteredBuildings.forEach((building) => {
+            const status = building.noiseClassification || 'Collaborative';
 
             // Create marker element
             const el = document.createElement('div');
-            el.className = `building-marker status-${status}`;
+            el.className = `building-marker status-${status.toLowerCase()}`;
             el.setAttribute('tabindex', '0');
             el.setAttribute('role', 'button');
             el.setAttribute('aria-label', `${building.name} (${building.abbreviation}) — ${status}`);
@@ -175,9 +175,16 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
             label.textContent = building.abbreviation;
             el.appendChild(label);
 
+            const mapStatusColors = {
+                Quiet: '#22c55e',       
+                Moderate: '#eab308',    
+                Collaborative: '#ef4444', 
+            };
+            const dotColor = mapStatusColors[status] || 'rgba(255,255,255,0.85)';
+
             // Inner dot
             const dot = document.createElement('span');
-            dot.style.cssText = 'width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.85);';
+            dot.style.cssText = `width:12px;height:12px;border-radius:50%;background:${dotColor};box-shadow:0 0 10px ${dotColor}80;`;
             el.appendChild(dot);
 
             const marker = new mapboxgl.Marker({ element: el })
@@ -205,13 +212,12 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
 
             markersRef.current.push(marker);
         });
-    }, [buildings, onSelectBuilding]);
+    }, [buildings, onSelectBuilding, isQuietZonesOnly]);
 
-    // Fly to selected building from sidebar
     useEffect(() => {
         if (!map.current || !selectedBuilding) return;
         flyToBuilding(selectedBuilding);
-        showPopup(selectedBuilding, getRandomStatus());
+        showPopup(selectedBuilding, selectedBuilding.noiseClassification || 'Collaborative');
     }, [selectedBuilding]);
 
     const flyToBuilding = useCallback((building) => {
@@ -233,14 +239,14 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
 
 
         const statusColors = {
-            open: '#22c55e',
-            moderate: '#eab308',
-            busy: '#ef4444',
+            Quiet: '#22c55e',
+            Moderate: '#eab308',
+            Collaborative: '#ef4444',
         };
         const statusLabels = {
-            open: 'Quiet — Seats Available',
-            moderate: 'Moderate — Some Seats',
-            busy: 'Busy — Limited Seats',
+            Quiet: 'Quiet — Study Zones',
+            Moderate: 'Moderate — Group Work',
+            Collaborative: 'Collaborative Space',
         };
 
         const html = `
@@ -287,6 +293,24 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
     return (
         <div className="flex-1 h-full relative">
             <div ref={mapContainer} className="w-full h-full" />
+            
+            {/* Filter Toggle Overlay */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-[var(--color-surface-light)] py-2 px-4 border border-[var(--color-purdue-gold)]/20 rounded-full shadow-lg flex items-center gap-3">
+                <span className="text-sm font-semibold text-[var(--color-text-primary)]">Quiet Zones Only</span>
+                <button
+                    onClick={() => setIsQuietZonesOnly(!isQuietZonesOnly)}
+                    className={`w-10 h-6 flex items-center rounded-full transition-colors ${
+                        isQuietZonesOnly ? 'bg-[var(--color-purdue-gold)]' : 'bg-[#404040]'
+                    } focus:outline-none`}
+                    aria-pressed={isQuietZonesOnly}
+                >
+                    <div
+                        className={`w-4 h-4 bg-white rounded-full mx-1 shadow-sm transition-transform ${
+                            isQuietZonesOnly ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                    />
+                </button>
+            </div>
             
             {/* Directions Overlay */}
             {isRouting && routeSteps.length > 0 && (

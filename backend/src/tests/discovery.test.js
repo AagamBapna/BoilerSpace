@@ -91,8 +91,9 @@ describe('GET /api/users/discovery', () => {
         // Should return user1 and user2, but not privateUser or currentUser
         expect(res.body.length).toBe(2);
 
-        // user1 should be first because they are a perfect match based on currentUser's own profile fallback
-        expect(res.body[0].email).toBe('user1@purdue.edu');
+        // user1 should be first; email is redacted by default.
+        expect(res.body[0].displayName).toBe('Perfect Match');
+        expect(res.body[0].email).toBeUndefined();
         expect(res.body[0].matchScore).toBeGreaterThan(res.body[1].matchScore);
         expect(res.body[0].matchHighlights).toContain('Study style match: group');
     });
@@ -104,8 +105,9 @@ describe('GET /api/users/discovery', () => {
 
         expect(res.status).toBe(200);
         
-        // Even though currentUser is 'group', the query params target 'solo', so user2 should win
-        expect(res.body[0].email).toBe('user2@purdue.edu');
+        // Query overrides fallback; user2 wins.
+        expect(res.body[0].displayName).toBe('No Match');
+        expect(res.body[0].email).toBeUndefined();
         expect(res.body[0].matchScore).toBeGreaterThan(res.body[1].matchScore);
         expect(res.body[0].matchHighlights).toContain('Environment match: quiet');
     });

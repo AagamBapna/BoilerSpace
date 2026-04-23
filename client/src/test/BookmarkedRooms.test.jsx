@@ -29,7 +29,7 @@ const sampleBookmarks = [
         name: 'LWSN B134',
         floor: 0,
         capacity: 200,
-        noiseLevel: 'loud',
+        noiseClassification: 'Collaborative',
         currentOccupancy: 45,
         amenities: ['Projector', 'Outlets'],
         buildingId: {
@@ -44,7 +44,7 @@ const sampleBookmarks = [
         name: 'WALC 1018',
         floor: 1,
         capacity: 30,
-        noiseLevel: 'moderate',
+        noiseClassification: 'Moderate',
         currentOccupancy: 22,
         amenities: ['Whiteboard'],
         buildingId: {
@@ -110,9 +110,9 @@ describe('BookmarkedRooms', () => {
         test('shows room capacity and noise level', () => {
             renderBookmarkedRooms();
             expect(screen.getByText(/200 seats/)).toBeInTheDocument();
-            expect(screen.getByText(/loud/)).toBeInTheDocument();
+            expect(screen.getByText(/collaborative/i)).toBeInTheDocument();
             expect(screen.getByText(/30 seats/)).toBeInTheDocument();
-            expect(screen.getByText(/moderate/)).toBeInTheDocument();
+            expect(screen.getAllByText(/moderate/i).length).toBeGreaterThan(0);
         });
 
         test('shows occupancy data', () => {

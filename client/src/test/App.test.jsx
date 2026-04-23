@@ -97,8 +97,8 @@ const sampleBuildings = [
 ];
 
 const sampleRooms = [
-    { _id: 'r001', buildingId: 'b001', name: 'WALC 1018', floor: 1, capacity: 30, amenities: ['Whiteboard'], noiseLevel: 'moderate' },
-    { _id: 'r002', buildingId: 'b001', name: 'WALC 3087', floor: 3, capacity: 40, amenities: ['Projector'], noiseLevel: 'loud' },
+    { _id: 'r001', buildingId: 'b001', name: 'WALC 1018', floor: 1, capacity: 30, amenities: ['Whiteboard'], noiseClassification: 'Moderate' },
+    { _id: 'r002', buildingId: 'b001', name: 'WALC 3087', floor: 3, capacity: 40, amenities: ['Projector'], noiseClassification: 'Collaborative' },
 ];
 
 const authUser = { id: 'u1', email: 't@t.com', displayName: 'Test' };

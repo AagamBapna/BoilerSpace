@@ -21,8 +21,11 @@ import ClubProfile from './pages/ClubProfile';
 import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
 import ActivityPage from './pages/ActivityPage';
 import EventPage from './pages/EventPage';
+import StudyPlanGenerator from './components/StudyPlanGenerator';
 import { getToken, setToken, clearToken } from './lib/auth';
 import NotificationBell from './components/NotificationBell';
+import StudyTimeWidget from './components/StudyTimeWidget';
+import StudyTimePill from './components/StudyTimePill';
 import { useSocket } from './lib/useSocket';
 import './index.css';
 
@@ -54,9 +57,13 @@ export default function App() {
   const [showSearch, setShowSearch] = useState(false);
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [showFriendsList, setShowFriendsList] = useState(false);
+  const [showStudyPlan, setShowStudyPlan] = useState(false);
   const [viewingClassmateId, setViewingClassmateId] = useState(null);
   const [returnToScreen, setReturnToScreen] = useState(null);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
+  const [isQuietZonesOnly, setIsQuietZonesOnly] = useState(false);
+  const [showStudyTime, setShowStudyTime] = useState(false);
+  const [studyTimeRefreshKey, setStudyTimeRefreshKey] = useState(0);
   const socketRef = useSocket(user);
 
 
@@ -348,6 +355,7 @@ export default function App() {
           bookmarks={bookmarks}
           recentBuildings={recentBuildings}
           onRefreshRecentBuildings={refreshRecentBuildings}
+          isQuietZonesOnly={isQuietZonesOnly}
         />
 
       </div>
@@ -356,6 +364,8 @@ export default function App() {
         buildings={buildings}
         selectedBuilding={selectedBuilding}
         onSelectBuilding={handleSelectBuilding}
+        isQuietZonesOnly={isQuietZonesOnly}
+        setIsQuietZonesOnly={setIsQuietZonesOnly}
       />
 
       <div className="map-top-actions">
@@ -385,6 +395,21 @@ export default function App() {
           </svg>
           <span>Course Notes</span>
         </button>
+        <button
+          type="button"
+          onClick={() => setShowStudyPlan(true)}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>Study Plan</span>
+        </button>
+        <StudyTimePill
+          userId={user.id}
+          refreshKey={studyTimeRefreshKey}
+          onClick={() => setShowStudyTime(true)}
+        />
         <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} />
         <button
           type="button"
@@ -530,6 +555,21 @@ export default function App() {
         />
       )}
 
+      {showStudyTime && (
+        <StudyTimeWidget
+          userId={user.id}
+          user={user}
+          onClose={() => {
+            setShowStudyTime(false);
+            // Bump the key so the top-bar pill refetches its weekly total
+            // (e.g. if the user logged a session inside the modal).
+            setStudyTimeRefreshKey((k) => k + 1);
+          }}
+          onUserUpdate={(updatedUser) => setUser((prev) => ({ ...prev, ...updatedUser }))}
+          onSessionLogged={() => setStudyTimeRefreshKey((k) => k + 1)}
+        />
+      )}
+
       {showDM && (
         <DMInbox
           currentUserId={user.id}
@@ -577,6 +617,12 @@ export default function App() {
             else if (returnToScreen === 'friends') setShowFriendsList(true);
             setReturnToScreen(null);
           }}
+        />
+      )}
+      {showStudyPlan && (
+        <StudyPlanGenerator
+          userId={user.id}
+          onClose={() => setShowStudyPlan(false)}
         />
       )}
 

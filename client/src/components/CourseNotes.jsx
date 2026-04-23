@@ -6,6 +6,7 @@ import NoteCommentList from './NoteCommentList';
 import StudyGuide from './StudyGuide';
 import PracticeQuestions from './PracticeQuestions';
 import CourseQA from './CourseQA';
+import ExamDatesSection from './ExamDatesSection';
 
 export default function CourseNotes({ courseId, courseName, onClose, userId }) {
   const [notes, setNotes] = useState([]);
@@ -197,6 +198,9 @@ export default function CourseNotes({ courseId, courseName, onClose, userId }) {
             </button>
           </div>
         </div>
+
+        {/* Exam Dates */}
+        <ExamDatesSection courseId={courseId} />
 
         {/* Upload Form */}
         {showUploadForm && (

@@ -71,6 +71,13 @@ const userSchema = new mongoose.Schema(
             type: String,
             trim: true,
         }],
+        // User-configurable weekly study time goal (in minutes). Default 600 = 10 hours.
+        weeklyStudyGoalMinutes: {
+            type: Number,
+            default: 600,
+            min: [0, 'Weekly study goal cannot be negative'],
+            max: [10080, 'Weekly study goal cannot exceed 10080 minutes (168 hours)'],
+        },
         emailVerified: {
             type: Boolean,
             default: false,
@@ -135,6 +142,19 @@ const userSchema = new mongoose.Schema(
             type: String,
             enum: ['public', 'private'],
             default: 'public',
+        },
+        fieldVisibility: {
+            email: { type: String, enum: ['public', 'private'], default: 'private' },
+            major: { type: String, enum: ['public', 'private'], default: 'public' },
+            year: { type: String, enum: ['public', 'private'], default: 'public' },
+            bio: { type: String, enum: ['public', 'private'], default: 'public' },
+            studyPreferences: { type: String, enum: ['public', 'private'], default: 'public' },
+            interests: { type: String, enum: ['public', 'private'], default: 'public' },
+            linkedResources: { type: String, enum: ['public', 'private'], default: 'public' },
+            studyGoals: { type: String, enum: ['public', 'private'], default: 'public' },
+            courses: { type: String, enum: ['public', 'private'], default: 'public' },
+            availability: { type: String, enum: ['public', 'private'], default: 'public' },
+            weeklyStudyGoalMinutes: { type: String, enum: ['public', 'private'], default: 'public' },
         },
         resetPasswordTokenHash: {
             type: String,
