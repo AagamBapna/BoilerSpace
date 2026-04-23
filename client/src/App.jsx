@@ -376,6 +376,20 @@ export default function App() {
         
         {/* Main visible nav row */}
         <div className="flex items-center gap-2 pointer-events-auto">
+          {user?.isAdmin && (
+            inRouterContext ? (
+               <Link to="/admin/broadcasts" className="h-10 px-3 bg-[var(--color-surface-light)] border border-blue-500/30 rounded-xl shadow-lg flex items-center gap-2 text-sm font-medium hover:bg-blue-500/10 transition-colors text-blue-400">
+                 <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                 <span className="hidden sm:inline">Admin</span>
+               </Link>
+            ) : (
+               <a href="/admin/broadcasts" className="h-10 px-3 bg-[var(--color-surface-light)] border border-blue-500/30 rounded-xl shadow-lg flex items-center gap-2 text-sm font-medium hover:bg-blue-500/10 transition-colors text-blue-400">
+                 <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                 <span className="hidden sm:inline">Admin</span>
+               </a>
+            )
+          )}
+
           {/* Quiet Zones Toggle */}
           <div className="bg-[var(--color-surface-light)] h-10 px-3 border border-[var(--color-purdue-gold)]/20 rounded-xl shadow-lg flex items-center gap-3">
             <span className="text-sm font-medium text-[var(--color-text-primary)] hidden sm:inline">Quiet Zones</span>
@@ -429,13 +443,11 @@ export default function App() {
               <>
                 <Link to="/clubs" onClick={() => setNavExpanded(false)} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-2">Clubs</Link>
                 <Link to="/activity" onClick={() => setNavExpanded(false)} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-2">Activity</Link>
-                {user?.isAdmin && <Link to="/admin/broadcasts" onClick={() => setNavExpanded(false)} className="w-full text-left px-3 py-2 text-sm font-medium text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors flex items-center gap-2">Admin Dashboard</Link>}
               </>
             ) : (
               <>
                 <a href="/clubs" className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-2">Clubs</a>
                 <a href="/activity" className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-2">Activity</a>
-                {user?.isAdmin && <a href="/admin/broadcasts" className="w-full text-left px-3 py-2 text-sm font-medium text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors flex items-center gap-2">Admin Dashboard</a>}
               </>
             )}
 
