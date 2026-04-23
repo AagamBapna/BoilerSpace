@@ -294,23 +294,6 @@ export default function CampusMap({ buildings, selectedBuilding, onSelectBuildin
         <div className="flex-1 h-full relative">
             <div ref={mapContainer} className="w-full h-full" />
             
-            {/* Filter Toggle Overlay */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-[var(--color-surface-light)] py-2 px-4 border border-[var(--color-purdue-gold)]/20 rounded-full shadow-lg flex items-center gap-3">
-                <span className="text-sm font-semibold text-[var(--color-text-primary)]">Quiet Zones Only</span>
-                <button
-                    onClick={() => setIsQuietZonesOnly(!isQuietZonesOnly)}
-                    className={`w-10 h-6 flex items-center rounded-full transition-colors ${
-                        isQuietZonesOnly ? 'bg-[var(--color-purdue-gold)]' : 'bg-[#404040]'
-                    } focus:outline-none`}
-                    aria-pressed={isQuietZonesOnly}
-                >
-                    <div
-                        className={`w-4 h-4 bg-white rounded-full mx-1 shadow-sm transition-transform ${
-                            isQuietZonesOnly ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                    />
-                </button>
-            </div>
             
             {/* Directions Overlay */}
             {isRouting && routeSteps.length > 0 && (
