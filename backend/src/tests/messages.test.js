@@ -160,6 +160,12 @@ describe('POST /api/conversations', () => {
 
 describe('GET /api/conversations', () => {
     test('lists conversations sorted by most recent', async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'accepted',
+        });
+
         const conv1 = await request(app)
             .post('/api/conversations')
             .set('Authorization', `Bearer ${tokenA}`)
@@ -171,6 +177,12 @@ describe('GET /api/conversations', () => {
             displayName: 'Charlie',
             major: 'Physics',
             year: 'Freshman',
+        });
+
+        await Friendship.create({
+            requester: userAId,
+            recipient: userC._id,
+            status: 'accepted',
         });
 
         const conv2 = await request(app)
@@ -194,6 +206,12 @@ describe('GET /api/conversations', () => {
     });
 
     test('includes unread count', async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'accepted',
+        });
+
         const conv = await request(app)
             .post('/api/conversations')
             .set('Authorization', `Bearer ${tokenA}`)
@@ -403,6 +421,12 @@ describe('GET /api/conversations/:id/messages', () => {
     let convId;
 
     beforeEach(async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'accepted',
+        });
+
         const conv = await request(app)
             .post('/api/conversations')
             .set('Authorization', `Bearer ${tokenA}`)
@@ -608,6 +632,12 @@ describe('PUT /api/conversations/:id/read', () => {
     let convId;
 
     beforeEach(async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'accepted',
+        });
+
         const conv = await request(app)
             .post('/api/conversations')
             .set('Authorization', `Bearer ${tokenA}`)
