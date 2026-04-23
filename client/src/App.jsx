@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, useInRouterContext, useNavigate, Link } from 'react-router-dom';
+import { Routes, Route, useInRouterContext, useNavigate, Link, useLocation as useRouterLocation } from 'react-router-dom';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
@@ -22,6 +22,8 @@ import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
 import ActivityPage from './pages/ActivityPage';
 import EventPage from './pages/EventPage';
 import StudyPlanGenerator from './components/StudyPlanGenerator';
+import GlobalEventBanner from './components/GlobalEventBanner';
+import AdminBroadcastDashboard from './pages/AdminBroadcastDashboard';
 import { getToken, setToken, clearToken } from './lib/auth';
 import NotificationBell from './components/NotificationBell';
 import StudyTimeWidget from './components/StudyTimeWidget';
@@ -34,7 +36,13 @@ export default function App() {
   // useNavigate throws outside Router so guard it
   let _nav = null;
   try { _nav = useNavigate(); } catch { /* outside Router */ }
-  const navigate = _nav || (() => {});
+  const navigate = _nav || (() => { });
+
+  // useRouterLocation also throws outside Router
+  let _loc = { pathname: '/' };
+  try { _loc = useRouterLocation(); } catch { /* outside Router */ }
+  const routerLocation = _loc;
+
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [authMode, setAuthMode] = useState('login');
@@ -64,6 +72,8 @@ export default function App() {
   const [isQuietZonesOnly, setIsQuietZonesOnly] = useState(false);
   const [showStudyTime, setShowStudyTime] = useState(false);
   const [studyTimeRefreshKey, setStudyTimeRefreshKey] = useState(0);
+  const [navExpanded, setNavExpanded] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const socketRef = useSocket(user);
 
 
@@ -360,123 +370,122 @@ export default function App() {
 
       </div>
 
-      <CampusMap
-        buildings={buildings}
-        selectedBuilding={selectedBuilding}
-        onSelectBuilding={handleSelectBuilding}
-        isQuietZonesOnly={isQuietZonesOnly}
-        setIsQuietZonesOnly={setIsQuietZonesOnly}
-      />
-
-      <div className="map-top-actions">
-        {inRouterContext ? (
-          <>
-            <Link to="/clubs" className="profile-button-like">Clubs</Link>
-            <Link to="/activity" className="profile-button-like">Activity</Link>
-          </>
-        ) : (
-          <>
-            <a href="/clubs" className="profile-button-like">Clubs</a>
-            <a href="/activity" className="profile-button-like">Activity</a>
-          </>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            axios.get(`/api/users/${user.id}/courses`).then(res => {
-              setUserCourses(res.data);
-              setNotesView({ step: 'pick' });
-            }).catch(() => setUserCourses([]));
-          }}
-          className="profile-button-like"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <span>Course Notes</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowStudyPlan(true)}
-          className="profile-button-like"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <span>Study Plan</span>
-        </button>
-        <StudyTimePill
-          userId={user.id}
-          refreshKey={studyTimeRefreshKey}
-          onClick={() => setShowStudyTime(true)}
+      <div className="flex-1 relative overflow-hidden h-full flex flex-col w-full">
+        <CampusMap
+          buildings={buildings}
+          selectedBuilding={selectedBuilding}
+          onSelectBuilding={handleSelectBuilding}
+          isQuietZonesOnly={isQuietZonesOnly}
+          setIsQuietZonesOnly={setIsQuietZonesOnly}
         />
-        <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} />
-        <button
-          type="button"
-          onClick={() => setShowDM(true)}
-          className="profile-button-like"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
-          <span>Messages</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowSearch(true)}
-          className="profile-button-like"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <span>Find Match</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowClassmates(true)}
-          className="profile-button-like"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span>Classmates</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowFriendsList(true)}
-          className="profile-button-like"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <span>Friends</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowFriendRequests(true)}
-          className="profile-button-like"
-          style={{ position: 'relative' }}
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-          </svg>
-          <span>Requests</span>
-          {pendingRequestCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-              {pendingRequestCount}
-            </span>
-          )}
-        </button>
       </div>
 
-      <button onClick={() => setShowProfile(true)} className="profile-button">
-        {user.profilePictureUrl ? (
-          <img src={user.profilePictureUrl} alt="" className="profile-avatar" style={{ objectFit: 'cover' }} />
-        ) : (
-          <div className="profile-avatar">{user.displayName?.[0] || 'U'}</div>
+      {/* ── Top Nav Bar ── */}
+      <div className="fixed top-4 right-4 z-40 flex flex-col items-end gap-2 pointer-events-none">
+
+        {/* Main visible nav row */}
+        <div className="flex items-center gap-2 pointer-events-auto">
+          {user?.isAdmin && (
+            <button onClick={() => setShowAdminDashboard(true)} className="h-10 px-5 bg-[var(--color-surface-light)] border border-blue-500/30 rounded-xl shadow-lg flex items-center gap-2.5 text-sm font-bold hover:bg-blue-500/10 transition-colors text-blue-400 font-medium">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+              <span className="hidden sm:inline">Admin</span>
+            </button>
+          )}
+
+          {/* Quiet Zones Toggle */}
+          <div className="bg-[var(--color-surface-light)] h-10 px-5 border border-[var(--color-purdue-gold)]/20 rounded-xl shadow-lg flex items-center gap-3">
+            <span className="text-sm font-medium text-[var(--color-text-primary)] hidden sm:inline">Quiet Zones</span>
+            <button
+              onClick={() => setIsQuietZonesOnly(!isQuietZonesOnly)}
+              className={`w-10 h-6 flex items-center rounded-full transition-colors ${isQuietZonesOnly ? 'bg-[var(--color-purdue-gold)]' : 'bg-[#404040]'
+                } focus:outline-none`}
+              aria-pressed={isQuietZonesOnly}
+            >
+              <div className={`w-4 h-4 bg-white rounded-full mx-1 shadow-sm transition-transform ${isQuietZonesOnly ? 'translate-x-4' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          <StudyTimePill
+            userId={user.id}
+            refreshKey={studyTimeRefreshKey}
+            onClick={() => setShowStudyTime(true)}
+          />
+
+          <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} />
+
+          <button onClick={() => setNavExpanded(!navExpanded)} className="h-10 px-5 bg-[var(--color-surface-light)] border border-[var(--color-purdue-gold)]/20 rounded-xl shadow-lg flex items-center gap-2.5 text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-primary)]">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {navExpanded ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+            <span className="hidden sm:inline">Menu</span>
+          </button>
+
+          <button onClick={() => setShowProfile(true)} className="h-10 px-5 bg-[var(--color-surface-light)] border border-[var(--color-purdue-gold)]/20 rounded-xl shadow-lg flex items-center gap-2.5 text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-primary)]">
+            {user.profilePictureUrl ? (
+              <img src={user.profilePictureUrl} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] flex items-center justify-center text-black font-bold text-[10px] flex-shrink-0">
+                {user.displayName?.[0] || 'U'}
+              </div>
+            )}
+            <span className="hidden sm:inline">Profile</span>
+          </button>
+        </div>
+
+        {/* Collapsible Dropdown Menu */}
+        {navExpanded && (
+          <div className="bg-[var(--color-surface-light)] border border-white/10 rounded-xl shadow-2xl p-2 flex flex-col gap-1 w-56 pointer-events-auto max-h-[70vh] overflow-y-auto animate-dropdownIn">
+
+            {inRouterContext ? (
+              <>
+                <Link to="/clubs" onClick={() => setNavExpanded(false)} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">Clubs</Link>
+                <Link to="/activity" onClick={() => setNavExpanded(false)} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">Activity</Link>
+              </>
+            ) : (
+              <>
+                <a href="/clubs" className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">Clubs</a>
+                <a href="/activity" className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">Activity</a>
+              </>
+            )}
+
+            <div className="h-px w-full bg-white/10 my-1" />
+
+            <button onClick={() => { axios.get(`/api/users/${user.id}/courses`).then(res => { setUserCourses(res.data); setNotesView({ step: 'pick' }); setNavExpanded(false); }).catch(() => setUserCourses([])); }} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">
+              Course Notes
+            </button>
+            <button onClick={() => { setShowStudyPlan(true); setNavExpanded(false); }} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">
+              Study Plan
+            </button>
+
+            <div className="h-px w-full bg-white/10 my-1" />
+
+            <button onClick={() => { setShowDM(true); setNavExpanded(false); }} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">
+              Messages
+            </button>
+            <button onClick={() => { setShowSearch(true); setNavExpanded(false); }} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">
+              Find Match
+            </button>
+            <button onClick={() => { setShowClassmates(true); setNavExpanded(false); }} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">
+              Classmates
+            </button>
+            <button onClick={() => { setShowFriendsList(true); setNavExpanded(false); }} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">
+              Friends
+            </button>
+            <button onClick={() => { setShowFriendRequests(true); setNavExpanded(false); }} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3 relative">
+              Requests
+              {pendingRequestCount > 0 && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center pointer-events-none">
+                  {pendingRequestCount}
+                </span>
+              )}
+            </button>
+          </div>
         )}
-        <span>My Profile</span>
-      </button>
+      </div>
 
       {/* Course Picker for Notes */}
       {notesView?.step === 'pick' && (
@@ -594,7 +603,7 @@ export default function App() {
 
       {showFriendRequests && (
         <FriendRequests
-          onClose={() => { setShowFriendRequests(false); axios.get('/api/friendships/pending').then(r => setPendingRequestCount(r.data.incoming.length)).catch(() => {}); }}
+          onClose={() => { setShowFriendRequests(false); axios.get('/api/friendships/pending').then(r => setPendingRequestCount(r.data.incoming.length)).catch(() => { }); }}
           onViewProfile={(id) => { setShowFriendRequests(false); setReturnToScreen('requests'); setViewingClassmateId(id); }}
         />
       )}
@@ -626,6 +635,13 @@ export default function App() {
         />
       )}
 
+      {showAdminDashboard && (
+        <AdminBroadcastDashboard
+          user={user}
+          onClose={() => setShowAdminDashboard(false)}
+        />
+      )}
+
       {/* Mobile toggle button */}
       <button
         onClick={toggleSidebar}
@@ -645,20 +661,32 @@ export default function App() {
     </div>
   );
 
-  if (!inRouterContext) return mapExperience;
+  const isMapPage = !['/clubs', '/activity', '/events', '/announcements'].some(path => routerLocation.pathname.startsWith(path));
+
+  if (!inRouterContext) return (
+    <div className="h-screen w-screen flex flex-col">
+      <GlobalEventBanner isMapPage={true} />
+      <div className="flex-1 relative overflow-hidden">
+        {mapExperience}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="h-screen w-screen">
-      <Routes>
-        <Route path="/clubs" element={<ClubList user={user} />} />
-        <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
-        <Route path="/clubs/:id/dashboard" element={<ClubOrganizerDashboard user={user} />} />
-        <Route path="/activity" element={<ActivityPage initialTab="events" />} />
-        <Route path="/events" element={<ActivityPage initialTab="events" />} />
-        <Route path="/events/:id" element={<EventPage user={user} />} />
-        <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
-        <Route path="*" element={mapExperience} />
-      </Routes>
+    <div className="h-screen w-screen flex flex-col">
+      <div className="flex-1 relative overflow-hidden">
+        <GlobalEventBanner isMapPage={isMapPage} />
+        <Routes>
+          <Route path="/clubs" element={<ClubList user={user} />} />
+          <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
+          <Route path="/clubs/:id/dashboard" element={<ClubOrganizerDashboard user={user} />} />
+          <Route path="/activity" element={<ActivityPage initialTab="events" />} />
+          <Route path="/events" element={<ActivityPage initialTab="events" />} />
+          <Route path="/events/:id" element={<EventPage user={user} />} />
+          <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
+          <Route path="*" element={mapExperience} />
+        </Routes>
+      </div>
     </div>
   );
 }
