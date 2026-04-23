@@ -29,7 +29,20 @@ async function hasBlockedRelationship(userIds) {
     return Boolean(blocked);
 }
 
+async function areFriends(userIdA, userIdB) {
+    const friendship = await Friendship.findOne({
+        status: 'accepted',
+        $or: [
+            { requester: userIdA, recipient: userIdB },
+            { requester: userIdB, recipient: userIdA },
+        ],
+    }).select('_id');
+    return Boolean(friendship);
+}
+
 module.exports = {
     usersExist,
     hasBlockedRelationship,
+    areFriends,
 };
+

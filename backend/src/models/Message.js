@@ -23,6 +23,10 @@ const messageSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
         }],
+        readAt: {
+            type: Date,
+            default: null,
+        },
         isDeleted: {
             type: Boolean,
             default: false,
@@ -55,6 +59,8 @@ messageSchema.index(
         partialFilterExpression: { expiresAt: { $type: 'date' } },
     }
 );
+
+messageSchema.index({ text: 'text' });
 
 messageSchema.path('expiresAt').validate(function validateExpiresAt(value) {
     if (this.isDisappearing) {

@@ -7,6 +7,7 @@ const { usersExist, hasBlockedRelationship } = require('../utils/messageAccess')
 const { shouldNotify } = require('../services/NotificationService');
 
 let io;
+const onlineUsers = new Map();
 
 function emitMessageDeleted({ conversationId, message, participantIds }) {
     if (!io) return;
@@ -26,6 +27,11 @@ function emitMessageDisappeared({ conversationId, messageId, participantIds }) {
             messageId: messageId.toString(),
         });
     });
+}
+
+function emitConversationAccepted({ conversationId, initiatorId }) {
+    if (!io) return;
+    io.to(initiatorId.toString()).emit('conversationAccepted', { conversationId });
 }
 
 function initSocket(httpServer) {
@@ -55,8 +61,33 @@ function initSocket(httpServer) {
         }
     });
 
-    io.on('connection', (socket) => {
+    io.on('connection', async (socket) => {
         socket.join(socket.userId);
+
+        onlineUsers.set(socket.userId, socket.id);
+
+        try {
+            const conversations = await Conversation.find({ participants: socket.userId });
+            const relevantUserIds = new Set();
+            conversations.forEach(conv => {
+                conv.participants.forEach(p => {
+                    const pid = p.toString();
+                    if (pid !== socket.userId) relevantUserIds.add(pid);
+                });
+            });
+
+            relevantUserIds.forEach(uid => {
+                io.to(uid).emit('userOnline', { userId: socket.userId });
+            });
+
+            const currentlyOnline = [];
+            relevantUserIds.forEach(uid => {
+                if (onlineUsers.has(uid)) currentlyOnline.push(uid);
+            });
+            socket.emit('onlineUsers', currentlyOnline);
+        } catch (err) {
+            console.error('Socket presence connect error:', err.message);
+        }
 
         socket.on('sendMessage', async (data) => {
             const {
@@ -100,6 +131,22 @@ function initSocket(httpServer) {
                     return;
                 }
 
+                if (conversation.status === 'rejected') {
+                    socket.emit('messageError', {
+                        conversationId,
+                        error: 'This conversation request was rejected',
+                    });
+                    return;
+                }
+
+                if (conversation.status === 'pending' && conversation.initiator && conversation.initiator.toString() !== socket.userId) {
+                    socket.emit('messageError', {
+                        conversationId,
+                        error: 'Cannot send messages — accept the request first',
+                    });
+                    return;
+                }
+
                 const message = await Message.create({
                     conversationId,
                     sender: socket.userId,
@@ -119,16 +166,18 @@ function initSocket(httpServer) {
                 const populated = await Message.findById(message._id)
                     .populate('sender', 'displayName email profilePictureUrl');
 
-                const otherParticipants = conversation.participants
-                    .filter(p => p.toString() !== socket.userId);
+                if (conversation.status === 'accepted') {
+                    const otherParticipants = conversation.participants
+                        .filter(p => p.toString() !== socket.userId);
 
-                for (const participantId of otherParticipants) {
-                    const allowed = await shouldNotify(participantId.toString(), 'message');
-                    if (allowed) {
-                        io.to(participantId.toString()).emit('newMessage', {
-                            message: populated,
-                            conversationId,
-                        });
+                    for (const participantId of otherParticipants) {
+                        const allowed = await shouldNotify(participantId.toString(), 'message');
+                        if (allowed) {
+                            io.to(participantId.toString()).emit('newMessage', {
+                                message: populated,
+                                conversationId,
+                            });
+                        }
                     }
                 }
 
@@ -150,12 +199,31 @@ function initSocket(httpServer) {
                 if (!conversation) return;
                 if (!conversation.participants.some(p => p.toString() === socket.userId)) return;
 
+                const now = new Date();
+
                 await Message.updateMany(
                     {
                         conversationId,
+                        sender: { $ne: socket.userId },
                         readBy: { $ne: socket.userId },
+                        readAt: null,
                     },
-                    { $addToSet: { readBy: socket.userId } }
+                    {
+                        $addToSet: { readBy: socket.userId },
+                        $set: { readAt: now },
+                    }
+                );
+
+                await Message.updateMany(
+                    {
+                        conversationId,
+                        sender: { $ne: socket.userId },
+                        readBy: { $ne: socket.userId },
+                        readAt: { $ne: null },
+                    },
+                    {
+                        $addToSet: { readBy: socket.userId },
+                    }
                 );
 
                 const otherParticipants = conversation.participants
@@ -165,6 +233,7 @@ function initSocket(httpServer) {
                     io.to(participantId.toString()).emit('messagesRead', {
                         conversationId,
                         readBy: socket.userId,
+                        readAt: now,
                     });
                 });
             } catch (err) {
@@ -172,7 +241,72 @@ function initSocket(httpServer) {
             }
         });
 
-        socket.on('disconnect', () => {});
+        socket.on('typing', async (data) => {
+            const { conversationId } = data;
+            if (!conversationId) return;
+
+            try {
+                const conversation = await Conversation.findById(conversationId);
+                if (!conversation) return;
+                if (!conversation.participants.some(p => p.toString() === socket.userId)) return;
+
+                const otherParticipants = conversation.participants
+                    .filter(p => p.toString() !== socket.userId);
+
+                otherParticipants.forEach(participantId => {
+                    io.to(participantId.toString()).emit('userTyping', {
+                        conversationId,
+                        userId: socket.userId,
+                    });
+                });
+            } catch (err) {
+                console.error('Socket typing error:', err.message);
+            }
+        });
+
+        socket.on('stopTyping', async (data) => {
+            const { conversationId } = data;
+            if (!conversationId) return;
+
+            try {
+                const conversation = await Conversation.findById(conversationId);
+                if (!conversation) return;
+                if (!conversation.participants.some(p => p.toString() === socket.userId)) return;
+
+                const otherParticipants = conversation.participants
+                    .filter(p => p.toString() !== socket.userId);
+
+                otherParticipants.forEach(participantId => {
+                    io.to(participantId.toString()).emit('userStopTyping', {
+                        conversationId,
+                        userId: socket.userId,
+                    });
+                });
+            } catch (err) {
+                console.error('Socket stopTyping error:', err.message);
+            }
+        });
+
+        socket.on('disconnect', async () => {
+            onlineUsers.delete(socket.userId);
+
+            try {
+                const conversations = await Conversation.find({ participants: socket.userId });
+                const relevantUserIds = new Set();
+                conversations.forEach(conv => {
+                    conv.participants.forEach(p => {
+                        const pid = p.toString();
+                        if (pid !== socket.userId) relevantUserIds.add(pid);
+                    });
+                });
+
+                relevantUserIds.forEach(uid => {
+                    io.to(uid).emit('userOffline', { userId: socket.userId });
+                });
+            } catch (err) {
+                console.error('Socket presence disconnect error:', err.message);
+            }
+        });
     });
 
     return io;
@@ -182,4 +316,4 @@ function getIO() {
     return io;
 }
 
-module.exports = { initSocket, getIO, emitMessageDeleted, emitMessageDisappeared };
+module.exports = { initSocket, getIO, emitMessageDeleted, emitMessageDisappeared, emitConversationAccepted, onlineUsers };

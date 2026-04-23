@@ -7,6 +7,16 @@ const conversationSchema = new mongoose.Schema(
             ref: 'User',
             required: true,
         }],
+        status: {
+            type: String,
+            enum: ['pending', 'accepted', 'rejected'],
+            default: 'accepted',
+        },
+        initiator: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            default: null,
+        },
         lastMessage: {
             text: { type: String, default: '' },
             sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -19,3 +29,4 @@ const conversationSchema = new mongoose.Schema(
 conversationSchema.index({ participants: 1 });
 
 module.exports = mongoose.model('Conversation', conversationSchema);
+

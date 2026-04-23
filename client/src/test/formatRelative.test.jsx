@@ -12,13 +12,14 @@ vi.mock('axios', () => ({
 }));
 
 describe('formatRelative', () => {
+    const fixedNow = new Date('2026-03-28T12:00:00Z').getTime();
+
     beforeEach(() => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date('2026-03-28T12:00:00Z'));
+        vi.spyOn(Date, 'now').mockReturnValue(fixedNow);
     });
 
     afterEach(() => {
-        vi.useRealTimers();
+        vi.restoreAllMocks();
     });
 
     test('returns "N/A" for null', () => {
@@ -121,8 +122,7 @@ describe('Room timestamp UI rendering', () => {
     });
 
     test('AC1: shows relative timestamp when room has lastStatusUpdate', () => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date('2026-03-28T12:00:00Z'));
+        vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-03-28T12:00:00Z').getTime());
 
         const bookmarks = [
             {
@@ -149,7 +149,7 @@ describe('Room timestamp UI rendering', () => {
 
         expect(screen.getByText(/Last updated: 5 min ago/)).toBeInTheDocument();
 
-        vi.useRealTimers();
+        vi.restoreAllMocks();
     });
 
     test('AC2: timestamp element has tooltip with absolute date including timezone', () => {
