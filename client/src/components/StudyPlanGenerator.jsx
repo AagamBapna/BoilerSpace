@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 
-const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const courseColors = ['#6ee7b7', '#818cf8', '#f472b6', '#facc15', '#38bdf8', '#fb923c', '#a78bfa', '#34d399',]
 
 export default function StudyPlanGenerator({ userId, onClose }) {
@@ -18,6 +17,9 @@ export default function StudyPlanGenerator({ userId, onClose }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [editingBlock, setEditingBlock] = useState(null);
+    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
 
     // get user's courses and history on mount
     useEffect(() => {
@@ -99,6 +101,7 @@ export default function StudyPlanGenerator({ userId, onClose }) {
                 courses: selectedCourses,
                 preferredStudyHours: { startTime: preferredStart, endTime: preferredEnd },
                 busySlots,
+                startDate,
             });
             setPlan(res.data);
             setStep('calendar');
@@ -175,7 +178,7 @@ export default function StudyPlanGenerator({ userId, onClose }) {
                             AI Study Plan
                         </h2>
                         <p className="text-sm text-[var(--color-text-secondary)]">
-                            {step === 'form' ? 'Configure your study plan' : 'Your weekly study schedule'}
+                            {step === 'form' ? 'Configure your study plan' : 'Your study schedule'}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -274,6 +277,10 @@ export default function StudyPlanGenerator({ userId, onClose }) {
                                 </div>
                             )}
                         </div>
+                        <div>
+                            <label className="text-sm font-semibold text-[var(--color-text-primary)] mb-2 block">Start Date</label>
+                            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="px-2 py-1.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]"/>
+                        </div>
                         {/* Preferred study hours */}
                         <div>
                             <label className="text-sm font-semibold text-[var(--color-text-primary)] mb-2 block">
@@ -335,121 +342,128 @@ export default function StudyPlanGenerator({ userId, onClose }) {
                     </div>
                 )}
                 {/* ====== CALENDAR VIEW ====== */}
-                {step === 'calendar' && plan && (
-                    <div className="flex flex-col gap-4">
-                        {/* Calendar grid */}
-                        <div className="overflow-x-auto">
-                            <div className="study-plan-grid" style={{ minWidth: '700px' }}>
-                                {/* Header row */}
-                                <div className="study-plan-header-cell" />
-                                {days.map((day) => (
-                                    <div key={day} className="study-plan-header-cell">
-                                        {day.slice(0, 3)}
-                                    </div>
-                                ))}
-                                {/* Time rows: 7:00 to 22:00 */}
-                                {Array.from({ length: 30 }, (_, i) => {
-                                    const hour = 7 + Math.floor(i / 2);
-                                    const min = i % 2 === 0 ? '00' : '30';
-                                    const timeLabel = `${hour.toString().padStart(2, '0')}:${min}`;
-                                    return (
-                                        <div key={i} className="contents">
-                                            <div className="study-plan-time-label">{i % 2 === 0 ? timeLabel : ''}</div>
-                                            {days.map((day) => {
-                                                const blocksHere = plan.blocks.filter(
-                                                    (b) => b.day === day && timeToRow(b.startTime) === i
-                                                );
-                                                const busyHere = (plan.busySlots || []).filter(
-                                                    (s) => s.day === day && timeToRow(s.startTime) === i
-                                                );
-                                                return (
-                                                    <div key={day} className="study-plan-cell" onClick={() => addBlock(day)}>
-                                                        {blocksHere.map((block) => {
-                                                            const bIdx = plan.blocks.indexOf(block);
-                                                            const color = colorMap[block.courseCode] || colorMap[block.courseId?._id] || '#818cf8';
-                                                            const height = blockHeight(block.startTime, block.endTime);
-                                                            return (
-                                                                <div
-                                                                    key={bIdx}
-                                                                    className="study-plan-block"
-                                                                    style={{
-                                                                        background: color + '22',
-                                                                        borderLeft: `3px solid ${color}`,
-                                                                        height: `${height * 28}px`,
-                                                                        zIndex: 2,
-                                                                    }}
-                                                                    onClick={(e) => { e.stopPropagation(); setEditingBlock(bIdx); }}
-                                                                >
-                                                                    <div style={{ fontSize: '10px', fontWeight: 600, color }}>{block.courseCode}</div>
-                                                                    <div style={{ fontSize: '9px', color: 'var(--color-text-secondary)' }}>{block.topic}</div>
-                                                                    <div style={{ fontSize: '9px', color: 'var(--color-text-secondary)' }}>
-                                                                        {block.startTime}–{block.endTime}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {busyHere.map((slot, si) => {
-                                                            const height = blockHeight(slot.startTime, slot.endTime);
-                                                            return (
-                                                                <div key={`busy-${si}`} className="study-plan-block busy"
-                                                                    style={{ height: `${height * 28}px`, zIndex: 1 }}
-                                                                    onClick={(e) => e.stopPropagation()}>
-                                                                    <div style={{ fontSize: '9px' }}>{slot.label || 'Busy'}</div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                );
-                                            })}
+                {step === 'calendar' && plan && (() => {
+                    const dateSet = new Set(plan.blocks.map(b => b.day));
+                    const sortedDates = [...dateSet].sort();
+                    const formatDate = (dateStr) => {
+                        const d = new Date(dateStr + 'T12:00:00');
+                        const dayName = d.toLocaleDateString('en-US', {weekday: 'short'});
+                        return `${dayName} ${d.getMonth() + 1}/${d.getDate()}`;
+                    };
+                    return (
+                        <div className="flex flex-col gap-4">
+                            {/* Calendar grid */}
+                            <div className="overflow-x-auto">
+                                <div className="study-plan-grid" style={{ minWidth: '700px', gridTemplateColumns: `60px repeat(${sortedDates.length}, 1fr)` }}>
+                                    {/* Header row */}
+                                    <div className="study-plan-header-cell" />
+                                    {sortedDates.map((date) => (
+                                        <div key={date} className="study-plan-header-cell">
+                                            {formatDate(date)}
                                         </div>
-                                    );
-                                })}
+                                    ))}
+                                    {/* Time rows: 7:00 to 22:00 */}
+                                    {Array.from({ length: 30 }, (_, i) => {
+                                        const hour = 7 + Math.floor(i / 2);
+                                        const min = i % 2 === 0 ? '00' : '30';
+                                        const timeLabel = `${hour.toString().padStart(2, '0')}:${min}`;
+                                        return (
+                                            <div key={i} className="contents">
+                                                <div className="study-plan-time-label">{i % 2 === 0 ? timeLabel : ''}</div>
+                                                {sortedDates.map((date) => {
+                                                    const blocksHere = plan.blocks.filter(
+                                                        (b) => b.day === date && timeToRow(b.startTime) === i
+                                                    );
+                                                    const busyHere = (plan.busySlots || []).filter(
+                                                        (s) => s.day === date && timeToRow(s.startTime) === i
+                                                    );
+                                                    return (
+                                                        <div key={date} className="study-plan-cell" onClick={() => addBlock(date)}>
+                                                            {blocksHere.map((block) => {
+                                                                const bIdx = plan.blocks.indexOf(block);
+                                                                const color = colorMap[block.courseCode] || colorMap[block.courseId?._id] || '#818cf8';
+                                                                const height = blockHeight(block.startTime, block.endTime);
+                                                                return (
+                                                                    <div
+                                                                        key={bIdx}
+                                                                        className="study-plan-block"
+                                                                        style={{
+                                                                            background: color + '22',
+                                                                            borderLeft: `3px solid ${color}`,
+                                                                            height: `${height * 28}px`,
+                                                                            zIndex: 2,
+                                                                        }}
+                                                                        onClick={(e) => { e.stopPropagation(); setEditingBlock(bIdx); }}
+                                                                    >
+                                                                        <div style={{ fontSize: '10px', fontWeight: 600, color }}>{block.courseCode}</div>
+                                                                        <div style={{ fontSize: '9px', color: 'var(--color-text-secondary)' }}>{block.topic}</div>
+                                                                        <div style={{ fontSize: '9px', color: 'var(--color-text-secondary)' }}>
+                                                                            {block.startTime}–{block.endTime}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            {busyHere.map((slot, si) => {
+                                                                const height = blockHeight(slot.startTime, slot.endTime);
+                                                                return (
+                                                                    <div key={`busy-${si}`} className="study-plan-block busy"
+                                                                        style={{ height: `${height * 28}px`, zIndex: 1 }}
+                                                                        onClick={(e) => e.stopPropagation()}>
+                                                                        <div style={{ fontSize: '9px' }}>{slot.label || 'Busy'}</div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                        {/* Block editor */}
-                        {editingBlock !== null && plan.blocks[editingBlock] && (
-                            <div className="p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)]">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Edit Block</h3>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => { deleteBlock(editingBlock); setEditingBlock(null); }}
-                                            className="text-xs text-red-400 hover:underline">Delete</button>
-                                        <button onClick={() => setEditingBlock(null)}
-                                            className="text-xs text-[var(--color-text-secondary)] hover:underline">Done</button>
+                            {/* Block editor */}
+                            {editingBlock !== null && plan.blocks[editingBlock] && (
+                                <div className="p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)]">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Edit Block</h3>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => { deleteBlock(editingBlock); setEditingBlock(null); }}
+                                                className="text-xs text-red-400 hover:underline">Delete</button>
+                                            <button onClick={() => setEditingBlock(null)}
+                                                className="text-xs text-[var(--color-text-secondary)] hover:underline">Done</button>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-3">
+                                        <input type="date" value={plan.blocks[editingBlock].day}
+                                            onChange={(e) => updateBlock(editingBlock, 'day', e.target.value)}
+                                            className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)]" />
+                                        <input type="time" value={plan.blocks[editingBlock].startTime}
+                                            onChange={(e) => updateBlock(editingBlock, 'startTime', e.target.value)}
+                                            className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)]" />
+                                        <input type="time" value={plan.blocks[editingBlock].endTime}
+                                            onChange={(e) => updateBlock(editingBlock, 'endTime', e.target.value)}
+                                            className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)]" />
+                                        <input type="text" value={plan.blocks[editingBlock].topic}
+                                            onChange={(e) => updateBlock(editingBlock, 'topic', e.target.value)}
+                                            placeholder="Topic"
+                                            className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] flex-1" />
                                     </div>
                                 </div>
-                                <div className="flex flex-wrap gap-3">
-                                    <select value={plan.blocks[editingBlock].day}
-                                        onChange={(e) => updateBlock(editingBlock, 'day', e.target.value)}
-                                        className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)]">
-                                        {days.map((d) => <option key={d} value={d}>{d}</option>)}
-                                    </select>
-                                    <input type="time" value={plan.blocks[editingBlock].startTime}
-                                        onChange={(e) => updateBlock(editingBlock, 'startTime', e.target.value)}
-                                        className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)]" />
-                                    <input type="time" value={plan.blocks[editingBlock].endTime}
-                                        onChange={(e) => updateBlock(editingBlock, 'endTime', e.target.value)}
-                                        className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)]" />
-                                    <input type="text" value={plan.blocks[editingBlock].topic}
-                                        onChange={(e) => updateBlock(editingBlock, 'topic', e.target.value)}
-                                        placeholder="Topic"
-                                        className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] flex-1" />
-                                </div>
+                            )}
+                            {/* Action buttons */}
+                            <div className="flex items-center justify-center gap-3">
+                                <button onClick={handleSaveEdits}
+                                    className="px-4 py-2 text-xs font-semibold bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black rounded-lg hover:opacity-90 transition-opacity">
+                                    Save Changes
+                                </button>
+                                <button onClick={() => { setStep('form'); setPlan(null); }}
+                                    className="px-4 py-2 text-xs font-semibold text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-elevated)] transition-colors">
+                                    ↻ Regenerate
+                                </button>
                             </div>
-                        )}
-                        {/* Action buttons */}
-                        <div className="flex items-center justify-center gap-3">
-                            <button onClick={handleSaveEdits}
-                                className="px-4 py-2 text-xs font-semibold bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black rounded-lg hover:opacity-90 transition-opacity">
-                                Save Changes
-                            </button>
-                            <button onClick={() => { setStep('form'); setPlan(null); }}
-                                className="px-4 py-2 text-xs font-semibold text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-elevated)] transition-colors">
-                                ↻ Regenerate
-                            </button>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
             </div>
         </div>
     );
