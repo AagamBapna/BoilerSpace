@@ -16,6 +16,7 @@ export default function StudyPlanGenerator({ userId, onClose }) {
     const [showHistory, setShowHistory] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
     const [editingBlock, setEditingBlock] = useState(null);
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -118,21 +119,55 @@ export default function StudyPlanGenerator({ userId, onClose }) {
         if (!plan) {
             return;
         }
+        const anyConflict = plan.blocks.some((block, i) => hasConflict(block, i));
+        if (anyConflict) {
+            setError("One or more blocks overlap with a scheduled commitment");
+            return;
+        }
         try {
             const res = await axios.put(`/api/courses/study-plan/${plan._id}`, {
                 blocks: plan.blocks,
             });
             setPlan(res.data);
+            setSuccess('Changes saved successfully!');
+            setTimeout(() => setSuccess(null), 3000);
+            const historyRes = await axios.get('/api/courses/study-plan/history');
+            setHistory(historyRes.data);
         } catch (err) {
             setError(err.response?.data?.error || "Failed to save changes");
         }
     };
 
     const updateBlock = (index, field, value) => {
-        setPlan((prev) => ({
-            ...prev,
-            blocks: prev.blocks.map((block, i) => (i === index ? { ...block, [field]: value } : block)),
-        }));
+        setPlan((prev) => {
+            const updated = {
+                ...prev,
+                blocks: prev.blocks.map((block, i) => (i === index ? { ...block, [field]: value } : block)),
+            };
+            const newBlock = updated.blocks[index];
+            const busyConflict = (updated.busySlots || []).some((slot) => {
+                let dayMatch = slot.day === newBlock.day;
+                if (!dayMatch) {
+                    const d = new Date(newBlock.day + 'T12:00:00');
+                    dayMatch = slot.day === d.toLocaleDateString('en-US', { weekday: 'long'} );
+                }
+                return dayMatch && newBlock.startTime < slot.endTime && newBlock.endTime > slot.startTime;
+            });
+            const blockConflict = updated.blocks.some((other, i) => {
+                if (i === index) {
+                    return false;
+                }
+                return other.day === newBlock.day && newBlock.startTime < other.endTime && newBlock.endTime > other.startTime;
+            });
+            if (busyConflict) {
+                setError("This block overlaps with a commitment in your schedule!");
+            } else if (blockConflict) {
+                setError("This block overlaps with a study block!");
+            } else {
+                setError(null);
+            }
+            return updated;
+        });
     };
 
     const deleteBlock = (index) => {
@@ -162,6 +197,33 @@ export default function StudyPlanGenerator({ userId, onClose }) {
 
     const blockHeight = (start, end) => {
         return Math.max(timeToRow(end) - timeToRow(start), 1);
+    };
+
+    const hasConflict = (block, blockIndex) => {
+        if (!plan) {
+            return false;
+        }
+        const busyConflict = (plan.busySlots || []).some((slot) => {
+            let dayMatch = slot.day === block.day;
+            if (!dayMatch) {
+                const d = new Date(block.day + 'T12:00:00');
+                dayMatch = slot.day === d.toLocaleDateString('en-US', { weekday: 'long' });
+            }
+            return dayMatch && block.startTime < slot.endTime && block.endTime > slot.startTime;
+        });
+        if (busyConflict) {
+            return 'commitment';
+        }
+        const blockConflict = plan.blocks.some((other, i) => {
+            if (i === blockIndex) {
+                return false;
+            }
+            return other.day === block.day && block.startTime < other.endTime && block.endTime > other.startTime;
+        });
+        if (blockConflict) {
+            return 'block';
+        }
+        return false;
     };
 
     return (
@@ -220,6 +282,11 @@ export default function StudyPlanGenerator({ userId, onClose }) {
                 {error && (
                     <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
                         {error}
+                    </div>
+                )}
+                {success && (
+                    <div className="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-sm">
+                        {success}
                     </div>
                 )}
                 {/* ====== FORM VIEW ====== */}
@@ -470,8 +537,17 @@ export default function StudyPlanGenerator({ userId, onClose }) {
                                                 return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
                                             })()}, {plan.blocks[editingBlock].startTime} – {plan.blocks[editingBlock].endTime}
                                         </div>
+                                        {hasConflict(plan.blocks[editingBlock], editingBlock) === 'commitment' && (
+                                            <div className="mt-2 text-xs text-red-400 font-semibold">
+                                                ⚠️ Overlaps with a scheduled commitment
+                                            </div>
+                                        )}
+                                        {hasConflict(plan.blocks[editingBlock], editingBlock) === 'block' && (
+                                            <div className="mt-2 text-xs text-red-400 font-semibold">
+                                                ⚠️ Overlaps with another study block
+                                            </div>
+                                        )}
                                     </div>
-
                                     {/* Editable fields */}
                                     <div className="flex flex-col gap-3">
                                         <div>
@@ -523,6 +599,7 @@ export default function StudyPlanGenerator({ userId, onClose }) {
                             {/* Action buttons */}
                             <div className="flex items-center justify-center gap-3">
                                 <button onClick={handleSaveEdits}
+                                    disabled={plan?.blocks.some((block, i) => hasConflict(block, i))}
                                     className="px-4 py-2 text-xs font-semibold bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black rounded-lg hover:opacity-90 transition-opacity">
                                     Save Changes
                                 </button>

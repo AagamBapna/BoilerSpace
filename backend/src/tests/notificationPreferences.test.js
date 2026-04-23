@@ -54,6 +54,7 @@ describe('PUT /api/users/:id/notifications/preferences', () => {
             events: true,
             organizationUpdates: false,
             globalMute: true,
+            noteUploads: true,
         });
     });
 

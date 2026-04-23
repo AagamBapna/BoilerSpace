@@ -83,9 +83,9 @@ beforeEach(async () => {
 
 const mockGeminiBlocks = {
     blocks: [
-        { day: 'Monday', startTime: '09:00', endTime: '10:30',
+        { day: '2026-04-20', startTime: '09:00', endTime: '10:30',
           courseCode: 'CS 30700', topic: 'Review different UML diagrams' },
-        { day: 'Tuesday', startTime: '14:00', endTime: '15:00',
+        { day: '2026-04-21', startTime: '14:00', endTime: '15:00',
           courseCode: 'CS 40800', topic: 'Review execution tree creation' },
     ],
 };
@@ -161,13 +161,13 @@ describe('GET /api/courses/study-plan/history', () => {
         await StudyPlan.create({
             userId, title: 'Old',
             courses: [{ courseId: course1._id, examDate: new Date() }],
-            blocks: [{ day: 'Monday', startTime: '09:00', endTime: '10:00', courseCode: 'CS 25100', topic: 'x' }],
+            blocks: [{ day: '2026-04-20', startTime: '09:00', endTime: '10:00', courseCode: 'CS 25100', topic: 'x' }],
             createdAt: new Date('2026-01-01'),
         });
         await StudyPlan.create({
             userId, title: 'New',
             courses: [{ courseId: course1._id, examDate: new Date() }],
-            blocks: [{ day: 'Tuesday', startTime: '09:00', endTime: '10:00', courseCode: 'CS 25100', topic: 'y' }],
+            blocks: [{ day: '2026-04-21', startTime: '09:00', endTime: '10:00', courseCode: 'CS 25100', topic: 'y' }],
             createdAt: new Date('2026-01-02'),
         });
         const res = await request(app)
@@ -208,13 +208,13 @@ describe('PUT /api/courses/study-plan/:planId', () => {
         const plan = await StudyPlan.create({
             userId, title: 'My',
             courses: [{ courseId: course1._id, examDate: new Date() }],
-            blocks: [{ day: 'Monday', startTime: '09:00', endTime: '10:00', courseCode: 'CS 25100', topic: 'Old' }],
+            blocks: [{ day: '2026-04-20', startTime: '09:00', endTime: '10:00', courseCode: 'CS 25100', topic: 'Old' }],
         });
         const res = await request(app)
             .put(`/api/courses/study-plan/${plan._id}`)
             .set('Authorization', `Bearer ${token}`)
             .send({ blocks: [
-                { day: 'Wednesday', startTime: '14:00', endTime: '15:00', courseCode: 'CS 25100', topic: 'New' },
+                { day: '2026-04-22', startTime: '14:00', endTime: '15:00', courseCode: 'CS 25100', topic: 'New' },
             ] });
         expect(res.status).toBe(200);
         expect(res.body.blocks.length).toBe(1);
