@@ -55,6 +55,14 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
         const handleSent = (data) => {
             if (data.conversationId === conversation._id) {
                 setMessages(prev => {
+                    if (data.clientTempId) {
+                        const idx = prev.findIndex(m => m.clientTempId === data.clientTempId);
+                        if (idx !== -1) {
+                            const copy = [...prev];
+                            copy[idx] = data.message;
+                            return copy;
+                        }
+                    }
                     const exists = prev.some(m => m._id === data.message._id);
                     if (exists) return prev;
                     return [...prev, data.message];
@@ -279,6 +287,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
         }
 
         const trimmed = text.trim();
+        const clientTempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         setText('');
         setSending(true);
         const payload = {
@@ -287,18 +296,39 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
             ...(isDisappearing ? { disappearingDurationSeconds } : {}),
         };
 
+        const optimisticMessage = {
+            _id: clientTempId,
+            clientTempId,
+            conversationId: conversation._id,
+            sender: { _id: currentUserId },
+            text: trimmed,
+            createdAt: new Date().toISOString(),
+            readBy: [currentUserId],
+            isDisappearing,
+            expiresAt: isDisappearing
+                ? new Date(Date.now() + disappearingDurationSeconds * 1000).toISOString()
+                : null,
+            isPending: true,
+        };
+        setMessages(prev => [...prev, optimisticMessage]);
+        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+
         try {
             if (socket?.current?.connected) {
                 socket.current.emit('sendMessage', {
                     conversationId: conversation._id,
+                    clientTempId,
                     ...payload,
                 });
             } else {
                 const res = await axios.post(`/api/conversations/${conversation._id}/messages`, payload);
-                setMessages(prev => [...prev, res.data]);
-                setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+                setMessages(prev => prev.map(m => (m.clientTempId === clientTempId ? res.data : m)));
             }
-        } catch { }
+        } catch {
+            setMessages(prev => prev.map(m => (
+                m.clientTempId === clientTempId ? { ...m, isPending: false, isFailed: true } : m
+            )));
+        }
         setSending(false);
     };
 
@@ -329,18 +359,6 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
         return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
 
-    const getLastOwnMessageIndex = () => {
-        for (let i = messages.length - 1; i >= 0; i--) {
-            const senderId = messages[i].sender?._id || messages[i].sender;
-            if (senderId === currentUserId && !messages[i].isDeleted) {
-                return i;
-            }
-        }
-        return -1;
-    };
-
-    const lastOwnMsgIdx = getLastOwnMessageIndex();
-
     const isMessageRead = (msg) => {
         if (msg.readAt) return true;
         if (msg.readBy && otherUser) {
@@ -350,6 +368,11 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
             });
         }
         return false;
+    };
+
+    const getReceiptLabel = (msg) => {
+        if (msg.isFailed) return 'Failed';
+        return isMessageRead(msg) ? 'Seen' : 'Delivered';
     };
 
     return (
@@ -477,7 +500,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                         const isMine = msg.sender?._id === currentUserId || msg.sender === currentUserId;
                         const isDeleted = msg.isDeleted;
                         const showTime = i === 0 || (new Date(msg.createdAt) - new Date(messages[i - 1]?.createdAt)) > 300000;
-                        const showReceipt = isMine && !isDeleted && i === lastOwnMsgIdx;
+                        const showReceipt = isMine && !isDeleted;
                         const isFlashing = jumpTargetId === msg._id;
                         return (
                             <div key={msg._id} id={`msg-${msg._id}`}>
@@ -491,7 +514,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                                                 : isMine
                                                     ? 'bg-gradient-to-r from-[#CEB888] to-[#C28E0E] text-black rounded-br-md'
                                                     : 'bg-[#1e1e1e] text-[#f5f5f5] border border-[#ffffff08] rounded-bl-md'
-                                            } ${isFlashing ? 'ring-2 ring-[#CEB888] shadow-[0_0_18px_rgba(206,184,136,0.7)]' : ''}`}
+                                            } ${isFlashing ? 'ring-2 ring-[#CEB888] shadow-[0_0_18px_rgba(206,184,136,0.7)]' : ''} ${msg.isPending ? 'opacity-70' : ''} ${msg.isFailed ? 'ring-1 ring-red-500/60' : ''}`}
                                     >
                                         {msg.text}
                                     </div>
@@ -508,8 +531,8 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                                     )}
                                 </div>
                                 {showReceipt && (
-                                    <p className="text-[10px] text-right mt-0.5 mr-1 text-[#777]">
-                                        {isMessageRead(msg) ? 'Seen' : 'Delivered'}
+                                    <p className={`text-[10px] text-right mt-0.5 mr-1 ${msg.isFailed ? 'text-red-400' : 'text-[#777]'}`}>
+                                        {getReceiptLabel(msg)}
                                     </p>
                                 )}
                             </div>

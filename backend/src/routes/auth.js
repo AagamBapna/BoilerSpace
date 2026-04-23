@@ -49,6 +49,7 @@ router.post('/login', async (req, res) => {
                 linkedResources: user.linkedResources,
                 studyGoals: user.studyGoals,
                 notificationSettings: user.notificationSettings,
+                isAdmin: user.isAdmin,
             },
         });
     } catch (err) {
@@ -74,6 +75,7 @@ router.get('/me', protect, (req, res) => {
         notificationSettings: req.user.notificationSettings,
         weeklyStudyGoalMinutes: req.user.weeklyStudyGoalMinutes,
         fieldVisibility: req.user.fieldVisibility,
+        isAdmin: req.user.isAdmin,
     });
 });
 

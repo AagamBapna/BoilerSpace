@@ -95,6 +95,7 @@ function initSocket(httpServer) {
                 text,
                 isDisappearing = false,
                 disappearingDurationSeconds,
+                clientTempId,
             } = data;
 
             if (!conversationId || !text || !text.trim()) return;
@@ -184,6 +185,7 @@ function initSocket(httpServer) {
                 socket.emit('messageSent', {
                     message: populated,
                     conversationId,
+                    clientTempId,
                 });
             } catch (err) {
                 console.error('Socket sendMessage error:', err.message);

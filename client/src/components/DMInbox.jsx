@@ -3,7 +3,7 @@ import axios from 'axios';
 import ChatWindow from './ChatWindow';
 import { highlight } from '../utils/highlight.jsx';
 
-export default function DMInbox({ currentUserId, socket, onClose }) {
+export default function DMInbox({ currentUserId, socket, onClose, onlineUserIds = new Set() }) {
     const [conversations, setConversations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeConversation, setActiveConversation] = useState(null);
@@ -12,7 +12,6 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
-    const [onlineUserIds, setOnlineUserIds] = useState(new Set());
     const [activeTab, setActiveTab] = useState('inbox');
     const [requests, setRequests] = useState([]);
     const [loadingRequests, setLoadingRequests] = useState(false);
@@ -82,26 +81,6 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
             loadConversations();
         };
 
-        const handleOnlineUsers = (userIds) => {
-            setOnlineUserIds(new Set(userIds));
-        };
-
-        const handleUserOnline = (data) => {
-            setOnlineUserIds(prev => {
-                const next = new Set(prev);
-                next.add(data.userId);
-                return next;
-            });
-        };
-
-        const handleUserOffline = (data) => {
-            setOnlineUserIds(prev => {
-                const next = new Set(prev);
-                next.delete(data.userId);
-                return next;
-            });
-        };
-
         const handleConversationAccepted = () => {
             loadConversations();
             loadRequests();
@@ -111,9 +90,6 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
         s.on('messageSent', handleSent);
         s.on('messageDeleted', handleDeleted);
         s.on('messageDisappeared', handleDisappeared);
-        s.on('onlineUsers', handleOnlineUsers);
-        s.on('userOnline', handleUserOnline);
-        s.on('userOffline', handleUserOffline);
         s.on('conversationAccepted', handleConversationAccepted);
 
         return () => {
@@ -121,9 +97,6 @@ export default function DMInbox({ currentUserId, socket, onClose }) {
             s.off('messageSent', handleSent);
             s.off('messageDeleted', handleDeleted);
             s.off('messageDisappeared', handleDisappeared);
-            s.off('onlineUsers', handleOnlineUsers);
-            s.off('userOnline', handleUserOnline);
-            s.off('userOffline', handleUserOffline);
             s.off('conversationAccepted', handleConversationAccepted);
         };
     }, [socket, activeConversation]);

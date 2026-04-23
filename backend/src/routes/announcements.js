@@ -38,10 +38,10 @@ router.get('/:eventId/announcements', protect, async (req, res) => {
 router.post('/:eventId/announcements', protect, async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { message } = req.body;
+    const { body, title } = req.body;
 
-    if (!message || !message.trim())
-      return res.status(400).json({ error: 'Validation failed', fields: { message: 'Message is required' } });
+    if (!body || !body.trim())
+      return res.status(400).json({ error: 'Validation failed', fields: { body: 'Body is required' } });
 
     const event = await Event.findById(eventId).populate('clubId');
     if (!event) return res.status(404).json({ error: 'Event not found' });
@@ -54,7 +54,9 @@ router.post('/:eventId/announcements', protect, async (req, res) => {
       eventId: event._id,
       clubId: event.clubId?._id,
       authorId: req.user._id || req.user.id,
-      message: message.trim(),
+      body: body.trim(),
+      title: title ? title.trim() : undefined,
+      type: 'event',
     });
 
     await ann.populate({ path: 'authorId', select: 'id displayName' });
@@ -81,12 +83,12 @@ router.post('/:eventId/announcements', protect, async (req, res) => {
 router.post('/clubs/:clubId/announcements', protect, async (req, res) => {
   try {
     const { clubId } = req.params;
-    const { message } = req.body;
+    const { body, title } = req.body;
 
-    if (!message || !message.trim()) {
+    if (!body || !body.trim()) {
       return res.status(400).json({
         error: 'Validation failed',
-        fields: { message: 'Message is required' },
+        fields: { body: 'Body is required' },
       });
     }
 
@@ -105,7 +107,9 @@ router.post('/clubs/:clubId/announcements', protect, async (req, res) => {
       eventId: null,
       clubId: club._id,
       authorId: req.user._id || req.user.id,
-      message: message.trim(),
+      body: body.trim(),
+      title: title ? title.trim() : undefined,
+      type: 'club',
     });
 
     await ann.populate({ path: 'authorId', select: 'id displayName' });
@@ -125,6 +129,101 @@ router.post('/clubs/:clubId/announcements', protect, async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Failed to create announcement' });
+  }
+});
+
+/**
+ * POST /api/announcements/broadcast
+ * Create a global announcement. Requires Admin.
+ */
+router.post('/broadcast', protect, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { title, body, priorityLevel, expirationDate } = req.body;
+    if (!body || !body.trim()) return res.status(400).json({ error: 'Body is required' });
+    if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
+
+    // Validate priority
+    const priority = ['info', 'warning', 'alert'].includes(priorityLevel) ? priorityLevel : 'info';
+    
+    // Set expiration 
+    let expires = null;
+    if (expirationDate) {
+       expires = new Date(expirationDate);
+       if (isNaN(expires.getTime())) return res.status(400).json({ error: 'Invalid expiration date' });
+    } else {
+       // default to 7 days if not provided
+       expires = new Date();
+       expires.setDate(expires.getDate() + 7);
+    }
+
+    const ann = await Announcement.create({
+      authorId: req.user._id || req.user.id,
+      title: title.trim(),
+      body: body.trim(),
+      priorityLevel: priority,
+      expirationDate: expires,
+      type: 'global',
+    });
+
+    await ann.populate({ path: 'authorId', select: 'id displayName email' });
+    
+    const doc = ann.toObject();
+    return res.status(201).json({ ...doc, id: doc._id.toString() });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to create broadcast' });
+  }
+});
+
+/**
+ * GET /api/announcements/active
+ * Get all active broadcasts.
+ */
+router.get('/active', async (req, res) => {
+  try {
+    const anns = await Announcement.find({ 
+      type: 'global', 
+      expirationDate: { $gt: new Date() } 
+    }).sort({ createdAt: -1 }).populate({ path: 'authorId', select: 'id displayName' }).lean();
+
+    return res.json(anns.map(a => ({ ...a, id: a._id.toString() })));
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to fetch active broadcasts' });
+  }
+});
+
+/**
+ * GET /api/announcements/broadcasts
+ * Get all broadcasts (for admin dashboard). Requires Admin.
+ */
+router.get('/broadcasts', protect, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) return res.status(403).json({ error: 'Admin access required' });
+    const anns = await Announcement.find({ type: 'global' }).sort({ createdAt: -1 }).populate({ path: 'authorId', select: 'id displayName' }).lean();
+    
+    return res.json(anns.map(a => ({ ...a, id: a._id.toString() })));
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to fetch broadcasts' });
+  }
+});
+
+/**
+ * DELETE /api/announcements/broadcasts/:id
+ * Delete a broadcast. Requires Admin.
+ */
+router.delete('/broadcasts/:id', protect, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) return res.status(403).json({ error: 'Admin access required' });
+    const ann = await Announcement.findOneAndDelete({ _id: req.params.id, type: 'global' });
+    if (!ann) return res.status(404).json({ error: 'Broadcast not found' });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to delete broadcast' });
   }
 });
 
