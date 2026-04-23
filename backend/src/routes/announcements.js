@@ -179,20 +179,19 @@ router.post('/broadcast', protect, async (req, res) => {
 
 /**
  * GET /api/announcements/active
- * Get the most recent active broadcast.
+ * Get all active broadcasts.
  */
 router.get('/active', async (req, res) => {
   try {
-    const ann = await Announcement.findOne({ 
+    const anns = await Announcement.find({ 
       type: 'global', 
       expirationDate: { $gt: new Date() } 
     }).sort({ createdAt: -1 }).populate({ path: 'authorId', select: 'id displayName' }).lean();
 
-    if (!ann) return res.json(null);
-    return res.json({ ...ann, id: ann._id.toString() });
+    return res.json(anns.map(a => ({ ...a, id: a._id.toString() })));
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: 'Failed to fetch active broadcast' });
+    return res.status(500).json({ error: 'Failed to fetch active broadcasts' });
   }
 });
 
