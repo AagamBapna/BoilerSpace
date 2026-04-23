@@ -55,10 +55,9 @@ describe('DMInbox Component', () => {
     });
 
     it('shows green presence dot for online users', async () => {
-        const listeners = {};
         const mockSocket = {
             current: {
-                on: vi.fn((event, cb) => { listeners[event] = cb; }),
+                on: vi.fn(),
                 off: vi.fn(),
                 emit: vi.fn(),
             }
@@ -75,20 +74,21 @@ describe('DMInbox Component', () => {
 
         axios.get.mockResolvedValueOnce({ data: mockConversations });
 
-        const { container } = render(<DMInbox currentUserId="user123" socket={mockSocket} onClose={vi.fn()} />);
+        const { container } = render(
+            <DMInbox
+                currentUserId="user123"
+                socket={mockSocket}
+                onClose={vi.fn()}
+                onlineUserIds={new Set(['other456'])}
+            />
+        );
 
         await waitFor(() => {
             expect(screen.getByText('Jane Doe')).toBeInTheDocument();
         });
 
-        act(() => {
-            listeners.onlineUsers(['other456']);
-        });
-
-        await waitFor(() => {
-            const greenDot = container.querySelector('.bg-\\[\\#22c55e\\]');
-            expect(greenDot).toBeInTheDocument();
-        });
+        const greenDot = container.querySelector('.bg-\\[\\#22c55e\\]');
+        expect(greenDot).toBeInTheDocument();
     });
 
     it('shows grey presence dot for offline users', async () => {

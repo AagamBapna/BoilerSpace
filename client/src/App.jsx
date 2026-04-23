@@ -74,7 +74,45 @@ export default function App() {
   const [studyTimeRefreshKey, setStudyTimeRefreshKey] = useState(0);
   const [navExpanded, setNavExpanded] = useState(false);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const [onlineUserIds, setOnlineUserIds] = useState(new Set());
   const socketRef = useSocket(user);
+
+  useEffect(() => {
+    if (!user) {
+      setOnlineUserIds(new Set());
+      return;
+    }
+    const s = socketRef?.current;
+    if (!s) return;
+
+    const handleOnlineUsers = (userIds) => {
+      setOnlineUserIds(new Set(userIds));
+    };
+    const handleUserOnline = (data) => {
+      setOnlineUserIds((prev) => {
+        const next = new Set(prev);
+        next.add(data.userId);
+        return next;
+      });
+    };
+    const handleUserOffline = (data) => {
+      setOnlineUserIds((prev) => {
+        const next = new Set(prev);
+        next.delete(data.userId);
+        return next;
+      });
+    };
+
+    s.on('onlineUsers', handleOnlineUsers);
+    s.on('userOnline', handleUserOnline);
+    s.on('userOffline', handleUserOffline);
+
+    return () => {
+      s.off('onlineUsers', handleOnlineUsers);
+      s.off('userOnline', handleUserOnline);
+      s.off('userOffline', handleUserOffline);
+    };
+  }, [user, socketRef]);
 
 
   useEffect(() => {
@@ -584,6 +622,7 @@ export default function App() {
           currentUserId={user.id}
           socket={socketRef}
           onClose={() => setShowDM(false)}
+          onlineUserIds={onlineUserIds}
         />
       )}
 
