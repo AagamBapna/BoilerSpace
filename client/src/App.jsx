@@ -22,6 +22,8 @@ import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
 import ActivityPage from './pages/ActivityPage';
 import EventPage from './pages/EventPage';
 import StudyPlanGenerator from './components/StudyPlanGenerator';
+import GlobalEventBanner from './components/GlobalEventBanner';
+import AdminBroadcastDashboard from './pages/AdminBroadcastDashboard';
 import { getToken, setToken, clearToken } from './lib/auth';
 import NotificationBell from './components/NotificationBell';
 import StudyTimeWidget from './components/StudyTimeWidget';
@@ -645,20 +647,31 @@ export default function App() {
     </div>
   );
 
-  if (!inRouterContext) return mapExperience;
+  if (!inRouterContext) return (
+    <div className="h-screen w-screen flex flex-col">
+      <GlobalEventBanner />
+      <div className="flex-1 relative overflow-hidden">
+        {mapExperience}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="h-screen w-screen">
-      <Routes>
-        <Route path="/clubs" element={<ClubList user={user} />} />
-        <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
-        <Route path="/clubs/:id/dashboard" element={<ClubOrganizerDashboard user={user} />} />
-        <Route path="/activity" element={<ActivityPage initialTab="events" />} />
-        <Route path="/events" element={<ActivityPage initialTab="events" />} />
-        <Route path="/events/:id" element={<EventPage user={user} />} />
-        <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
-        <Route path="*" element={mapExperience} />
-      </Routes>
+    <div className="h-screen w-screen flex flex-col">
+      <GlobalEventBanner />
+      <div className="flex-1 relative overflow-hidden">
+        <Routes>
+          <Route path="/clubs" element={<ClubList user={user} />} />
+          <Route path="/clubs/:id" element={<ClubProfile user={user} />} />
+          <Route path="/clubs/:id/dashboard" element={<ClubOrganizerDashboard user={user} />} />
+          <Route path="/activity" element={<ActivityPage initialTab="events" />} />
+          <Route path="/events" element={<ActivityPage initialTab="events" />} />
+          <Route path="/events/:id" element={<EventPage user={user} />} />
+          <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
+          <Route path="/admin/broadcasts" element={<AdminBroadcastDashboard user={user} />} />
+          <Route path="*" element={mapExperience} />
+        </Routes>
+      </div>
     </div>
   );
 }

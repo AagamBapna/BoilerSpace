@@ -70,7 +70,7 @@ export default function AnnouncementsFeed() {
                 </span>
               </div>
 
-              <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-3">{a.message}</p>
+              <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-3">{a.body}</p>
 
               <div className="text-xs text-[var(--color-text-secondary)]/80 flex items-center justify-between">
                 <span>By {a.author?.displayName || a.author?.email || 'Organizer'}</span>
