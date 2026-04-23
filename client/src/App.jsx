@@ -22,6 +22,7 @@ import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
 import ActivityPage from './pages/ActivityPage';
 import EventPage from './pages/EventPage';
 import StudyPlanGenerator from './components/StudyPlanGenerator';
+import BookmarkedResources from './components/BookmarkedResources';
 import { getToken, setToken, clearToken } from './lib/auth';
 import NotificationBell from './components/NotificationBell';
 import StudyTimeWidget from './components/StudyTimeWidget';
@@ -373,11 +374,13 @@ export default function App() {
           <>
             <Link to="/clubs" className="profile-button-like">Clubs</Link>
             <Link to="/activity" className="profile-button-like">Activity</Link>
+            {user && <Link to="/bookmarks/ai" className="profile-button-like">Bookmarks</Link>}
           </>
         ) : (
           <>
             <a href="/clubs" className="profile-button-like">Clubs</a>
             <a href="/activity" className="profile-button-like">Activity</a>
+            {user && <a href="/bookmarks/ai" className="profile-button-like">Bookmarks</a>}
           </>
         )}
         <button
@@ -657,6 +660,7 @@ export default function App() {
         <Route path="/events" element={<ActivityPage initialTab="events" />} />
         <Route path="/events/:id" element={<EventPage user={user} />} />
         <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
+        <Route path="/bookmarks/ai" element={<BookmarkedResources />} />
         <Route path="*" element={mapExperience} />
       </Routes>
     </div>
