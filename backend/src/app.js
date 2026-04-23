@@ -21,6 +21,7 @@ const analyticsRoutes = require('./routes/analytics');
 require('./config/passport');
 const userRoutes = require('./routes/users');
 const bookmarkRoutes = require('./routes/bookmarks');
+const aiBookmarkRoutes = require('./routes/aiBookmarks');
 const messageRoutes = require('./routes/messages');
 const reviewRoutes = require('./routes/reviews');
 
@@ -34,6 +35,7 @@ app.use('/api/buildings', buildingRoutes);
 app.use('/api/buildings', checkinRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
+app.use('/api/users', aiBookmarkRoutes);
 app.use('/api/users', bookmarkRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/clubs', clubRoutes);

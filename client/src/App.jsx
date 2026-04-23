@@ -22,6 +22,7 @@ import ClubOrganizerDashboard from './pages/ClubOrganizerDashboard';
 import ActivityPage from './pages/ActivityPage';
 import EventPage from './pages/EventPage';
 import StudyPlanGenerator from './components/StudyPlanGenerator';
+import BookmarkedResources from './components/BookmarkedResources';
 import GlobalEventBanner from './components/GlobalEventBanner';
 import AdminBroadcastDashboard from './pages/AdminBroadcastDashboard';
 import { getToken, setToken, clearToken } from './lib/auth';
@@ -482,11 +483,13 @@ export default function App() {
               <>
                 <Link to="/clubs" onClick={() => setNavExpanded(false)} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">Clubs</Link>
                 <Link to="/activity" onClick={() => setNavExpanded(false)} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">Activity</Link>
+                <Link to="/bookmarks/ai" onClick={() => setNavExpanded(false)} className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">Bookmarks</Link>
               </>
             ) : (
               <>
                 <a href="/clubs" className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">Clubs</a>
                 <a href="/activity" className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">Activity</a>
+                <a href="/bookmarks/ai" className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors flex items-center gap-3">Bookmarks</a>
               </>
             )}
 
@@ -723,6 +726,7 @@ export default function App() {
           <Route path="/events" element={<ActivityPage initialTab="events" />} />
           <Route path="/events/:id" element={<EventPage user={user} />} />
           <Route path="/announcements" element={<ActivityPage initialTab="announcements" />} />
+          <Route path="/bookmarks/ai" element={<BookmarkedResources />} />
           <Route path="*" element={mapExperience} />
         </Routes>
       </div>
