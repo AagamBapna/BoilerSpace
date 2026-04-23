@@ -422,34 +422,104 @@ export default function StudyPlanGenerator({ userId, onClose }) {
                                 </div>
                             </div>
                             {/* Block editor */}
-                            {editingBlock !== null && plan.blocks[editingBlock] && (
-                                <div className="p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)]">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Edit Block</h3>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => { deleteBlock(editingBlock); setEditingBlock(null); }}
-                                                className="text-xs text-red-400 hover:underline">Delete</button>
-                                            <button onClick={() => setEditingBlock(null)}
-                                                className="text-xs text-[var(--color-text-secondary)] hover:underline">Done</button>
+                            {editingBlock !== null && plan?.blocks[editingBlock] && (
+                            <div
+                                className="background-blur"
+                                style={{ zIndex: 100 }}
+                                onClick={() => setEditingBlock(null)}
+                            >
+                                <div
+                                    className="course-selector"
+                                    style={{ maxWidth: '420px' }}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    {/* Header */}
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold text-[var(--color-text-primary)]">
+                                            Study Block Details
+                                        </h3>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => { deleteBlock(editingBlock); setEditingBlock(null); }}
+                                                className="px-3 py-1.5 text-xs font-semibold text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"
+                                            >
+                                                Delete
+                                            </button>
+                                            <button
+                                                onClick={() => setEditingBlock(null)}
+                                                className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors"
+                                            >
+                                                <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="flex flex-wrap gap-3">
-                                        <input type="date" value={plan.blocks[editingBlock].day}
-                                            onChange={(e) => updateBlock(editingBlock, 'day', e.target.value)}
-                                            className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)]" />
-                                        <input type="time" value={plan.blocks[editingBlock].startTime}
-                                            onChange={(e) => updateBlock(editingBlock, 'startTime', e.target.value)}
-                                            className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)]" />
-                                        <input type="time" value={plan.blocks[editingBlock].endTime}
-                                            onChange={(e) => updateBlock(editingBlock, 'endTime', e.target.value)}
-                                            className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)]" />
-                                        <input type="text" value={plan.blocks[editingBlock].topic}
-                                            onChange={(e) => updateBlock(editingBlock, 'topic', e.target.value)}
-                                            placeholder="Topic"
-                                            className="px-2 py-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] flex-1" />
+
+                                    {/* Block info (read-only summary) */}
+                                    <div className="mb-4 p-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+                                        <div className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">
+                                            {plan.blocks[editingBlock].courseCode || 'No course'}
+                                        </div>
+                                        <div className="text-xs text-[var(--color-text-secondary)] mb-1">
+                                            {plan.blocks[editingBlock].topic || 'No topic'}
+                                        </div>
+                                        <div className="text-xs text-[var(--color-text-secondary)]">
+                                            {(() => {
+                                                const d = new Date(plan.blocks[editingBlock].day + 'T12:00:00');
+                                                return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+                                            })()}, {plan.blocks[editingBlock].startTime} – {plan.blocks[editingBlock].endTime}
+                                        </div>
                                     </div>
+
+                                    {/* Editable fields */}
+                                    <div className="flex flex-col gap-3">
+                                        <div>
+                                            <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Date</label>
+                                            <input type="date" value={plan.blocks[editingBlock].day}
+                                                onChange={(e) => updateBlock(editingBlock, 'day', e.target.value)}
+                                                className="w-full px-2 py-1.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <div className="flex-1">
+                                                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Start</label>
+                                                <input type="time" value={plan.blocks[editingBlock].startTime}
+                                                    onChange={(e) => updateBlock(editingBlock, 'startTime', e.target.value)}
+                                                    className="w-full px-2 py-1.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">End</label>
+                                                <input type="time" value={plan.blocks[editingBlock].endTime}
+                                                    onChange={(e) => updateBlock(editingBlock, 'endTime', e.target.value)}
+                                                    className="w-full px-2 py-1.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Topic</label>
+                                            <input type="text" value={plan.blocks[editingBlock].topic}
+                                                onChange={(e) => updateBlock(editingBlock, 'topic', e.target.value)}
+                                                placeholder="Study topic"
+                                                className="w-full px-2 py-1.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Course Code</label>
+                                            <input type="text" value={plan.blocks[editingBlock].courseCode}
+                                                onChange={(e) => updateBlock(editingBlock, 'courseCode', e.target.value)}
+                                                placeholder="e.g. CS 381"
+                                                className="w-full px-2 py-1.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]" />
+                                        </div>
+                                    </div>
+
+                                    {/* Save button */}
+                                    <button
+                                        onClick={() => setEditingBlock(null)}
+                                        className="w-full mt-4 py-2 bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black font-semibold rounded-lg text-sm hover:opacity-90 transition-opacity"
+                                    >
+                                        Done
+                                    </button>
                                 </div>
-                            )}
+                            </div>
+                        )}
                             {/* Action buttons */}
                             <div className="flex items-center justify-center gap-3">
                                 <button onClick={handleSaveEdits}
