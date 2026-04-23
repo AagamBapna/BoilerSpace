@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import ClubCalendar from '../components/ClubCalendar';
 
 export default function ClubProfile({ user }) {
   const { id } = useParams();
@@ -19,13 +20,31 @@ export default function ClubProfile({ user }) {
   const [joining, setJoining] = useState(false);
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [creatingEvent, setCreatingEvent] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
     date: '',
     time: '',
     location: '',
+    recurrenceType: 'none',
+    recurrenceInterval: 1,
+    recurrenceEndDate: '',
   });
+
+  const loadEvents = useCallback(async () => {
+    if (!id) return;
+    setEventsLoading(true);
+    try {
+      const res = await axios.get(`/api/events?clubId=${id}`);
+      setEvents(res.data || []);
+    } catch (err) {
+      console.error('Failed to load events:', err);
+      setEvents([]);
+    } finally {
+      setEventsLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     axios.get(`/api/clubs/${id}`)
@@ -38,16 +57,8 @@ export default function ClubProfile({ user }) {
   }, [id]);
 
   useEffect(() => {
-    if (!id) return;
-    setEventsLoading(true);
-    axios.get(`/api/events?clubId=${id}`)
-      .then(res => setEvents(res.data || []))
-      .catch(err => {
-        console.error('Failed to load events:', err);
-        setEvents([]);
-      })
-      .finally(() => setEventsLoading(false));
-  }, [id]);
+    loadEvents();
+  }, [loadEvents]);
 
   useEffect(() => {
     if (!user?.id || !id) {
@@ -80,6 +91,7 @@ export default function ClubProfile({ user }) {
 
   const canJoin = Boolean(user?.id && !isOrganizer && !isMember && !isPendingRequest && !isRemovedFromClub && club);
   const canLeave = Boolean(user?.id && !isOrganizer && isMember && club);
+  const clubCalendarEvents = useMemo(() => events, [events]);
 
   const handleJoinClub = async () => {
     if (!id || !user?.id) return;
@@ -134,6 +146,11 @@ export default function ClubProfile({ user }) {
       time: String(newEvent.time || '').trim(),
       location: String(newEvent.location || '').trim(),
       clubId: id,
+      recurrence: newEvent.recurrenceType === 'none' ? { type: 'none' } : {
+        type: newEvent.recurrenceType,
+        interval: Number(newEvent.recurrenceInterval) || 1,
+        endDate: String(newEvent.recurrenceEndDate || '').trim(),
+      },
     };
 
     if (!payload.title || !payload.description || !payload.date || !payload.time || !payload.location) {
@@ -145,9 +162,18 @@ export default function ClubProfile({ user }) {
       setCreatingEvent(true);
       setNotice(null);
       setActionError(null);
-      const res = await axios.post('/api/events', payload);
-      setEvents((prev) => [...prev, res.data]);
-      setNewEvent({ title: '', description: '', date: '', time: '', location: '' });
+      await axios.post('/api/events', payload);
+      await loadEvents();
+      setNewEvent({
+        title: '',
+        description: '',
+        date: '',
+        time: '',
+        location: '',
+        recurrenceType: 'none',
+        recurrenceInterval: 1,
+        recurrenceEndDate: '',
+      });
       setShowCreateEventModal(false);
       setNotice('Event created successfully.');
     } catch (err) {
@@ -268,6 +294,16 @@ export default function ClubProfile({ user }) {
 
             <div className="h-px bg-white/5" />
 
+            <ClubCalendar
+              events={clubCalendarEvents}
+              monthDate={calendarMonth}
+              onMonthChange={setCalendarMonth}
+              onEventClick={(event) => navigate(`/events/${event.id}`)}
+              loading={eventsLoading}
+            />
+
+            <div className="h-px bg-white/5" />
+
             {/* Events */}
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-white/20 mb-4">Events</p>
@@ -342,6 +378,32 @@ export default function ClubProfile({ user }) {
                   <InputField label="Time" value={newEvent.time} onChange={(v) => setNewEvent((p) => ({ ...p, time: v }))} placeholder="HH:mm" />
                 </div>
                 <InputField label="Location" value={newEvent.location} onChange={(v) => setNewEvent((p) => ({ ...p, location: v }))} placeholder="Location" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-[var(--color-text-secondary)]">Recurrence</label>
+                    <select
+                      value={newEvent.recurrenceType}
+                      onChange={(e) => setNewEvent((p) => ({ ...p, recurrenceType: e.target.value }))}
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]"
+                    >
+                      <option value="none">None</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </div>
+                  <InputField
+                    label="Interval"
+                    value={String(newEvent.recurrenceInterval)}
+                    onChange={(v) => setNewEvent((p) => ({ ...p, recurrenceInterval: v }))}
+                    placeholder="1"
+                  />
+                  <InputField
+                    label="End Date"
+                    value={newEvent.recurrenceEndDate}
+                    onChange={(v) => setNewEvent((p) => ({ ...p, recurrenceEndDate: v }))}
+                    placeholder="YYYY-MM-DD"
+                  />
+                </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button onClick={() => setShowCreateEventModal(false)} disabled={creatingEvent} className="px-5 py-2.5 text-base text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">Cancel</button>
                   <button onClick={handleCreateEvent} disabled={creatingEvent} className="px-5 py-2.5 bg-gradient-to-r from-[var(--color-purdue-gold)] to-[var(--color-purdue-rush)] text-black font-semibold rounded-lg text-base hover:opacity-90 disabled:opacity-50">
