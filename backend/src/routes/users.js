@@ -185,30 +185,36 @@ router.get('/search', protect, async (req, res) => {
 
     try {
         const regex = new RegExp(q.trim(), 'i');
-        // Exclude private profiles.
+        // Private profiles stay in results so they're still findable; we just
+        // strip all preview data beyond identity so nothing leaks until they
+        // accept a friend request.
         const users = await User.find({
             _id: { $ne: req.user._id },
-            profileVisibility: { $ne: 'private' },
             $or: [
                 { displayName: regex },
                 { email: regex },
             ],
         })
-            .select('displayName email profilePictureUrl fieldVisibility')
+            .select('displayName email profilePictureUrl profileVisibility fieldVisibility')
             .limit(10);
 
-        // Redact private email.
         const sanitized = users.map((u) => {
-            const obj = u.toObject();
-            delete obj.fieldVisibility;
+            const isPrivate = u.profileVisibility === 'private';
             const fv = u.fieldVisibility && typeof u.fieldVisibility === 'object'
                 ? u.fieldVisibility
                 : {};
             const emailSetting = fv.email || DEFAULT_FIELD_VISIBILITY.email;
-            if (emailSetting === 'private') {
-                delete obj.email;
+
+            const out = {
+                _id: u._id,
+                displayName: u.displayName,
+                profilePictureUrl: u.profilePictureUrl,
+                profileVisibility: u.profileVisibility,
+            };
+            if (!isPrivate && emailSetting !== 'private') {
+                out.email = u.email;
             }
-            return obj;
+            return out;
         });
 
         res.json(sanitized);

@@ -273,7 +273,7 @@ export default function ClassmateProfile({ userId, onClose }) {
                   </div>
                 )}
 
-                {/* Study Goals — hidden entirely when absent (empty or redacted). */}
+                {/* Study Goals — hidden entirely when absent */}
                 {profile.studyGoals && profile.studyGoals.length > 0 && (
                   <div className="w-full mt-2">
                     <h3 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Study Goals</h3>

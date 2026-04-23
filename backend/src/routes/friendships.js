@@ -14,18 +14,19 @@ router.get('/classmates', protect, async (req, res) => {
 
         const courseIds = me.courses.map(c => c._id);
 
-        // Public users sharing a course (excl. self).
+        // Users sharing a course (excl. self). Private profiles are kept so
+        // the viewer can still discover them and send a friend request, but
+        // their card is stripped to identity + profileVisibility flag.
         const classmates = await User.find({
             _id: { $ne: me._id },
             courses: { $in: courseIds },
-            profileVisibility: { $ne: 'private' },
         })
-            .select('displayName major year profilePictureUrl courses fieldVisibility')
+            .select('displayName major year profilePictureUrl courses profileVisibility fieldVisibility')
             .populate('courses', 'courseCode title');
 
         // Legacy-doc fallbacks.
         const FIELD_DEFAULTS = { major: 'public', year: 'public' };
-        const isPrivate = (user, field) => {
+        const isFieldPrivate = (user, field) => {
             const fv = user.fieldVisibility && typeof user.fieldVisibility === 'object'
                 ? user.fieldVisibility
                 : {};
@@ -72,17 +73,23 @@ router.get('/classmates', protect, async (req, res) => {
 
             const friendship = friendshipMap[user._id.toString()] || null;
 
+            const isProfilePrivate = user.profileVisibility === 'private'
+                && (!friendship || friendship.status !== 'accepted');
+
             const classmateData = {
                 _id: user._id,
                 displayName: user.displayName,
                 profilePictureUrl: user.profilePictureUrl,
+                profileVisibility: user.profileVisibility,
                 friendship: friendship
                     ? { id: friendship.id, status: friendship.status, direction: friendship.direction }
                     : null,
             };
-            // Respect per-field privacy.
-            if (!isPrivate(user, 'major')) classmateData.major = user.major;
-            if (!isPrivate(user, 'year')) classmateData.year = user.year;
+            // Strangers viewing a master-private profile get identity only.
+            if (!isProfilePrivate) {
+                if (!isFieldPrivate(user, 'major')) classmateData.major = user.major;
+                if (!isFieldPrivate(user, 'year')) classmateData.year = user.year;
+            }
 
             for (const cid of sharedCourseIds) {
                 if (grouped[cid]) {

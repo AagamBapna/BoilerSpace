@@ -91,18 +91,23 @@ describe('GET /api/friendships/classmates', () => {
 
         const cs101Group = res.body.find(g => g.courseCode === 'CS101');
         expect(cs101Group).toBeDefined();
-        expect(cs101Group.classmates.length).toBe(1);
-        expect(cs101Group.classmates[0].displayName).toBe('Bob');
+        // Bob (public) and Charlie (private, identity-only) both appear.
+        expect(cs101Group.classmates.length).toBe(2);
+        const names = cs101Group.classmates.map(c => c.displayName).sort();
+        expect(names).toEqual(['Bob', 'Charlie']);
     });
 
-    test('excludes private users from discovery', async () => {
+    test('includes private users but strips their card down to identity', async () => {
         const res = await request(app)
             .get('/api/friendships/classmates')
             .set('Authorization', `Bearer ${tokenA}`);
 
         const allClassmates = res.body.flatMap(g => g.classmates);
-        const names = allClassmates.map(c => c.displayName);
-        expect(names).not.toContain('Charlie');
+        const charlie = allClassmates.find(c => c.displayName === 'Charlie');
+        expect(charlie).toBeDefined();
+        expect(charlie.profileVisibility).toBe('private');
+        expect(charlie.major).toBeUndefined();
+        expect(charlie.year).toBeUndefined();
     });
 
     test('returns empty array when user has no courses', async () => {
