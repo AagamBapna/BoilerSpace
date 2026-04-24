@@ -116,4 +116,29 @@ describe('GET /api/reviews/:roomId', () => {
         expect(res.body.averageRating).toBe(4.5);
         expect(res.body.totalReviews).toBe(2);
     });
+
+    it('should return reviews in descending order (newest first)', async () => {
+        // Create an older review manually by manipulating timestamps or just creating in sequence
+        // Since we created two reviews in beforeEach, let's create a third one now
+        await Review.create({ 
+            rating: 2, 
+            comment: 'Oldest', 
+            roomId: room._id, 
+            userId: user._id,
+            createdAt: new Date(Date.now() - 10000) // 10 seconds ago
+        });
+        
+        const latestComment = 'Just posted now!';
+        await request(app)
+            .post('/api/reviews')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ rating: 5, comment: latestComment, roomId: room._id });
+
+        const res = await request(app).get(`/api/reviews/${room._id}`);
+        expect(res.status).toBe(200);
+        // The one we just POSTed should be first in the array
+        expect(res.body.reviews[0].comment).toBe(latestComment);
+        // The one we created with an older date should be last
+        expect(res.body.reviews[res.body.reviews.length - 1].comment).toBe('Oldest');
+    });
 });
