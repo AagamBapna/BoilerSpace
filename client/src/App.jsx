@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, useInRouterContext, useNavigate, Link, useLocation as useRouterLocation } from 'react-router-dom';
+import { Routes, Route, useInRouterContext, Link } from 'react-router-dom';
 import axios from 'axios';
 import CampusMap from './components/CampusMap';
 import BuildingSidebar from './components/BuildingSidebar';
@@ -34,15 +34,7 @@ import './index.css';
 
 export default function App() {
   const inRouterContext = useInRouterContext();
-  // useNavigate throws outside Router so guard it
-  let _nav = null;
-  try { _nav = useNavigate(); } catch { /* outside Router */ }
-  const navigate = _nav || (() => { });
-
-  // useRouterLocation also throws outside Router
-  let _loc = { pathname: '/' };
-  try { _loc = useRouterLocation(); } catch { /* outside Router */ }
-  const routerLocation = _loc;
+  const routerLocation = { pathname: window.location.pathname };
 
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
@@ -115,6 +107,15 @@ export default function App() {
     };
   }, [user, socketRef]);
 
+  const refreshRecentBuildings = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/users/recentBuildings');
+      setRecentBuildings(res.data);
+    } catch (err) {
+      console.error('Failed to fetch recent buildings:', err);
+    }
+  }, []);
+
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -175,7 +176,7 @@ export default function App() {
     } else {
       setAuthChecking(false);
     }
-  }, []);
+  }, [refreshRecentBuildings]);
 
   useEffect(() => {
     const fetchBuildings = async () => {
@@ -224,15 +225,6 @@ export default function App() {
     setBookmarkedRoomIds(new Set());
     setBookmarks([]);
     setPendingRequestCount(0);
-  }, []);
-
-  const refreshRecentBuildings = useCallback(async () => {
-    try {
-      const res = await axios.get('/api/users/recentBuildings');
-      setRecentBuildings(res.data);
-    } catch (err) {
-      console.error('Failed to fetch recent buildings:', err);
-    }
   }, []);
 
   const handleToggleBookmark = useCallback(async (roomId, isBookmarked) => {
@@ -715,7 +707,7 @@ export default function App() {
   );
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="min-h-screen w-screen overflow-y-auto overflow-x-hidden">
       <div className="flex-1 relative overflow-hidden">
         <GlobalEventBanner isMapPage={isMapPage} />
         <Routes>

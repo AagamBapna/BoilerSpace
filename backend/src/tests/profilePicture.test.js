@@ -33,6 +33,8 @@ let mongoServer;
 let token;
 let testUser;
 
+jest.setTimeout(60000);
+
 const validUser = {
     email: 'test@purdue.edu',
     password: 'password123',
@@ -64,7 +66,10 @@ const createTestPngBuffer = () => {
 
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
-    await mongoose.connect(mongoServer.getUri());
+    await mongoose.connect(mongoServer.getUri(), {
+        serverSelectionTimeoutMS: 60000,
+        connectTimeoutMS: 60000,
+    });
 });
 
 afterAll(async () => {
