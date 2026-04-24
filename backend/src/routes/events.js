@@ -7,7 +7,6 @@ const Announcement = require('../models/Announcement');
 const { protect } = require('../middleware/auth'); // only protect now
 const User = require('../models/User');
 const { sendNotification } = require('../services/NotificationService');
-const { protect } = require('../middleware/auth');
 const { normalizeRecurrence, generateRecurringDates, isRecurringSeries, normalizeDateInput } = require('../utils/recurrence');
 
 function parseDateOnly(value) {
@@ -218,7 +217,7 @@ router.post('/', protect, async (req, res) => {
     (async () => {
       try {
         const members = await User.find({ clubIds: club._id.toString(), _id: { $ne: req.user.id } });
-        const anchorEvent = createdEvents[0]; 
+        const anchorEvent = createdEvents[0];
         for (const member of members) {
           await sendNotification({
             userId: member._id,
