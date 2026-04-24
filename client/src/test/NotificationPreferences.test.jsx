@@ -34,7 +34,7 @@ describe('NotificationPreferences', () => {
         expect(screen.getByLabelText('Messages')).toBeDefined();
         expect(screen.getByLabelText('Events')).toBeDefined();
         expect(screen.getByLabelText('Organization Updates')).toBeDefined();
-        expect(screen.getByLabelText('Mute All Notifications')).toBeDefined();
+        expect(screen.getByText('🔕 Focus Mode')).toBeDefined();
     });
 
     test('toggles call the API with correct payload', async () => {
@@ -121,7 +121,6 @@ describe('NotificationPreferences', () => {
         const sessionsToggle = screen.getByLabelText('Session Reminders');
         expect(sessionsToggle.getAttribute('aria-checked')).toBe('true');
 
-        const muteToggle = screen.getByLabelText('Mute All Notifications');
-        expect(muteToggle.getAttribute('aria-checked')).toBe('false');
+        expect(screen.getByRole('button', { name: /activate/i })).toBeDefined();
     });
 });

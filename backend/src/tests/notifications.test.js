@@ -383,7 +383,7 @@ describe('Notification trigger on event creation', () => {
 });
 
 describe('Notification global mute', () => {
-    test('does not notify when global mute is enabled', async () => {
+    test('creates notification but suppresses push when global mute is enabled', async () => {
         const { sendNotification } = require('../services/NotificationService');
 
         user.notificationSettings.globalMute = true;
@@ -395,9 +395,9 @@ describe('Notification global mute', () => {
             message: 'Should be muted',
         });
 
-        expect(result).toBeNull();
+        expect(result).toBeDefined();
         const notifications = await Notification.find({ userId: user._id });
-        expect(notifications).toHaveLength(0);
+        expect(notifications).toHaveLength(1);
     });
 });
 
@@ -452,5 +452,77 @@ describe('GET /api/notifications populates courseId and eventId', () => {
         expect(res.status).toBe(200);
         expect(res.body[0].eventId).toBeDefined();
         expect(res.body[0].eventId.title).toBe('Game Night');
+    });
+});
+
+describe('Focus Mode (mute with timer)', () => {
+    test('still creates notification in DB when user is muted', async () => {
+        const { sendNotification } = require('../services/NotificationService');
+
+        user.notificationSettings.globalMute = true;
+        user.notificationSettings.muteExpiresAt = new Date(Date.now() + 30 * 60000); // 30 min from now
+        await user.save();
+
+        const result = await sendNotification({
+            userId: user._id,
+            type: 'noteUpload',
+            message: 'Note uploaded while muted',
+            courseId: building._id, // just reusing an ObjectId
+        });
+
+        // Notification should still be saved to DB
+        expect(result).not.toBeNull();
+        const notifications = await Notification.find({ userId: user._id });
+        expect(notifications).toHaveLength(1);
+        expect(notifications[0].message).toContain('muted');
+    });
+
+    test('auto-unmutes when muteExpiresAt is in the past', async () => {
+        const { sendNotification } = require('../services/NotificationService');
+
+        user.notificationSettings.globalMute = true;
+        user.notificationSettings.muteExpiresAt = new Date(Date.now() - 1000); // expired 1 second ago
+        await user.save();
+
+        await sendNotification({
+            userId: user._id,
+            type: 'noteUpload',
+            message: 'Note after mute expired',
+        });
+
+        // User should be auto-unmuted
+        const updated = await User.findById(user._id);
+        expect(updated.notificationSettings.globalMute).toBe(false);
+        expect(updated.notificationSettings.muteExpiresAt).toBeNull();
+    });
+
+    test('stays muted when muteExpiresAt is in the future', async () => {
+        user.notificationSettings.globalMute = true;
+        user.notificationSettings.muteExpiresAt = new Date(Date.now() + 60 * 60000); // 1 hour from now
+        await user.save();
+
+        const updated = await User.findById(user._id);
+        expect(updated.notificationSettings.globalMute).toBe(true);
+    });
+
+    test('indefinite mute (null muteExpiresAt) stays muted', async () => {
+        const { sendNotification } = require('../services/NotificationService');
+
+        user.notificationSettings.globalMute = true;
+        user.notificationSettings.muteExpiresAt = null;
+        await user.save();
+
+        const result = await sendNotification({
+            userId: user._id,
+            type: 'noteUpload',
+            message: 'Note during indefinite mute',
+        });
+
+        // Still saved to DB
+        expect(result).not.toBeNull();
+
+        // Still muted (not auto-cleared)
+        const updated = await User.findById(user._id);
+        expect(updated.notificationSettings.globalMute).toBe(true);
     });
 });

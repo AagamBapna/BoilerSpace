@@ -55,6 +55,7 @@ describe('PUT /api/users/:id/notifications/preferences', () => {
             organizationUpdates: false,
             globalMute: true,
             noteUploads: true,
+            muteExpiresAt: null,
         });
     });
 
@@ -246,7 +247,7 @@ describe('NotificationService - sendNotification', () => {
         expect(dbNotification).not.toBeNull();
     });
 
-    test('does not create notification when globalMute is true', async () => {
+    test('creates notification when globalMute is true (but does not push)', async () => {
         await User.findByIdAndUpdate(user._id, {
             $set: { 'notificationSettings.globalMute': true },
         });
@@ -254,13 +255,13 @@ describe('NotificationService - sendNotification', () => {
         const notification = await sendNotification({
             userId: user._id,
             type: 'event',
-            message: 'Should not be created',
+            message: 'Should be created but not pushed',
         });
 
-        expect(notification).toBeNull();
+        expect(notification).toBeDefined();
 
         const count = await Notification.countDocuments({ userId: user._id });
-        expect(count).toBe(0);
+        expect(count).toBe(1);
     });
 
     test('does not create notification when category is disabled', async () => {
@@ -279,4 +280,26 @@ describe('NotificationService - sendNotification', () => {
         const count = await Notification.countDocuments({ userId: user._id });
         expect(count).toBe(0);
     });
+});
+
+test('accepts muteExpiresAt as a date', async () => {
+    const expiry = new Date(Date.now() + 30 * 60000).toISOString();
+    const res = await request(app)
+        .put(`/api/users/${user._id}/notifications/preferences`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ globalMute: true, muteExpiresAt: expiry });
+
+    expect(res.status).toBe(200);
+    expect(res.body.notificationSettings.globalMute).toBe(true);
+    expect(res.body.notificationSettings.muteExpiresAt).toBeDefined();
+});
+
+test('accepts null muteExpiresAt for indefinite mute', async () => {
+    const res = await request(app)
+        .put(`/api/users/${user._id}/notifications/preferences`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ globalMute: true, muteExpiresAt: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.notificationSettings.globalMute).toBe(true);
 });
