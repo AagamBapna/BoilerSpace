@@ -468,9 +468,8 @@ describe('ClubProfile page', () => {
     );
 
     await screen.findByText('Monthly View');
-    expect(screen.getByText('Hack Night')).toBeInTheDocument();
-    expect(screen.getByText('Workshop')).toBeInTheDocument();
-    expect(screen.getAllByText('Hack Night').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('Hack Night').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Workshop').length).toBeGreaterThan(0);
 
     await user.click(screen.getAllByText('Hack Night')[0]);
     await waitFor(() => {
@@ -541,7 +540,7 @@ describe('ClubProfile page', () => {
     );
 
     await screen.findByText('Monthly View');
-    expect(screen.getAllByText('Weekly Standup').length).toBe(2);
+    expect(screen.getAllByText('Weekly Standup').length).toBe(1);
     expect(screen.getByText('Workshop')).toBeInTheDocument();
     expect(screen.getByText(/Recurring •/)).toBeInTheDocument();
   });

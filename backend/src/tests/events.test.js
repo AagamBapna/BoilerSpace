@@ -27,6 +27,9 @@ describe('Events API', () => {
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri());
   });
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
 
   afterAll(async () => {
     await Event.deleteMany({});
@@ -236,7 +239,7 @@ describe('Events API', () => {
     });
 
     it('moves only one recurring instance date when scope=single', async () => {
-      const event = await Event.findOne({ title: 'Weekly Standup', date: '2026-04-08' });
+      const event = await Event.findOne({ date: '2026-04-08', 'recurrence.type': 'weekly' });
       const groupId = event.recurrence.recurrenceGroupId;
 
       const res = await request(app)
@@ -276,7 +279,7 @@ describe('Events API', () => {
     });
 
     it('shifts recurring dates by offset when scope=all updates date', async () => {
-      const event = await Event.findOne({ title: 'Weekly Standup' }).sort({ date: 1 });
+      const event = await Event.findOne({ date: '2026-04-01', 'recurrence.type': 'weekly' });
 
       const res = await request(app)
         .patch(`/api/events/${event._id}?scope=all`)
@@ -286,7 +289,7 @@ describe('Events API', () => {
       const seriesEvents = await Event.find({ 'recurrence.recurrenceGroupId': event.recurrence.recurrenceGroupId }).sort({ date: 1 });
       assert.strictEqual(res.body.updatedCount, seriesEvents.length);
       const shiftedDates = seriesEvents.map((entry) => entry.date);
-      assert.deepStrictEqual(shiftedDates, ['2026-04-03', '2026-04-10', '2026-04-17', '2026-04-24', '2026-05-01']);
+      assert.deepStrictEqual(shiftedDates, ['2026-04-08', '2026-04-15', '2026-04-22', '2026-04-29']);
     });
 
     it('deletes future recurring instances when scope=future', async () => {

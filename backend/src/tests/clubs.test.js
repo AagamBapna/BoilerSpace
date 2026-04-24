@@ -27,6 +27,9 @@ describe('Clubs API', () => {
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri());
   });
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
 
   afterAll(async () => {
     await User.deleteMany({});
