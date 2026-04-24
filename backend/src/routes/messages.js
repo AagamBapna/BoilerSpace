@@ -88,7 +88,7 @@ router.get('/', protect, async (req, res) => {
 });
 
 router.get('/search', protect, async (req, res) => {
-    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const q = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 50);
 
@@ -311,7 +311,7 @@ router.get('/:id/messages', protect, async (req, res) => {
 
 router.get('/:id/search', protect, async (req, res) => {
     const { id } = req.params;
-    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const q = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 50);
 

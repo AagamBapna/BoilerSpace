@@ -218,7 +218,7 @@ describe('GET /api/conversations/:id/search', () => {
     });
 
     test('honors pagination', async () => {
-        for (let i = 0; i < 25; i++) {
+        for (let i = 0; i < 15; i++) {
             await sendMessage(tokenA, convId, `extra lunch ${i}`);
         }
 

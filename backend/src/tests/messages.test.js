@@ -47,6 +47,9 @@ async function registerAndLogin(userData) {
     const res = await request(app)
         .post('/api/auth/login')
         .send({ email: userData.email, password: userData.password });
+    if (!res.body.user) {
+        throw new Error(`Login failed with status ${res.status}. Body: ${JSON.stringify(res.body)}`);
+    }
     return { token: res.body.token, userId: res.body.user.id };
 }
 

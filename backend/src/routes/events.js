@@ -376,7 +376,23 @@ router.patch('/:id', protect, async (req, res) => {
         populate: { path: 'organizerIds', select: 'id name email' },
       })
       .sort({ date: 1, time: 1 });
-
+    (async () => {
+      try {
+        const members = await User.find({ clubIds: club._id.toString(), _id: { $ne: req.user.id } });
+        const anchorEvent = refreshed.length > 0 ? refreshed[0] : event;
+        
+        for (const member of members) {
+          await sendNotification({
+            userId: member._id,
+            type: 'event',
+            message: `Event "${anchorEvent.title}" in ${club.name} was updated.`,
+            eventId: anchorEvent._id,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to send notifications for updated event:', err);
+      }
+    })();
     return res.json({
       updatedCount: refreshed.length,
       events: await populateEvents(refreshed),
