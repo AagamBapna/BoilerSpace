@@ -409,6 +409,66 @@ export default function App() {
           isQuietZonesOnly={isQuietZonesOnly}
           setIsQuietZonesOnly={setIsQuietZonesOnly}
         />
+        <NotificationBell isMuted={user?.notificationSettings?.globalMute} onSelectBuilding={handleSelectBuilding} buildings={buildings} socket={socketRef} onOpenCourseNotes={(courseId) => 
+        {
+          setNotesView({ step: 'notes', courseId, courseName: ''});
+        }} />
+        <button
+          type="button"
+          onClick={() => setShowDM(true)}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
+          <span>Messages</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowSearch(true)}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span>Find Match</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowClassmates(true)}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span>Classmates</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowFriendsList(true)}
+          className="profile-button-like"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <span>Friends</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowFriendRequests(true)}
+          className="profile-button-like"
+          style={{ position: 'relative' }}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+          </svg>
+          <span>Requests</span>
+          {pendingRequestCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              {pendingRequestCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* ── Top Nav Bar ── */}

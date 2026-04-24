@@ -350,7 +350,7 @@ router.post('/study-plan/generate', protect, async (req, res) => {
         if (!model) {
             return res.status(500).json({ error: 'AI model not configured' });
         }
-        const { courses, preferredStudyHours, busySlots, weekStartDate } = req.body;
+        const { courses, preferredStudyHours, busySlots, weekStartDate, startDate } = req.body;
         if (!Array.isArray(courses) || courses.length === 0) {
             return res.status(400).json({ error: 'At least one course is required' });
         }
@@ -389,15 +389,21 @@ router.post('/study-plan/generate', protect, async (req, res) => {
         const busyInfo = allBusySlots.length > 0 ? allBusySlots.map((slot) => `- ${slot.day} from ${slot.startTime} to ${slot.endTime} (${slot.label || 'Busy'})`).join('\n') : 'None';
         const studyStart = preferredStudyHours?.startTime;
         const studyEnd = preferredStudyHours?.endTime;
-        const prompt = `You are a study planner for a college student at Purdue University. Create a weekly study study plan.
+        const planStart = startDate || new Date().toISOString().split('T')[0];
+        const examDates = courses.map(c => new Date(c.examDate));
+        const latestExam = new Date(Math.max(...examDates))
+        const planEnd = new Date(latestExam)
+        planEnd.setDate(planEnd.getDate() - 1)
+        const planEndStr = planEnd.toISOString().split('T')[0];
+        const prompt = `You are a study planner for a college student at Purdue University. Create a study plan from ${planStart} to ${planEndStr}.
         Only return a valid JSOn object with exactly this shape:
         {
             "blocks": [
-                { "day": "Monday", "startTime": "09:00", "endTime": "10:30", "courseCode": "CS 381", "topic": "Graph Algorithms Review" }
+                { "day": "2026-04-23", "startTime": "09:00", "endTime": "10:30", "courseCode": "CS 408", "topic": "Fuzzing Review" }
             ]
         }
         Rules:
-        - Days are one of Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+        - "day" must be an actual date string in YYYY-MM-DD format, between ${planStart} and ${planEndStr}
         - Study blocks must be between the preferred study hours ${studyStart} - ${studyEnd})
         - Do not schedule study blocks during busy times: ${busyInfo}
         - Times must be in EST and 24 hour format

@@ -54,6 +54,14 @@ function createOtpEmailContent(code) {
     };
 }
 
+function createNotificationEmailContent(message) {
+    return {
+        subject: 'BoilerSpace notification',
+        text: message,
+        html: `<p>${message}</p>`,
+    };
+}
+
 async function sendEmail({ toEmail, content }) {
     const fromEmail = process.env.PASSWORD_RESET_FROM_EMAIL || process.env.SMTP_USER;
     const transportConfig = createTransportConfig();
@@ -109,10 +117,22 @@ async function sendOtpEmail({ toEmail, code }) {
     return result;
 }
 
+async function sendNotificationEmail({ toEmail, message }) {
+    const result = await sendEmail({ toEmail, content: createNotificationEmailContent(message) });
+
+    if (result.mocked) {
+        console.log(`Notification for ${toEmail}: ${message}`);
+    }
+
+    return result;
+}
+    
+
 module.exports = {
     createTransportConfig,
     createResetEmailContent,
     createOtpEmailContent,
     sendPasswordResetEmail,
     sendOtpEmail,
+    sendNotificationEmail,
 };

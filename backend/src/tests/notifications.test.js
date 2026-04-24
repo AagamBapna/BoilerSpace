@@ -271,3 +271,258 @@ describe('Notification trigger on checkout', () => {
         expect(notifications).toHaveLength(0);
     });
 });
+
+describe('Notification trigger on note upload', () => {
+    test('creates noteUpload notification for enrolled users', async () => {
+        const Course = require('../models/Course');
+        const Note = require('../models/Note');
+        const { sendNotification } = require('../services/NotificationService');
+
+        const course = await Course.create({
+            courseCode: 'CS 251', department: 'CS', title: 'Data Structures', semester: 'Spring 2026',
+        });
+
+        // Enroll user in course
+        user.courses = [course._id];
+        await user.save();
+
+        const uploader = await User.create({
+            email: 'uploader@purdue.edu', password: 'password123',
+            displayName: 'Uploader', major: 'CS', year: 'Junior',
+        });
+
+        // Simulate what notes.js does after upload
+        await sendNotification({
+            userId: user._id,
+            type: 'noteUpload',
+            message: `A new note "Lecture 5" has been uploaded for CS CS 251.`,
+            courseId: course._id,
+        });
+
+        const notifications = await Notification.find({ userId: user._id });
+        expect(notifications).toHaveLength(1);
+        expect(notifications[0].type).toBe('noteUpload');
+        expect(notifications[0].courseId.toString()).toBe(course._id.toString());
+        expect(notifications[0].message).toContain('Lecture 5');
+    });
+
+    test('does not notify when noteUploads preference is disabled', async () => {
+        const Course = require('../models/Course');
+        const { sendNotification } = require('../services/NotificationService');
+
+        const course = await Course.create({
+            courseCode: 'CS 252', department: 'CS', title: 'Systems Programming', semester: 'Spring 2026',
+        });
+
+        user.notificationSettings.noteUploads = false;
+        await user.save();
+
+        const result = await sendNotification({
+            userId: user._id,
+            type: 'noteUpload',
+            message: 'New note uploaded',
+            courseId: course._id,
+        });
+
+        expect(result).toBeNull();
+        const notifications = await Notification.find({ userId: user._id });
+        expect(notifications).toHaveLength(0);
+    });
+});
+
+describe('Notification trigger on event creation', () => {
+    test('creates event notification for club members', async () => {
+        const Club = require('../models/Club');
+        const Event = require('../models/Event');
+        const { sendNotification } = require('../services/NotificationService');
+
+        const club = await Club.create({
+            name: 'CS Club', category: 'Academic',
+            organizerIds: [user._id],
+        });
+
+        const event = await Event.create({
+            title: 'Hackathon', description: 'Annual hackathon',
+            date: '2026-05-01', time: '10:00', location: 'WALC',
+            clubId: club._id,
+        });
+
+        const member = await User.create({
+            email: 'member@purdue.edu', password: 'password123',
+            displayName: 'Member', major: 'CS', year: 'Sophomore',
+            clubIds: [club._id.toString()],
+        });
+
+        await sendNotification({
+            userId: member._id,
+            type: 'event',
+            message: `New event "Hackathon" created in CS Club.`,
+            eventId: event._id,
+        });
+
+        const notifications = await Notification.find({ userId: member._id });
+        expect(notifications).toHaveLength(1);
+        expect(notifications[0].type).toBe('event');
+        expect(notifications[0].eventId.toString()).toBe(event._id.toString());
+    });
+
+    test('does not notify when events preference is disabled', async () => {
+        const { sendNotification } = require('../services/NotificationService');
+
+        user.notificationSettings.events = false;
+        await user.save();
+
+        const result = await sendNotification({
+            userId: user._id,
+            type: 'event',
+            message: 'New event created',
+        });
+
+        expect(result).toBeNull();
+    });
+});
+
+describe('Notification global mute', () => {
+    test('creates notification but suppresses push when global mute is enabled', async () => {
+        const { sendNotification } = require('../services/NotificationService');
+
+        user.notificationSettings.globalMute = true;
+        await user.save();
+
+        const result = await sendNotification({
+            userId: user._id,
+            type: 'noteUpload',
+            message: 'Should be muted',
+        });
+
+        expect(result).toBeDefined();
+        const notifications = await Notification.find({ userId: user._id });
+        expect(notifications).toHaveLength(1);
+    });
+});
+
+describe('GET /api/notifications populates courseId and eventId', () => {
+    test('populates courseId fields', async () => {
+        const Course = require('../models/Course');
+        const course = await Course.create({
+            courseCode: 'CS 373', department: 'CS', title: 'Data Mining', semester: 'Spring 2026',
+        });
+
+        await Notification.create({
+            userId: user._id,
+            type: 'noteUpload',
+            message: 'New note in CS 373',
+            courseId: course._id,
+        });
+
+        const res = await request(app)
+            .get('/api/notifications')
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body[0].courseId).toBeDefined();
+        expect(res.body[0].courseId.courseCode).toBe('CS 373');
+    });
+
+    test('populates eventId fields', async () => {
+        const Club = require('../models/Club');
+        const Event = require('../models/Event');
+
+        const club = await Club.create({
+            name: 'Test Club', category: 'Social',
+            organizerIds: [user._id],
+        });
+        const event = await Event.create({
+            title: 'Game Night', description: 'Fun',
+            date: '2026-05-15', time: '19:00', location: 'PMU',
+            clubId: club._id,
+        });
+
+        await Notification.create({
+            userId: user._id,
+            type: 'event',
+            message: 'New event: Game Night',
+            eventId: event._id,
+        });
+
+        const res = await request(app)
+            .get('/api/notifications')
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body[0].eventId).toBeDefined();
+        expect(res.body[0].eventId.title).toBe('Game Night');
+    });
+});
+
+describe('Focus Mode (mute with timer)', () => {
+    test('still creates notification in DB when user is muted', async () => {
+        const { sendNotification } = require('../services/NotificationService');
+
+        user.notificationSettings.globalMute = true;
+        user.notificationSettings.muteExpiresAt = new Date(Date.now() + 30 * 60000); // 30 min from now
+        await user.save();
+
+        const result = await sendNotification({
+            userId: user._id,
+            type: 'noteUpload',
+            message: 'Note uploaded while muted',
+            courseId: building._id, // just reusing an ObjectId
+        });
+
+        // Notification should still be saved to DB
+        expect(result).not.toBeNull();
+        const notifications = await Notification.find({ userId: user._id });
+        expect(notifications).toHaveLength(1);
+        expect(notifications[0].message).toContain('muted');
+    });
+
+    test('auto-unmutes when muteExpiresAt is in the past', async () => {
+        const { sendNotification } = require('../services/NotificationService');
+
+        user.notificationSettings.globalMute = true;
+        user.notificationSettings.muteExpiresAt = new Date(Date.now() - 1000); // expired 1 second ago
+        await user.save();
+
+        await sendNotification({
+            userId: user._id,
+            type: 'noteUpload',
+            message: 'Note after mute expired',
+        });
+
+        // User should be auto-unmuted
+        const updated = await User.findById(user._id);
+        expect(updated.notificationSettings.globalMute).toBe(false);
+        expect(updated.notificationSettings.muteExpiresAt).toBeNull();
+    });
+
+    test('stays muted when muteExpiresAt is in the future', async () => {
+        user.notificationSettings.globalMute = true;
+        user.notificationSettings.muteExpiresAt = new Date(Date.now() + 60 * 60000); // 1 hour from now
+        await user.save();
+
+        const updated = await User.findById(user._id);
+        expect(updated.notificationSettings.globalMute).toBe(true);
+    });
+
+    test('indefinite mute (null muteExpiresAt) stays muted', async () => {
+        const { sendNotification } = require('../services/NotificationService');
+
+        user.notificationSettings.globalMute = true;
+        user.notificationSettings.muteExpiresAt = null;
+        await user.save();
+
+        const result = await sendNotification({
+            userId: user._id,
+            type: 'noteUpload',
+            message: 'Note during indefinite mute',
+        });
+
+        // Still saved to DB
+        expect(result).not.toBeNull();
+
+        // Still muted (not auto-cleared)
+        const updated = await User.findById(user._id);
+        expect(updated.notificationSettings.globalMute).toBe(true);
+    });
+});

@@ -1,7 +1,5 @@
 const mongoose = require('mongoose');
 
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
 const studyPlanSchema = new mongoose.Schema(
     {
         userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -16,13 +14,13 @@ const studyPlanSchema = new mongoose.Schema(
             endTime: { type: String, default: '19:00' },
         },
         busySlots: [{
-            day: { type: String, enum: days, required: true },
+            day: { type: String, required: true },
             startTime: { type: String, required: true },
             endTime: { type: String, required: true },
             label: { type: String, default: '' },
         }],
         blocks: [{
-            day: { type: String, enum: days, required: true },
+            day: { type: String, required: true },
             startTime: { type: String, required: true },
             endTime: { type: String, required: true },
             courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },

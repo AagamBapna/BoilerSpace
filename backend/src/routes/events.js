@@ -4,6 +4,9 @@ const router = express.Router();
 const Club = require('../models/Club');
 const Event = require('../models/Event');
 const Announcement = require('../models/Announcement');
+const { protect } = require('../middleware/auth'); // only protect now
+const User = require('../models/User');
+const { sendNotification } = require('../services/NotificationService');
 const { protect } = require('../middleware/auth');
 const { normalizeRecurrence, generateRecurringDates, isRecurringSeries, normalizeDateInput } = require('../utils/recurrence');
 
@@ -201,21 +204,33 @@ router.post('/', protect, async (req, res) => {
     if (recurrence.type !== 'none' && !recurrence.endDate) {
       return res.status(400).json({ error: 'Validation failed', fields: { recurrence: 'Recurring events require an end date' } });
     }
-
     if (recurrence.endDate && recurrence.endDate < normalizedDate) {
       return res.status(400).json({ error: 'Validation failed', fields: { recurrence: 'End date must be on or after the event date' } });
     }
-
     const dates = generateRecurringDates({ startDate: normalizedDate, recurrence });
     if (dates.length === 0) {
       return res.status(400).json({ error: 'Validation failed', fields: { recurrence: 'Recurring events require a valid start date and day of week' } });
     }
     const recurrenceGroupId = recurrence.type === 'none' ? null : new mongoose.Types.ObjectId().toString();
     const payloads = dates.map((eventDate) => buildEventPayload(req.body, club._id, eventDate, recurrence, recurrenceGroupId));
-
     const createdEvents = await Event.insertMany(payloads);
     const populated = await populateEvents(createdEvents);
-
+    (async () => {
+      try {
+        const members = await User.find({ clubIds: club._id.toString(), _id: { $ne: req.user.id } });
+        const anchorEvent = createdEvents[0]; 
+        for (const member of members) {
+          await sendNotification({
+            userId: member._id,
+            type: 'event',
+            message: `New event "${anchorEvent.title}" created in ${club.name}.`,
+            eventId: anchorEvent._id,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to send notifications for new event:', err);
+      }
+    })();
     return res.status(201).json(dates.length === 1 ? populated[0] : populated);
   } catch (err) {
     console.error(err);

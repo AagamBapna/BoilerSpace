@@ -17,7 +17,7 @@ const notificationSchema = new mongoose.Schema(
         },
         type: {
             type: String,
-            enum: ['roomCapacity', 'sessionReminder', 'message', 'event', 'organizationUpdate'],
+            enum: ['roomCapacity', 'sessionReminder', 'message', 'event', 'organizationUpdate', 'noteUpload'],
             default: 'roomCapacity',
         },
         message: {
@@ -27,6 +27,14 @@ const notificationSchema = new mongoose.Schema(
         read: {
             type: Boolean,
             default: false,
+        },
+        courseId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Course',
+        },
+        eventId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Event',
         },
     },
     { timestamps: true }

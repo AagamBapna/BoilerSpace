@@ -128,10 +128,18 @@ const userSchema = new mongoose.Schema(
                 type: Boolean,
                 default: true,
             },
+            noteUploads: {
+                type: Boolean,
+                default: true,
+            },
             globalMute: {
                 type: Boolean,
                 default: false,
             },
+            muteExpiresAt: {
+                type: Date,
+                default: null,
+            }
         },
         availability: [{
             day: {
