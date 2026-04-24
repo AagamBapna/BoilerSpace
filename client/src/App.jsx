@@ -409,9 +409,8 @@ export default function App() {
           isQuietZonesOnly={isQuietZonesOnly}
           setIsQuietZonesOnly={setIsQuietZonesOnly}
         />
-        <NotificationBell isMuted={user?.notificationSettings?.globalMute} onSelectBuilding={handleSelectBuilding} buildings={buildings} socket={socketRef} onOpenCourseNotes={(courseId) => 
-        {
-          setNotesView({ step: 'notes', courseId, courseName: ''});
+        <NotificationBell isMuted={user?.notificationSettings?.globalMute} onSelectBuilding={handleSelectBuilding} buildings={buildings} socket={socketRef} onOpenCourseNotes={(courseId) => {
+          setNotesView({ step: 'notes', courseId, courseName: '' });
         }} />
         <button
           type="button"
@@ -502,7 +501,13 @@ export default function App() {
             onClick={() => setShowStudyTime(true)}
           />
 
-          <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} />
+          <NotificationBell
+            isMuted={user?.notificationSettings?.globalMute}
+            onSelectBuilding={handleSelectBuilding}
+            buildings={buildings}
+            socket={socketRef}
+            onOpenCourseNotes={(courseId) => setNotesView({ step: 'notes', courseId, courseName: '' })}
+          />
 
           <button onClick={() => setNavExpanded(!navExpanded)} className="h-10 px-5 bg-[var(--color-surface-light)] border border-[var(--color-purdue-gold)]/20 rounded-xl shadow-lg flex items-center gap-2.5 text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-primary)]">
             <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

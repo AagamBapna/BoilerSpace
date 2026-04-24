@@ -83,6 +83,9 @@ beforeEach(async () => {
     const loginRes = await request(app)
         .post('/api/auth/login')
         .send({ email: testUser.email, password: testUser.password });
+    if (!loginRes.body.user) {
+        throw new Error('Login 1 Failed: ' + JSON.stringify(loginRes.body));
+    }
     token = loginRes.body.token;
     userId = loginRes.body.user.id;
 
@@ -91,6 +94,9 @@ beforeEach(async () => {
     const loginRes2 = await request(app)
         .post('/api/auth/login')
         .send({ email: secondUser.email, password: secondUser.password });
+    if (!loginRes2.body.user) {
+        throw new Error('Login 2 Failed: ' + JSON.stringify(loginRes2.body));
+    }
     secondToken = loginRes2.body.token;
     secondUserId = loginRes2.body.user.id;
 
