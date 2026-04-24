@@ -179,6 +179,10 @@ const userSchema = new mongoose.Schema(
         pendingClubIds: { type: [String], default: [] },
         // clubs the user was removed from or rejected from
         removedClubIds: { type: [String], default: [] },
+        muteExpiresAt: {
+            type: Date,
+            default: null,
+        }
     },
     { timestamps: true }
 );

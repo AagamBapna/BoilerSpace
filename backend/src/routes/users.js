@@ -532,7 +532,7 @@ router.put('/:id/notifications/preferences', protect, async (req, res) => {
             return res.status(403).json({ error: 'You can only update your own notification preferences' });
         }
 
-        const allowedFields = ['sessionReminders', 'messages', 'events', 'organizationUpdates', 'globalMute'];
+        const allowedFields = ['sessionReminders', 'messages', 'events', 'organizationUpdates', 'globalMute', 'noteUploads', 'muteExpiresAt'];
         const updates = {};
 
         for (const field of allowedFields) {
@@ -541,6 +541,17 @@ router.put('/:id/notifications/preferences', protect, async (req, res) => {
                     return res.status(400).json({ error: `${field} must be a boolean` });
                 }
                 updates[`notificationSettings.${field}`] = req.body[field];
+            }
+        }
+        if (req.body.muteExpiresAt !== undefined) {
+            if (req.body.muteExpiresAt === null) {
+                updates['notificationSettings.muteExpiresAt'] = null;
+            } else {
+                const expiry = new Date(req.body.muteExpiresAt);
+                if (isNaN(expiry.getTime())) {
+                    return res.status(400).json({ error: 'muteExpiresAt must be a valid date or null' });
+                }
+                updates['notificationSettings.muteExpiresAt'] = expiry;
             }
         }
 

@@ -23,7 +23,18 @@ async function shouldNotify(userId, type) {
     const settings = user.notificationSettings || {};
 
     // Global mute suppresses everything
-    if (settings.globalMute) return false;
+    if (settings.globalMute) {
+        if (settings.muteExpiresAt && new Date(settings.muteExpiresAt) < new Date()) {
+            await User.findByIdAndUpdate(userId, {
+                $set: {
+                    'notificationSettings.globalMute': false,
+                    'notificationSettings.muteExpiresAt': null
+                },
+            });
+        } else {
+            return false;
+        }
+    }
 
     // Check the specific category flag
     const settingKey = TYPE_TO_SETTING[type];
@@ -44,8 +55,15 @@ async function shouldNotify(userId, type) {
  * @returns {Object|null} The created notification, or null if suppressed
  */
 async function sendNotification({ userId, type, message, roomId, buildingId, courseId, eventId }) {
-    const allowed = await shouldNotify(userId, type);
-    if (!allowed) return null;
+    const user = await User.findById(userId).select('notificationSettings email');
+    if (!user) {
+        return null;
+    }
+    const settings = user.notificationSettings || {};
+    const settingKey = TYPE_TO_SETTING[type];
+    if (settingKey && settings[settingKey] === false) {
+        return null;
+    }
 
     // Build notification document fields
     const notificationData = { userId, message, type: type || 'roomCapacity', courseId, eventId };
@@ -55,24 +73,31 @@ async function sendNotification({ userId, type, message, roomId, buildingId, cou
     if (eventId) notificationData.eventId = eventId;
 
     const notification = await Notification.create(notificationData);
-    const recipientUser = await User.findById(userId).select('email');
-    (async () => {
-        try {
-            await sendNotificationEmail({ toEmail: recipientUser?.email, message });
-        } catch (error) {
-            console.error('Error sending notification email:', error);
-        }
-    })();
-
-    // Emit real-time event via Socket.io if available
-    const io = getIO();
-    if (io) {
-        io.to(userId.toString()).emit('notification', {
-            type,
-            notification,
+    let isMuted = settings.globalMute;
+    if (isMuted && settings.muteExpiresAt && new Date(settings.muteExpiresAt) < new Date()) {
+        await User.findByIdAndUpdate(userId, {
+            $set: {
+                'notificationSettings.globalMute': false,
+                'notificationSettings.muteExpiresAt': null
+            },
         });
+        isMuted = false;
     }
-
+    if (!isMuted) {
+        (async () => {
+            try {
+                await sendNotificationEmail({
+                    toEmail: user.email, message
+                });
+            } catch (error) {
+                console.error('Error sending notification email', error)
+            }
+        })();
+        const io = getIO();
+        if (io) {
+            io.to(userId.toString()).emit('notification', { type, notification });
+        }
+    }
     return notification;
 }
 
