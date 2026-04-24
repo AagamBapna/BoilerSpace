@@ -4,8 +4,8 @@ const { protect } = require('../middleware/auth');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../models/User');
-const { usersExist, hasBlockedRelationship } = require('../utils/messageAccess');
-const { emitMessageDeleted } = require('../config/socket');
+const { usersExist, hasBlockedRelationship, areFriends } = require('../utils/messageAccess');
+const { emitMessageDeleted, emitConversationAccepted, getIO } = require('../config/socket');
 const DELETED_MESSAGE_PLACEHOLDER = 'This message was deleted';
 
 router.post('/', protect, async (req, res) => {
@@ -37,10 +37,19 @@ router.post('/', protect, async (req, res) => {
         }).populate('participants', 'displayName email profilePictureUrl');
 
         if (conversation) {
+            if (conversation.status === 'rejected') {
+                return res.status(403).json({ error: 'Cannot start conversation — request was previously rejected' });
+            }
             return res.json(conversation);
         }
 
-        conversation = await Conversation.create({ participants: sorted });
+        const friends = await areFriends(req.user._id, participantId);
+
+        conversation = await Conversation.create({
+            participants: sorted,
+            status: friends ? 'accepted' : 'pending',
+            initiator: friends ? null : req.user._id,
+        });
         conversation = await Conversation.findById(conversation._id)
             .populate('participants', 'displayName email profilePictureUrl');
 
@@ -55,6 +64,7 @@ router.get('/', protect, async (req, res) => {
     try {
         const conversations = await Conversation.find({
             participants: req.user._id,
+            status: 'accepted',
         })
             .populate('participants', 'displayName email profilePictureUrl')
             .sort({ updatedAt: -1 });
@@ -74,6 +84,188 @@ router.get('/', protect, async (req, res) => {
     } catch (err) {
         console.error('List conversations error:', err.message);
         res.status(500).json({ error: 'Failed to load conversations' });
+    }
+});
+
+router.get('/search', protect, async (req, res) => {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 50);
+
+    if (!q) {
+        return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    try {
+        const conversations = await Conversation.find({
+            participants: req.user._id,
+            status: 'accepted',
+        }).populate('participants', 'displayName email profilePictureUrl');
+
+        if (conversations.length === 0) {
+            return res.json({ groups: [], page, totalPages: 1, total: 0, query: q });
+        }
+
+        const convMap = new Map();
+        const convIds = [];
+        conversations.forEach((conv) => {
+            const other = conv.participants.find(
+                (p) => p._id.toString() !== req.user._id.toString()
+            );
+            convMap.set(conv._id.toString(), {
+                _id: conv._id,
+                otherUser: other || null,
+                updatedAt: conv.updatedAt,
+            });
+            convIds.push(conv._id);
+        });
+
+        const filter = {
+            conversationId: { $in: convIds },
+            isDeleted: false,
+            $text: { $search: q },
+        };
+
+        const total = await Message.countDocuments(filter);
+        const matches = await Message.find(filter, { score: { $meta: 'textScore' } })
+            .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .populate('sender', 'displayName email profilePictureUrl');
+
+        const grouped = new Map();
+        matches.forEach((msg) => {
+            const key = msg.conversationId.toString();
+            if (!grouped.has(key)) {
+                grouped.set(key, {
+                    conversation: convMap.get(key),
+                    matches: [],
+                });
+            }
+            grouped.get(key).matches.push(msg);
+        });
+
+        const groups = Array.from(grouped.values()).sort(
+            (a, b) => new Date(b.conversation.updatedAt) - new Date(a.conversation.updatedAt)
+        );
+
+        res.json({
+            groups,
+            page,
+            totalPages: Math.max(Math.ceil(total / limit), 1),
+            total,
+            query: q,
+        });
+    } catch (err) {
+        console.error('Global message search error:', err.message);
+        res.status(500).json({ error: 'Failed to search messages' });
+    }
+});
+
+router.get('/requests', protect, async (req, res) => {
+    try {
+        const requests = await Conversation.find({
+            participants: req.user._id,
+            status: 'pending',
+            initiator: { $ne: req.user._id },
+        })
+            .populate('participants', 'displayName email profilePictureUrl')
+            .sort({ updatedAt: -1 });
+
+        const withPreview = await Promise.all(
+            requests.map(async (conv) => {
+                const firstMessage = await Message.findOne({ conversationId: conv._id })
+                    .sort({ createdAt: 1 })
+                    .select('text createdAt');
+                return { ...conv.toObject(), messagePreview: firstMessage };
+            })
+        );
+
+        res.json(withPreview);
+    } catch (err) {
+        console.error('List requests error:', err.message);
+        res.status(500).json({ error: 'Failed to load requests' });
+    }
+});
+
+router.post('/:id/accept', protect, async (req, res) => {
+    try {
+        const conversation = await Conversation.findById(req.params.id);
+        if (!conversation) {
+            return res.status(404).json({ error: 'Conversation not found' });
+        }
+
+        if (!conversation.participants.some(p => p.toString() === req.user._id.toString())) {
+            return res.status(403).json({ error: 'Not a participant in this conversation' });
+        }
+
+        if (conversation.initiator && conversation.initiator.toString() === req.user._id.toString()) {
+            return res.status(403).json({ error: 'Only the recipient can accept a conversation request' });
+        }
+
+        if (conversation.status !== 'pending') {
+            return res.status(400).json({ error: 'This conversation is not pending' });
+        }
+
+        conversation.status = 'accepted';
+        await conversation.save();
+
+        const populated = await Conversation.findById(conversation._id)
+            .populate('participants', 'displayName email profilePictureUrl');
+
+        const queuedMessages = await Message.find({ conversationId: conversation._id })
+            .sort({ createdAt: 1 })
+            .populate('sender', 'displayName email profilePictureUrl');
+
+        const io = getIO();
+        if (io && queuedMessages.length > 0) {
+            io.to(req.user._id.toString()).emit('conversationAccepted', {
+                conversationId: conversation._id.toString(),
+                conversation: populated,
+                messages: queuedMessages,
+            });
+        }
+
+        if (conversation.initiator) {
+            emitConversationAccepted({
+                conversationId: conversation._id.toString(),
+                initiatorId: conversation.initiator.toString(),
+            });
+        }
+
+        res.json(populated);
+    } catch (err) {
+        console.error('Accept conversation error:', err.message);
+        res.status(500).json({ error: 'Failed to accept conversation' });
+    }
+});
+
+router.post('/:id/reject', protect, async (req, res) => {
+    try {
+        const conversation = await Conversation.findById(req.params.id);
+        if (!conversation) {
+            return res.status(404).json({ error: 'Conversation not found' });
+        }
+
+        if (!conversation.participants.some(p => p.toString() === req.user._id.toString())) {
+            return res.status(403).json({ error: 'Not a participant in this conversation' });
+        }
+
+        if (conversation.initiator && conversation.initiator.toString() === req.user._id.toString()) {
+            return res.status(403).json({ error: 'Only the recipient can reject a conversation request' });
+        }
+
+        if (conversation.status !== 'pending') {
+            return res.status(400).json({ error: 'This conversation is not pending' });
+        }
+
+        conversation.status = 'rejected';
+        await conversation.save();
+
+        res.json(conversation);
+    } catch (err) {
+        console.error('Reject conversation error:', err.message);
+        res.status(500).json({ error: 'Failed to reject conversation' });
     }
 });
 
@@ -117,6 +309,79 @@ router.get('/:id/messages', protect, async (req, res) => {
     }
 });
 
+router.get('/:id/search', protect, async (req, res) => {
+    const { id } = req.params;
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 50);
+
+    if (!q) {
+        return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    try {
+        const conversation = await Conversation.findById(id);
+        if (!conversation) {
+            return res.status(404).json({ error: 'Conversation not found' });
+        }
+
+        if (!conversation.participants.some(p => p.toString() === req.user._id.toString())) {
+            return res.status(403).json({ error: 'Not a participant in this conversation' });
+        }
+
+        const participantIds = conversation.participants.map((p) => p.toString());
+        const allParticipantsExist = await usersExist(participantIds);
+        if (!allParticipantsExist) {
+            return res.status(404).json({ error: 'Conversation has a participant that no longer exists' });
+        }
+
+        const filter = {
+            conversationId: id,
+            isDeleted: false,
+            $text: { $search: q },
+        };
+
+        const total = await Message.countDocuments(filter);
+        const matches = await Message.find(filter, { score: { $meta: 'textScore' } })
+            .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .populate('sender', 'displayName email profilePictureUrl');
+
+        const results = await Promise.all(matches.map(async (match) => {
+            const [above, below] = await Promise.all([
+                Message.findOne({
+                    conversationId: id,
+                    isDeleted: false,
+                    createdAt: { $lt: match.createdAt },
+                })
+                    .sort({ createdAt: -1 })
+                    .populate('sender', 'displayName email profilePictureUrl'),
+                Message.findOne({
+                    conversationId: id,
+                    isDeleted: false,
+                    createdAt: { $gt: match.createdAt },
+                })
+                    .sort({ createdAt: 1 })
+                    .populate('sender', 'displayName email profilePictureUrl'),
+            ]);
+
+            return { match, above, below };
+        }));
+
+        res.json({
+            results,
+            page,
+            totalPages: Math.max(Math.ceil(total / limit), 1),
+            total,
+            query: q,
+        });
+    } catch (err) {
+        console.error('Conversation search error:', err.message);
+        res.status(500).json({ error: 'Failed to search conversation' });
+    }
+});
+
 router.post('/:id/messages', protect, async (req, res) => {
     const { id } = req.params;
     const { text, isDisappearing = false, disappearingDurationSeconds } = req.body;
@@ -149,6 +414,14 @@ router.post('/:id/messages', protect, async (req, res) => {
 
         if (!conversation.participants.some(p => p.toString() === req.user._id.toString())) {
             return res.status(403).json({ error: 'Not a participant in this conversation' });
+        }
+
+        if (conversation.status === 'rejected') {
+            return res.status(403).json({ error: 'This conversation request was rejected' });
+        }
+
+        if (conversation.status === 'pending' && conversation.initiator && conversation.initiator.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'Cannot send messages — accept the request first' });
         }
 
         const participantIds = conversation.participants.map((p) => p.toString());
@@ -268,12 +541,31 @@ router.put('/:id/read', protect, async (req, res) => {
             return res.status(403).json({ error: 'Not a participant in this conversation' });
         }
 
+        const now = new Date();
+
         await Message.updateMany(
             {
                 conversationId: id,
+                sender: { $ne: req.user._id },
                 readBy: { $ne: req.user._id },
+                readAt: null,
             },
-            { $addToSet: { readBy: req.user._id } }
+            {
+                $addToSet: { readBy: req.user._id },
+                $set: { readAt: now },
+            }
+        );
+
+        await Message.updateMany(
+            {
+                conversationId: id,
+                sender: { $ne: req.user._id },
+                readBy: { $ne: req.user._id },
+                readAt: { $ne: null },
+            },
+            {
+                $addToSet: { readBy: req.user._id },
+            }
         );
 
         res.json({ message: 'Messages marked as read' });

@@ -51,7 +51,7 @@ beforeEach(async () => {
         name: 'WALC 1018',
         floor: 1,
         capacity: 10,
-        noiseLevel: 'moderate',
+        noiseClassification: 'Moderate',
     });
 });
 

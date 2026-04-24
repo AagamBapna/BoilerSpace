@@ -12,13 +12,14 @@ vi.mock('axios', () => ({
 }));
 
 describe('formatRelative', () => {
+    const fixedNow = new Date('2026-03-28T12:00:00Z').getTime();
+
     beforeEach(() => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date('2026-03-28T12:00:00Z'));
+        vi.spyOn(Date, 'now').mockReturnValue(fixedNow);
     });
 
     afterEach(() => {
-        vi.useRealTimers();
+        vi.restoreAllMocks();
     });
 
     test('returns "N/A" for null', () => {
@@ -100,7 +101,7 @@ describe('Room timestamp UI rendering', () => {
                 name: 'LWSN B134',
                 floor: 0,
                 capacity: 200,
-                noiseLevel: 'loud',
+                noiseClassification: 'Collaborative',
                 amenities: [],
                 currentOccupancy: 0,
                 lastStatusUpdate: null,
@@ -121,8 +122,7 @@ describe('Room timestamp UI rendering', () => {
     });
 
     test('AC1: shows relative timestamp when room has lastStatusUpdate', () => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date('2026-03-28T12:00:00Z'));
+        vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-03-28T12:00:00Z').getTime());
 
         const bookmarks = [
             {
@@ -130,7 +130,7 @@ describe('Room timestamp UI rendering', () => {
                 name: 'WALC 1018',
                 floor: 1,
                 capacity: 30,
-                noiseLevel: 'moderate',
+                noiseClassification: 'Moderate',
                 amenities: [],
                 currentOccupancy: 5,
                 lastStatusUpdate: new Date('2026-03-28T11:55:00Z').toISOString(),
@@ -149,7 +149,7 @@ describe('Room timestamp UI rendering', () => {
 
         expect(screen.getByText(/Last updated: 5 min ago/)).toBeInTheDocument();
 
-        vi.useRealTimers();
+        vi.restoreAllMocks();
     });
 
     test('AC2: timestamp element has tooltip with absolute date including timezone', () => {
@@ -160,7 +160,7 @@ describe('Room timestamp UI rendering', () => {
                 name: 'HAMP 2201',
                 floor: 2,
                 capacity: 50,
-                noiseLevel: 'quiet',
+                noiseClassification: 'Quiet',
                 amenities: [],
                 currentOccupancy: 3,
                 lastStatusUpdate: lastUpdate,

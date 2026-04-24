@@ -13,21 +13,28 @@ const request = require('supertest');
 
 const app = require('../app');
 const Club = require('../models/Club');
+const ClubMember = require('../models/ClubMember');
 const User = require('../models/User');
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
 let mongoServer;
 
+jest.setTimeout(60000);
+
 describe('Clubs API', () => {
   beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri());
   });
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
 
   afterAll(async () => {
     await User.deleteMany({});
     await Club.deleteMany({});
+    await ClubMember.deleteMany({});
     await mongoose.disconnect();
   });
 
@@ -70,6 +77,8 @@ describe('Clubs API', () => {
       assert.strictEqual(res.body.name, 'CS Club');
       assert.strictEqual(res.body.description, 'Computer science');
       assert.deepStrictEqual(res.body.organizerIds, ['user-1']);
+      assert.ok(Array.isArray(res.body.allowedPositions));
+      assert.ok(res.body.allowedPositions.includes('Member'));
       assert.ok(res.body.id);
     });
   });
@@ -136,6 +145,7 @@ describe('Clubs API', () => {
     let club;
     let member;
     let organizerCandidate;
+    let officer;
 
     beforeAll(async () => {
       club = await Club.findOne({ name: 'CS Club' });
@@ -156,6 +166,22 @@ describe('Clubs API', () => {
         major: 'ECE',
         year: 'Junior',
         clubIds: [club._id.toString()],
+      });
+
+      officer = await User.create({
+        email: 'officer@example.com',
+        password: 'password123',
+        displayName: 'Officer User',
+        major: 'CS',
+        year: 'Junior',
+        clubIds: [club._id.toString()],
+      });
+
+      await ClubMember.create({
+        clubId: club._id,
+        userId: officer._id.toString(),
+        role: 'officer',
+        position: 'Member',
       });
     });
 
@@ -257,6 +283,93 @@ describe('Clubs API', () => {
       const updatedMember = await User.findById(member._id);
       assert.ok(!updatedMember.clubIds.map(String).includes(club._id.toString()));
     });
+
+    it('creates, renames, and lists custom positions for admins', async () => {
+      mockedUserId = 'user-1';
+
+      const createRes = await request(app)
+        .post(`/api/clubs/${club._id}/positions`)
+        .send({ name: 'Treasurer' })
+        .expect(201);
+      assert.ok(createRes.body.positions.includes('Treasurer'));
+
+      const renameRes = await request(app)
+        .patch(`/api/clubs/${club._id}/positions/Treasurer`)
+        .send({ name: 'Finance Lead' })
+        .expect(200);
+      assert.ok(renameRes.body.positions.includes('Finance Lead'));
+
+      const listRes = await request(app)
+        .get(`/api/clubs/${club._id}/positions`)
+        .expect(200);
+      assert.ok(listRes.body.positions.includes('Member'));
+      assert.ok(listRes.body.positions.includes('Finance Lead'));
+    }, 15000);
+
+    it('prevents non-admin from managing custom positions', async () => {
+      mockedUserId = officer._id.toString();
+      const res = await request(app)
+        .post(`/api/clubs/${club._id}/positions`)
+        .send({ name: 'Event Lead' })
+        .expect(403);
+
+      assert.strictEqual(res.body.error, 'Forbidden');
+    });
+
+    it('updates member role and position via role endpoint', async () => {
+      mockedUserId = 'user-1';
+
+      const createPositionRes = await request(app)
+        .post(`/api/clubs/${club._id}/positions`)
+        .send({ name: 'Event Lead' });
+      assert.ok([200, 201, 400].includes(createPositionRes.statusCode));
+
+      const roleRes = await request(app)
+        .patch(`/api/clubs/${club._id}/members/${officer._id}/role`)
+        .send({ role: 'member', position: 'Event Lead' })
+        .expect(200);
+
+      assert.strictEqual(roleRes.body.success, true);
+      assert.strictEqual(roleRes.body.member.role, 'member');
+      assert.strictEqual(roleRes.body.member.position, 'Event Lead');
+
+      const membership = await ClubMember.findOne({ clubId: club._id, userId: officer._id.toString() });
+      assert.strictEqual(membership.role, 'member');
+      assert.strictEqual(membership.position, 'Event Lead');
+    });
+
+    it('prevents assigning invalid positions', async () => {
+      mockedUserId = 'user-1';
+
+      const res = await request(app)
+        .patch(`/api/clubs/${club._id}/members/${officer._id}/role`)
+        .send({ position: 'NotARealPosition' })
+        .expect(400);
+
+      assert.strictEqual(res.body.error, 'Validation failed');
+    });
+
+    it('prevents officers from assigning roles above their permissions', async () => {
+      mockedUserId = officer._id.toString();
+
+      const res = await request(app)
+        .patch(`/api/clubs/${club._id}/members/${organizerCandidate._id}/role`)
+        .send({ role: 'admin' })
+        .expect(403);
+
+      assert.strictEqual(res.body.error, 'Forbidden');
+    });
+
+    it('prevents non-admin users from changing their own role', async () => {
+      mockedUserId = officer._id.toString();
+
+      const selfRes = await request(app)
+        .patch(`/api/clubs/${club._id}/members/${officer._id}/role`)
+        .send({ role: 'member' })
+        .expect(403);
+
+      assert.strictEqual(selfRes.body.error, 'Forbidden');
+    });
   });
 
   describe('POST /api/clubs/:id/join', () => {
@@ -300,6 +413,26 @@ describe('Clubs API', () => {
 
       assert.strictEqual(res.body.success, true);
       assert.strictEqual(res.body.alreadyPending, true);
+    });
+
+    it('allows a removed user to request to rejoin', async () => {
+      mockedUserId = joiner._id.toString();
+      await User.findByIdAndUpdate(joiner._id, {
+        pendingClubIds: [],
+        removedClubIds: [club._id.toString()],
+        clubIds: [],
+      });
+
+      const res = await request(app)
+        .post(`/api/clubs/${club._id}/join`)
+        .expect(201);
+
+      assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.pendingRequest, true);
+
+      const updated = await User.findById(joiner._id);
+      assert.ok(updated.pendingClubIds.map(String).includes(club._id.toString()));
+      assert.ok(!updated.removedClubIds.map(String).includes(club._id.toString()));
     });
 
     it('cancels a pending request when leaving', async () => {

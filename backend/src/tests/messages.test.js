@@ -9,12 +9,16 @@ jest.mock('../config/socket', () => ({
     }),
     emitMessageDeleted: jest.fn(),
     emitMessageDisappeared: jest.fn(),
+    emitConversationAccepted: jest.fn(),
+    onlineUsers: new Map(),
+    emitMessageReactionUpdated: jest.fn(),
 }));
 const app = require('../app');
 const User = require('../models/User');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Friendship = require('../models/Friendship');
+const { emitMessageReactionUpdated } = require('../config/socket');
 
 jest.setTimeout(30000);
 
@@ -158,6 +162,12 @@ describe('POST /api/conversations', () => {
 
 describe('GET /api/conversations', () => {
     test('lists conversations sorted by most recent', async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'accepted',
+        });
+
         const conv1 = await request(app)
             .post('/api/conversations')
             .set('Authorization', `Bearer ${tokenA}`)
@@ -169,6 +179,12 @@ describe('GET /api/conversations', () => {
             displayName: 'Charlie',
             major: 'Physics',
             year: 'Freshman',
+        });
+
+        await Friendship.create({
+            requester: userAId,
+            recipient: userC._id,
+            status: 'accepted',
         });
 
         const conv2 = await request(app)
@@ -192,6 +208,12 @@ describe('GET /api/conversations', () => {
     });
 
     test('includes unread count', async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'accepted',
+        });
+
         const conv = await request(app)
             .post('/api/conversations')
             .set('Authorization', `Bearer ${tokenA}`)
@@ -401,6 +423,12 @@ describe('GET /api/conversations/:id/messages', () => {
     let convId;
 
     beforeEach(async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'accepted',
+        });
+
         const conv = await request(app)
             .post('/api/conversations')
             .set('Authorization', `Bearer ${tokenA}`)
@@ -606,6 +634,12 @@ describe('PUT /api/conversations/:id/read', () => {
     let convId;
 
     beforeEach(async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'accepted',
+        });
+
         const conv = await request(app)
             .post('/api/conversations')
             .set('Authorization', `Bearer ${tokenA}`)
@@ -685,6 +719,115 @@ describe('PUT /api/conversations/:id/read', () => {
     });
 });
 
+describe('POST /api/messages/:id/reactions', () => {
+    let convId;
+    let messageId;
+
+    beforeEach(async () => {
+        emitMessageReactionUpdated.mockClear();
+
+        const conv = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+        convId = conv.body._id;
+
+        const message = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'React to me' });
+        messageId = message.body._id;
+    });
+
+    test('adds a reaction when user has not reacted yet', async () => {
+        const res = await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ reactionType: '👍' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.action).toBe('added');
+        expect(res.body.message.reactions).toHaveLength(1);
+        expect(res.body.message.reactions[0].reactionType).toBe('👍');
+
+        const stored = await Message.findById(messageId);
+        expect(stored.reactions).toHaveLength(1);
+        expect(stored.reactions[0].userId.toString()).toBe(userBId);
+        expect(stored.reactions[0].reactionType).toBe('👍');
+        expect(emitMessageReactionUpdated).toHaveBeenCalledTimes(1);
+    });
+
+    test('updates reaction when user selects a different reaction', async () => {
+        await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ reactionType: '👍' });
+
+        const res = await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ reactionType: '❤️' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.action).toBe('updated');
+        expect(res.body.message.reactions).toHaveLength(1);
+        expect(res.body.message.reactions[0].reactionType).toBe('❤️');
+
+        const stored = await Message.findById(messageId);
+        expect(stored.reactions).toHaveLength(1);
+        expect(stored.reactions[0].reactionType).toBe('❤️');
+    });
+
+    test('removes reaction when user selects the same reaction again', async () => {
+        await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ reactionType: '😂' });
+
+        const res = await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ reactionType: '😂' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.action).toBe('removed');
+        expect(res.body.message.reactions).toHaveLength(0);
+
+        const stored = await Message.findById(messageId);
+        expect(stored.reactions).toHaveLength(0);
+    });
+
+    test('keeps only one reaction entry per user', async () => {
+        await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ reactionType: '👍' });
+
+        await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ reactionType: '🎉' });
+
+        const stored = await Message.findById(messageId);
+        const userAReactions = stored.reactions.filter(
+            (reaction) => reaction.userId.toString() === userAId
+        );
+
+        expect(userAReactions).toHaveLength(1);
+        expect(userAReactions[0].reactionType).toBe('🎉');
+    });
+
+    test('returns 400 for unsupported reaction', async () => {
+        const res = await request(app)
+            .post(`/api/messages/${messageId}/reactions`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ reactionType: '🔥' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Invalid reaction type');
+    });
+});
+
 describe('Message schema deletion and expiry metadata', () => {
     test('sets deletion and disappearing defaults', async () => {
         const conversation = await Conversation.create({
@@ -703,6 +846,7 @@ describe('Message schema deletion and expiry metadata', () => {
         expect(message.deletedBy).toBeNull();
         expect(message.isDisappearing).toBe(false);
         expect(message.expiresAt).toBeNull();
+        expect(message.reactions).toEqual([]);
     });
 
     test('requires expiresAt when isDisappearing is true', async () => {
@@ -793,5 +937,416 @@ describe('Message schema deletion and expiry metadata', () => {
         });
 
         await expect(deletedMessage.validate()).resolves.toBeUndefined();
+    });
+});
+
+describe('readAt field behavior', () => {
+    let convId;
+
+    beforeEach(async () => {
+        const conv = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+        convId = conv.body._id;
+    });
+
+    test('readAt is null on fresh messages', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Fresh message' });
+
+        expect(res.status).toBe(201);
+        const msg = await Message.findById(res.body._id);
+        expect(msg.readAt).toBeNull();
+    });
+
+    test('PUT /:id/read sets readAt timestamp on messages from other user', async () => {
+        await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Message from A' });
+
+        await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Another from A' });
+
+        const beforeRead = new Date();
+
+        await request(app)
+            .put(`/api/conversations/${convId}/read`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        const messages = await Message.find({ conversationId: convId });
+        messages.forEach(msg => {
+            expect(msg.readAt).not.toBeNull();
+            expect(new Date(msg.readAt).getTime()).toBeGreaterThanOrEqual(beforeRead.getTime() - 1000);
+        });
+    });
+
+    test('readAt is not overwritten on second mark-read call', async () => {
+        await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Will be read twice' });
+
+        await request(app)
+            .put(`/api/conversations/${convId}/read`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        const firstRead = await Message.findOne({ conversationId: convId, text: 'Will be read twice' });
+        const firstReadAt = firstRead.readAt;
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        await request(app)
+            .put(`/api/conversations/${convId}/read`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        const secondRead = await Message.findOne({ conversationId: convId, text: 'Will be read twice' });
+        expect(secondRead.readAt.getTime()).toBe(firstReadAt.getTime());
+    });
+
+    test('readAt stays null for messages sent by the reader', async () => {
+        await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'My own message' });
+
+        await request(app)
+            .put(`/api/conversations/${convId}/read`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        const msg = await Message.findOne({ conversationId: convId, text: 'My own message' });
+        expect(msg.readAt).toBeNull();
+    });
+
+    test('GET messages returns readAt field', async () => {
+        await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Check readAt in response' });
+
+        await request(app)
+            .put(`/api/conversations/${convId}/read`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        const res = await request(app)
+            .get(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.messages[0].readAt).toBeTruthy();
+    });
+
+    test('readAt defaults to null in schema', async () => {
+        const conversation = await Conversation.create({
+            participants: [userAId, userBId],
+        });
+
+        const message = await Message.create({
+            conversationId: conversation._id,
+            sender: userAId,
+            text: 'Schema default check',
+            readBy: [userAId],
+        });
+
+        expect(message.readAt).toBeNull();
+    });
+});
+
+describe('Conversation request status', () => {
+    test('conversation between friends is created with status accepted', async () => {
+        await Friendship.create({
+            requester: userAId,
+            recipient: userBId,
+            status: 'accepted',
+        });
+
+        const res = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+
+        expect(res.status).toBe(201);
+        expect(res.body.status).toBe('accepted');
+        expect(res.body.initiator).toBeNull();
+    });
+
+    test('conversation between non-friends is created with status pending', async () => {
+        const res = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+
+        expect(res.status).toBe(201);
+        expect(res.body.status).toBe('pending');
+        expect(res.body.initiator).toBe(userAId);
+    });
+
+    test('rejected conversation blocks new conversation creation', async () => {
+        const conv = await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'rejected',
+            initiator: userAId,
+        });
+
+        const res = await request(app)
+            .post('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ participantId: userBId });
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toContain('previously rejected');
+    });
+
+    test('GET / only returns accepted conversations', async () => {
+        await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+
+        await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'accepted',
+        });
+
+        const res = await request(app)
+            .get('/api/conversations')
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(200);
+        res.body.forEach(conv => {
+            expect(conv.status).toBe('accepted');
+        });
+    });
+});
+
+describe('POST /api/conversations/:id/accept', () => {
+    let convId;
+
+    beforeEach(async () => {
+        const conv = await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+        convId = conv._id.toString();
+    });
+
+    test('recipient can accept a pending request', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/accept`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe('accepted');
+    });
+
+    test('initiator cannot accept their own request', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/accept`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toContain('Only the recipient');
+    });
+
+    test('returns 400 for already accepted conversation', async () => {
+        await Conversation.findByIdAndUpdate(convId, { status: 'accepted' });
+
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/accept`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    test('returns 404 for non-existent conversation', async () => {
+        const fakeId = new mongoose.Types.ObjectId();
+        const res = await request(app)
+            .post(`/api/conversations/${fakeId}/accept`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('POST /api/conversations/:id/reject', () => {
+    let convId;
+
+    beforeEach(async () => {
+        const conv = await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+        convId = conv._id.toString();
+    });
+
+    test('recipient can reject a pending request', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/reject`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe('rejected');
+    });
+
+    test('initiator cannot reject their own request', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/reject`)
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(403);
+    });
+
+    test('returns 400 for already rejected conversation', async () => {
+        await Conversation.findByIdAndUpdate(convId, { status: 'rejected' });
+
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/reject`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(400);
+    });
+});
+
+describe('GET /api/conversations/requests', () => {
+    test('returns only pending conversations where user is recipient', async () => {
+        await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+
+        const res = await request(app)
+            .get('/api/conversations/requests')
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(1);
+        expect(res.body[0].status).toBe('pending');
+    });
+
+    test('does not return requests the user initiated', async () => {
+        await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+
+        const res = await request(app)
+            .get('/api/conversations/requests')
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(0);
+    });
+
+    test('returns empty array when no pending requests', async () => {
+        const res = await request(app)
+            .get('/api/conversations/requests')
+            .set('Authorization', `Bearer ${tokenA}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(0);
+    });
+
+    test('includes message preview', async () => {
+        const conv = await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+
+        await Message.create({
+            conversationId: conv._id,
+            sender: userAId,
+            text: 'Hey there',
+            readBy: [userAId],
+        });
+
+        const res = await request(app)
+            .get('/api/conversations/requests')
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body[0].messagePreview.text).toBe('Hey there');
+    });
+});
+
+describe('Message gating on pending conversations', () => {
+    let convId;
+
+    beforeEach(async () => {
+        const conv = await Conversation.create({
+            participants: [userAId, userBId].sort(),
+            status: 'pending',
+            initiator: userAId,
+        });
+        convId = conv._id.toString();
+    });
+
+    test('initiator can send messages to pending conversation', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Hello from initiator' });
+
+        expect(res.status).toBe(201);
+        expect(res.body.text).toBe('Hello from initiator');
+    });
+
+    test('recipient cannot send messages to pending conversation', async () => {
+        const res = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ text: 'Should not work' });
+
+        expect(res.status).toBe(403);
+        expect(res.body.error).toContain('accept the request first');
+    });
+
+    test('neither party can send messages to rejected conversation', async () => {
+        await Conversation.findByIdAndUpdate(convId, { status: 'rejected' });
+
+        const resA = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'Rejected A' });
+
+        expect(resA.status).toBe(403);
+        expect(resA.body.error).toContain('rejected');
+
+        const resB = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ text: 'Rejected B' });
+
+        expect(resB.status).toBe(403);
+    });
+
+    test('messages flow normally after acceptance', async () => {
+        await request(app)
+            .post(`/api/conversations/${convId}/accept`)
+            .set('Authorization', `Bearer ${tokenB}`);
+
+        const resA = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send({ text: 'After accept from A' });
+
+        expect(resA.status).toBe(201);
+
+        const resB = await request(app)
+            .post(`/api/conversations/${convId}/messages`)
+            .set('Authorization', `Bearer ${tokenB}`)
+            .send({ text: 'After accept from B' });
+
+        expect(resB.status).toBe(201);
     });
 });

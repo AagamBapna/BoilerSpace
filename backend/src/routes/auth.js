@@ -43,11 +43,13 @@ router.post('/login', async (req, res) => {
                 profilePictureUrl: user.profilePictureUrl,
                 bio: user.bio,
                 profileVisibility: user.profileVisibility,
+                fieldVisibility: user.fieldVisibility,
                 studyPreferences: user.studyPreferences,
                 interests: user.interests,
                 linkedResources: user.linkedResources,
                 studyGoals: user.studyGoals,
                 notificationSettings: user.notificationSettings,
+                isAdmin: user.isAdmin,
             },
         });
     } catch (err) {
@@ -72,6 +74,8 @@ router.get('/me', protect, (req, res) => {
         studyGoals: req.user.studyGoals,
         notificationSettings: req.user.notificationSettings,
         weeklyStudyGoalMinutes: req.user.weeklyStudyGoalMinutes,
+        fieldVisibility: req.user.fieldVisibility,
+        isAdmin: req.user.isAdmin,
     });
 });
 

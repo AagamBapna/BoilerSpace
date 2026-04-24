@@ -21,7 +21,10 @@ const analyticsRoutes = require('./routes/analytics');
 require('./config/passport');
 const userRoutes = require('./routes/users');
 const bookmarkRoutes = require('./routes/bookmarks');
+const aiBookmarkRoutes = require('./routes/aiBookmarks');
 const messageRoutes = require('./routes/messages');
+const reviewRoutes = require('./routes/reviews');
+const messageReactionRoutes = require('./routes/messageReactions');
 
 const app = express();
 
@@ -33,6 +36,7 @@ app.use('/api/buildings', buildingRoutes);
 app.use('/api/buildings', checkinRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
+app.use('/api/users', aiBookmarkRoutes);
 app.use('/api/users', bookmarkRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/clubs', clubRoutes);
@@ -46,8 +50,12 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 app.use('/api/friendships', friendshipRoutes);
+app.use('/api/messages', messageReactionRoutes);
+app.use('/api/messages', messageRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/conversations', messageRoutes);
+app.use('/api/reviews', reviewRoutes);
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

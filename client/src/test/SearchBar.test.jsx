@@ -368,7 +368,7 @@ describe('SearchBar — ARIA Attributes', () => {
         await user.click(input);
         await typeAndDebounce(user, input, 'Law');
 
-        const options = screen.getAllByRole('option');
+        const options = await screen.findAllByRole('option');
         expect(options.length).toBeGreaterThanOrEqual(1);
     });
 

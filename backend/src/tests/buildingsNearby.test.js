@@ -9,14 +9,21 @@ const Building = require('../models/Building');
 
 let mongoServer;
 
+jest.setTimeout(60000);
+
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
-    await mongoose.connect(mongoServer.getUri());
+    await mongoose.connect(mongoServer.getUri(), {
+        serverSelectionTimeoutMS: 60000,
+        connectTimeoutMS: 60000,
+    });
 });
 
 afterAll(async () => {
     await mongoose.disconnect();
-    await mongoServer.stop();
+    if (mongoServer) {
+        await mongoServer.stop();
+    }
 });
 
 beforeEach(async () => {

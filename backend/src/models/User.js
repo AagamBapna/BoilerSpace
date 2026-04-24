@@ -82,6 +82,10 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        isAdmin: {
+            type: Boolean,
+            default: false,
+        },
         courses: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Course',
@@ -150,6 +154,19 @@ const userSchema = new mongoose.Schema(
             type: String,
             enum: ['public', 'private'],
             default: 'public',
+        },
+        fieldVisibility: {
+            email: { type: String, enum: ['public', 'private'], default: 'private' },
+            major: { type: String, enum: ['public', 'private'], default: 'public' },
+            year: { type: String, enum: ['public', 'private'], default: 'public' },
+            bio: { type: String, enum: ['public', 'private'], default: 'public' },
+            studyPreferences: { type: String, enum: ['public', 'private'], default: 'public' },
+            interests: { type: String, enum: ['public', 'private'], default: 'public' },
+            linkedResources: { type: String, enum: ['public', 'private'], default: 'public' },
+            studyGoals: { type: String, enum: ['public', 'private'], default: 'public' },
+            courses: { type: String, enum: ['public', 'private'], default: 'public' },
+            availability: { type: String, enum: ['public', 'private'], default: 'public' },
+            weeklyStudyGoalMinutes: { type: String, enum: ['public', 'private'], default: 'public' },
         },
         resetPasswordTokenHash: {
             type: String,

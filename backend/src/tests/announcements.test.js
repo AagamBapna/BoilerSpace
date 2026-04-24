@@ -24,6 +24,9 @@ describe('Announcements API', () => {
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri());
   });
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
 
   afterAll(async () => {
     await Announcement.deleteMany({});
@@ -53,10 +56,10 @@ describe('Announcements API', () => {
       });
     });
 
-    it('returns 400 when message is missing', async () => {
+    it('returns 400 when body is missing', async () => {
       const res = await request(app).post(`/api/events/${event._id}/announcements`).send({}).expect(400);
       assert.strictEqual(res.body.error, 'Validation failed');
-      assert.ok(res.body.fields?.message);
+      assert.ok(res.body.fields?.body);
     });
 
     it('returns 403 when user is not organizer', async () => {
@@ -65,7 +68,7 @@ describe('Announcements API', () => {
 
       const res = await request(app)
         .post(`/api/events/${event._id}/announcements`)
-        .send({ message: 'Update' })
+        .send({ body: 'Update' })
         .expect(403);
 
       assert.strictEqual(res.body.error, 'Forbidden');
@@ -78,34 +81,62 @@ describe('Announcements API', () => {
       // create first
       const res1 = await request(app)
         .post(`/api/events/${event._id}/announcements`)
-        .send({ message: 'First update' })
+        .send({ body: 'First update' })
         .expect(201);
 
-      assert.strictEqual(res1.body.message, 'First update');
+      assert.strictEqual(res1.body.body, 'First update');
       assert.ok(res1.body.id);
 
       // create second
       const res2 = await request(app)
         .post(`/api/events/${event._id}/announcements`)
-        .send({ message: 'Second update' })
+        .send({ body: 'Second update' })
         .expect(201);
 
       const list = await request(app).get(`/api/events/${event._id}/announcements`).expect(200);
       assert(Array.isArray(list.body));
       // chronological ascending: first then second
-      assert.strictEqual(list.body[0].message, 'First update');
-      assert.strictEqual(list.body[1].message, 'Second update');
+      assert.strictEqual(list.body[0].body, 'First update');
+      assert.strictEqual(list.body[1].body, 'Second update');
     });
 
     it('creates a club-wide announcement when no event is selected', async () => {
       const res = await request(app)
         .post(`/api/events/clubs/${club._id}/announcements`)
-        .send({ message: 'Club-wide update' })
+        .send({ body: 'Club-wide update' })
         .expect(201);
 
-      assert.strictEqual(res.body.message, 'Club-wide update');
+      assert.strictEqual(res.body.body, 'Club-wide update');
       assert.strictEqual(res.body.eventId, null);
       assert.ok(res.body.clubId);
+    });
+  });
+
+  describe('Global Broadcasts (Admin)', () => {
+    it('rejects post broadcast if user is not admin', async () => {
+      const res = await request(app)
+        .post('/api/announcements/broadcast')
+        .send({ title: 'Test', body: 'Nope', priorityLevel: 'info' })
+        .expect(403);
+      assert.strictEqual(res.body.error, 'Admin access required');
+    });
+
+    it('allows admin to post broadcast', async () => {
+      // Mock passport user temporarily has isAdmin true
+      jest.spyOn(passport, 'authenticate').mockImplementationOnce(() => (req, res, next) => {
+        req.user = { id: 'admin-1', email: 'admin@purdue.edu', displayName: 'Admin User', isAdmin: true };
+        next();
+      });
+
+      const res = await request(app)
+        .post('/api/announcements/broadcast')
+        .send({ title: 'Test Admin', body: 'Global Message', priorityLevel: 'alert' })
+        .expect(201);
+
+      assert.strictEqual(res.body.title, 'Test Admin');
+      assert.strictEqual(res.body.body, 'Global Message');
+      assert.strictEqual(res.body.priorityLevel, 'alert');
+      assert.strictEqual(res.body.type, 'global');
     });
   });
 });

@@ -52,7 +52,7 @@ beforeEach(async () => {
         name: 'WALC 1018',
         floor: 1,
         capacity: 30,
-        noiseLevel: 'moderate',
+        noiseClassification: 'Moderate',
     });
 });
 
@@ -330,7 +330,7 @@ describe('POST checkin updates recentBuildings and lastActivityAt', () => {
                 name: `Room ${i}`,
                 floor: 1,
                 capacity: 10,
-                noiseLevel: 'quiet',
+                noiseClassification: 'Quiet',
             });
             await CheckIn.deleteMany({ userId: user._id });
             await request(app)

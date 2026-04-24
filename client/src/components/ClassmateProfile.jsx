@@ -273,8 +273,8 @@ export default function ClassmateProfile({ userId, onClose }) {
                   </div>
                 )}
 
-                {/* Study Goals */}
-                {profile.studyGoals && profile.studyGoals.length > 0 ? (
+                {/* Study Goals — hidden entirely when absent */}
+                {profile.studyGoals && profile.studyGoals.length > 0 && (
                   <div className="w-full mt-2">
                     <h3 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Study Goals</h3>
                     <ul className="list-disc list-inside text-xs text-[var(--color-text-primary)] space-y-1 ml-1">
@@ -282,11 +282,6 @@ export default function ClassmateProfile({ userId, onClose }) {
                         <li key={i}>{goal}</li>
                       ))}
                     </ul>
-                  </div>
-                ) : (
-                  <div className="w-full mt-2">
-                    <h3 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Study Goals</h3>
-                    <p className="text-xs text-[var(--color-text-secondary)] italic">No study goals added yet.</p>
                   </div>
                 )}
                 

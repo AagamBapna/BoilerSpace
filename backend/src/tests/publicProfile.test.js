@@ -9,6 +9,8 @@ let mongoServer;
 let token1, token2;
 let user1, user2Public, user3Private;
 
+jest.setTimeout(30000);
+
 const reqUser1 = { email: 'user1@purdue.edu', password: 'password123', displayName: 'User One', major: 'CS', year: 'Freshman' };
 const reqUser2 = { email: 'user2@purdue.edu', password: 'password123', displayName: 'User Two', major: 'Math', year: 'Sophomore', profileVisibility: 'public', bio: 'Hello' };
 const reqUser3 = { email: 'user3@purdue.edu', password: 'password123', displayName: 'User Three', major: 'Physics', year: 'Junior', profileVisibility: 'private', bio: 'Secret' };

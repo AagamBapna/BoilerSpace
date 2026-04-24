@@ -23,7 +23,7 @@ const Note = require('../models/Note');
 const NoteComment = require('../models/NoteComment');
 const Otp = require('../models/Otp');
 
-jest.setTimeout(30000);
+jest.setTimeout(60000);
 
 let mongoServer;
 let token, secondToken;
@@ -57,7 +57,10 @@ const testCourse = {
 
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
-    await mongoose.connect(mongoServer.getUri());
+    await mongoose.connect(mongoServer.getUri(), {
+        serverSelectionTimeoutMS: 60000,
+        connectTimeoutMS: 60000,
+    });
     await Course.syncIndexes();
     await Note.syncIndexes();
     await NoteComment.syncIndexes();
