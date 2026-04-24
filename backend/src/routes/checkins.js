@@ -19,7 +19,7 @@ router.get('/:id/rooms/:roomId/checkins', async (req, res) => {
         if (!room) {
             return res.status(404).json({ error: 'Room not found' });
         }
-        const checkins = await CheckIn.find({roomId: req.params.roomId, expiresAt: {$gt: new Date()}});
+        const checkins = await CheckIn.find({ roomId: req.params.roomId, expiresAt: { $gt: new Date() } });
         res.json(checkins);
     } catch (err) {
         if (err.name === 'CastError') {
@@ -31,7 +31,7 @@ router.get('/:id/rooms/:roomId/checkins', async (req, res) => {
 });
 
 // POST /api/buildings/:id/rooms/:roomId/checkins - create a checkin for a room
-router.post('/:id/rooms/:roomId/checkins', protect,  async (req, res) => {
+router.post('/:id/rooms/:roomId/checkins', protect, async (req, res) => {
     try {
         const building = await Building.findById(req.params.id);
         if (!building) {
@@ -41,12 +41,12 @@ router.post('/:id/rooms/:roomId/checkins', protect,  async (req, res) => {
         if (!room) {
             return res.status(404).json({ error: 'Room not found' });
         }
-        const checkin = await CheckIn.findOne({buildingId: req.params.id, roomId: req.params.roomId, expiresAt:{$gt: new Date()}, userId: req.user._id});
+        const checkin = await CheckIn.findOne({ buildingId: req.params.id, roomId: req.params.roomId, expiresAt: { $gt: new Date() }, userId: req.user._id });
         if (!checkin) {
             // Default check-in lifetime: 2 hours. Long enough for a real study session,
             // short enough that orphaned check-ins eventually clear via the expiration job.
-            const CHECKIN_DURATION_MS = 2 * 60 * 60 * 1000;
-            const new_checkin = new CheckIn({buildingId: req.params.id, roomId: req.params.roomId, expiresAt: new Date(Date.now() + CHECKIN_DURATION_MS) ,userId: req.user._id});
+            const CHECKIN_DURATION_MS = 15 * 1000;
+            const new_checkin = new CheckIn({ buildingId: req.params.id, roomId: req.params.roomId, expiresAt: new Date(Date.now() + CHECKIN_DURATION_MS), userId: req.user._id });
             await new_checkin.save();
             // Update recent buildings
             const user = await User.findById(req.user._id);
@@ -65,7 +65,7 @@ router.post('/:id/rooms/:roomId/checkins', protect,  async (req, res) => {
             await room.save();
             return res.status(201).json(new_checkin);
         }
-        return res.status(409).json({error: 'You are already checked into this room'});
+        return res.status(409).json({ error: 'You are already checked into this room' });
     } catch (err) {
         if (err.name === 'CastError') {
             return res.status(404).json({ error: 'Invalid ID provided' });
