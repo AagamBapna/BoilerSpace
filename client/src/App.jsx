@@ -192,6 +192,9 @@ export default function App() {
     };
 
     fetchBuildings();
+    // Poll for dynamic building occupancy/status updates
+    const interval = setInterval(fetchBuildings, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
