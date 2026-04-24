@@ -380,6 +380,7 @@ export default function ClubOrganizerDashboard({ user }) {
   };
 
   const handleEditEventClick = (event) => {
+    const weekdayFromEventDate = getDayOfWeekValue(event.date);
     setNotice(null);
     setError(null);
     setEditingEvent(event);
@@ -390,11 +391,13 @@ export default function ClubOrganizerDashboard({ user }) {
       date: event.date || '',
       time: event.time || '',
       location: event.location || '',
-      recurrenceType: event.recurrence?.type === 'monthly' ? 'weekly' : (event.recurrence?.type || 'none'),
+      recurrenceType: event.recurrence?.type || 'none',
       recurrenceEndDate: event.recurrence?.endDate || '',
-      recurrenceDayOfWeek: event.recurrence?.dayOfWeek !== undefined && event.recurrence?.dayOfWeek !== null
-        ? String(event.recurrence.dayOfWeek)
-        : getDayOfWeekValue(event.date),
+      recurrenceDayOfWeek: event.recurrence?.type === 'weekly'
+        ? weekdayFromEventDate
+        : (event.recurrence?.dayOfWeek !== undefined && event.recurrence?.dayOfWeek !== null
+            ? String(event.recurrence.dayOfWeek)
+            : weekdayFromEventDate),
     });
     setShowEditEventModal(true);
   };
@@ -414,13 +417,18 @@ export default function ClubOrganizerDashboard({ user }) {
       };
 
       if (editingEventScope !== 'single') {
+        const recurrencePayload = {
+          type: editEventForm.recurrenceType,
+          endDate: editEventForm.recurrenceEndDate,
+        };
+
+        if (editEventForm.recurrenceType === 'weekly') {
+          recurrencePayload.dayOfWeek = String(editEventForm.recurrenceDayOfWeek || getDayOfWeekValue(editEventForm.date) || '');
+        }
+
         payload.recurrence = editEventForm.recurrenceType === 'none'
           ? { type: 'none' }
-          : {
-              type: editEventForm.recurrenceType,
-              dayOfWeek: String(editEventForm.recurrenceDayOfWeek || getDayOfWeekValue(editEventForm.date) || ''),
-              endDate: editEventForm.recurrenceEndDate,
-            };
+          : recurrencePayload;
       }
 
       await axios.patch(`/api/events/${editingEvent.id}?scope=${encodeURIComponent(editingEventScope)}`, {
@@ -847,7 +855,11 @@ export default function ClubOrganizerDashboard({ user }) {
                     onChange={(v) => setEditEventForm((prev) => ({
                       ...prev,
                       date: v,
-                      recurrenceDayOfWeek: prev.recurrenceType === 'weekly' && !prev.recurrenceDayOfWeek ? getDayOfWeekValue(v) : prev.recurrenceDayOfWeek,
+                      recurrenceDayOfWeek: prev.recurrenceType === 'weekly'
+                        ? (editingEventScope === 'single'
+                            ? getDayOfWeekValue(v)
+                            : (prev.recurrenceDayOfWeek || getDayOfWeekValue(v)))
+                        : prev.recurrenceDayOfWeek,
                     }))}
                     placeholder="YYYY-MM-DD"
                   />
@@ -871,6 +883,7 @@ export default function ClubOrganizerDashboard({ user }) {
                   >
                     <option value="none">None</option>
                     <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">

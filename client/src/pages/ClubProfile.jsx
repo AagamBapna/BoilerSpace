@@ -218,7 +218,16 @@ export default function ClubProfile({ user }) {
   const handleCreateEvent = async () => {
     const recurrenceDayOfWeek = newEvent.recurrenceType === 'weekly'
       ? String(newEvent.recurrenceDayOfWeek || getDayOfWeekValue(newEvent.date) || '')
-      : '';
+      : null;
+    const recurrencePayload = {
+      type: newEvent.recurrenceType,
+      endDate: String(newEvent.recurrenceEndDate || '').trim(),
+    };
+
+    if (newEvent.recurrenceType === 'weekly') {
+      recurrencePayload.dayOfWeek = recurrenceDayOfWeek;
+    }
+
     const payload = {
       title: String(newEvent.title || '').trim(),
       description: String(newEvent.description || '').trim(),
@@ -226,11 +235,7 @@ export default function ClubProfile({ user }) {
       time: String(newEvent.time || '').trim(),
       location: String(newEvent.location || '').trim(),
       clubId: id,
-      recurrence: newEvent.recurrenceType === 'none' ? { type: 'none' } : {
-        type: newEvent.recurrenceType,
-        dayOfWeek: recurrenceDayOfWeek,
-        endDate: String(newEvent.recurrenceEndDate || '').trim(),
-      },
+      recurrence: newEvent.recurrenceType === 'none' ? { type: 'none' } : recurrencePayload,
     };
 
     if (!payload.title || !payload.description || !payload.date || !payload.time || !payload.location) {
@@ -521,6 +526,7 @@ export default function ClubProfile({ user }) {
                     >
                       <option value="none">None</option>
                       <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
                     </select>
                   </div>
                   <InputField
