@@ -532,7 +532,7 @@ router.put('/:id/notifications/preferences', protect, async (req, res) => {
             return res.status(403).json({ error: 'You can only update your own notification preferences' });
         }
 
-        const allowedFields = ['sessionReminders', 'messages', 'events', 'organizationUpdates', 'globalMute', 'noteUploads', 'muteExpiresAt'];
+        const allowedFields = ['sessionReminders', 'messages', 'events', 'organizationUpdates', 'globalMute', 'noteUploads'];
         const updates = {};
 
         for (const field of allowedFields) {

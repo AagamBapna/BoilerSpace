@@ -406,7 +406,7 @@ export default function App() {
           refreshKey={studyTimeRefreshKey}
           onClick={() => setShowStudyTime(true)}
         />
-        <NotificationBell onSelectBuilding={handleSelectBuilding} buildings={buildings} socket={socketRef} onOpenCourseNotes={(courseId) => 
+        <NotificationBell isMuted={user?.notificationSettings?.globalMute} onSelectBuilding={handleSelectBuilding} buildings={buildings} socket={socketRef} onOpenCourseNotes={(courseId) => 
         {
           setNotesView({ step: 'notes', courseId, courseName: ''});
         }} />

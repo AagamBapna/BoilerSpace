@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-export default function NotificationBell({ onSelectBuilding, buildings, socket, onOpenCourseNotes }) {
+export default function NotificationBell({ onSelectBuilding, buildings, socket, onOpenCourseNotes, isMuted }) {
     const [notifications, setNotifications] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
 
@@ -34,7 +34,7 @@ export default function NotificationBell({ onSelectBuilding, buildings, socket, 
         };
     }, [socket]);
 
-    const unreadCount = notifications.filter((n) => !n.read).length;
+    const unreadCount = isMuted ? 0 : notifications.filter((n) => !n.read).length;
 
     const handleClick = async (notification) => {
         try {

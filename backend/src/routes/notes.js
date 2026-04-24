@@ -13,7 +13,7 @@ const { bucket, isGcsConfigured } = require('../config/gcs');
 const { extractTextFromPDF, chunkText, generateEmbeddings } = require('../utils/pdfExtractor');
 const { embeddingModel } = require('../config/gemini');
 const Embedding = require('../models/Embedding');
-const { notificationService } = require('../services/NotificationService');
+const { sendNotification } = require('../services/NotificationService');
 
 // POST /api/courses/:id/notes — upload a note to a course
 router.post('/:id/notes', protect, (req, res) => {
