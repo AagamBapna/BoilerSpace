@@ -30,6 +30,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchRan, setSearchRan] = useState(false);
     const [jumpTargetId, setJumpTargetId] = useState(null);
+    const [openReactionPickerMessageId, setOpenReactionPickerMessageId] = useState(null);
     const bottomRef = useRef(null);
     const containerRef = useRef(null);
     const isInitialLoad = useRef(true);
@@ -549,7 +550,7 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                                 )}
                                 <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                                     <div
-                                        className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm break-words transition-all duration-500 ${isDeleted
+                                        className={`max-w-[82%] px-5 py-3 rounded-2xl text-sm break-words transition-all duration-500 ${isDeleted
                                                 ? 'bg-[#202020] text-[#8f8f8f] border border-[#ffffff10] italic'
                                                 : isMine
                                                     ? 'bg-gradient-to-r from-[#CEB888] to-[#C28E0E] text-black rounded-br-md'
@@ -577,21 +578,6 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                                 )}
                                 {!isDeleted && (
                                     <div className={`mt-1 flex flex-wrap gap-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
-                                        {REACTION_OPTIONS.map((emoji) => (
-                                            <button
-                                                key={`${msg._id}-${emoji}`}
-                                                type="button"
-                                                onClick={() => handleReactToMessage(msg._id, emoji)}
-                                                className={`text-[14px] leading-none rounded-full px-2 py-1 border transition-colors ${userReactionType === emoji
-                                                        ? 'border-[#CEB888]/80 bg-[#CEB888]/20'
-                                                        : 'border-[#ffffff12] bg-[#111111] hover:bg-[#1d1d1d]'
-                                                    }`}
-                                                aria-label={`React with ${emoji}`}
-                                                title={`React with ${emoji}`}
-                                            >
-                                                {emoji}
-                                            </button>
-                                        ))}
                                         {Object.entries(reactionCounts).map(([reactionType, count]) => (
                                             <div
                                                 key={`${msg._id}-${reactionType}-count`}
@@ -603,6 +589,37 @@ export default function ChatWindow({ conversation, currentUserId, socket, onBack
                                             >
                                                 {reactionType} {count}
                                             </div>
+                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => setOpenReactionPickerMessageId((prev) => (prev === msg._id ? null : msg._id))}
+                                            className="text-xs rounded-full px-2.5 py-1 border border-[#ffffff12] bg-[#111111] text-[#d0d0d0] hover:bg-[#1d1d1d] transition-colors"
+                                            aria-label="Add reaction"
+                                            title="Add reaction"
+                                        >
+                                            React
+                                        </button>
+                                    </div>
+                                )}
+                                {!isDeleted && openReactionPickerMessageId === msg._id && (
+                                    <div className={`mt-1 flex flex-wrap gap-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                                        {REACTION_OPTIONS.map((emoji) => (
+                                            <button
+                                                key={`${msg._id}-${emoji}`}
+                                                type="button"
+                                                onClick={() => {
+                                                    handleReactToMessage(msg._id, emoji);
+                                                    setOpenReactionPickerMessageId(null);
+                                                }}
+                                                className={`text-[14px] leading-none rounded-full px-2 py-1 border transition-colors ${userReactionType === emoji
+                                                        ? 'border-[#CEB888]/80 bg-[#CEB888]/20'
+                                                        : 'border-[#ffffff12] bg-[#111111] hover:bg-[#1d1d1d]'
+                                                    }`}
+                                                aria-label={`React with ${emoji}`}
+                                                title={`React with ${emoji}`}
+                                            >
+                                                {emoji}
+                                            </button>
                                         ))}
                                     </div>
                                 )}
