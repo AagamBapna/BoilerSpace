@@ -3,10 +3,28 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import ClubCalendar from '../components/ClubCalendar';
 
+const DAY_OF_WEEK_OPTIONS = [
+  { value: '0', label: 'Sunday' },
+  { value: '1', label: 'Monday' },
+  { value: '2', label: 'Tuesday' },
+  { value: '3', label: 'Wednesday' },
+  { value: '4', label: 'Thursday' },
+  { value: '5', label: 'Friday' },
+  { value: '6', label: 'Saturday' },
+];
+
+function getDayOfWeekValue(dateValue) {
+  const normalized = String(dateValue || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return '';
+  const date = new Date(`${normalized}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? '' : String(date.getDay());
+}
+
 export default function ClubProfile({ user }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const viewerId = String(user?.id || user?._id || '');
   const [club, setClub] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,9 +35,11 @@ export default function ClubProfile({ user }) {
   const [isMember, setIsMember] = useState(false);
   const [isPendingRequest, setIsPendingRequest] = useState(false);
   const [isRemovedFromClub, setIsRemovedFromClub] = useState(false);
+  const [clubAccessRole, setClubAccessRole] = useState(null);
   const [joining, setJoining] = useState(false);
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [creatingEvent, setCreatingEvent] = useState(false);
+  const [createEventError, setCreateEventError] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -28,8 +48,8 @@ export default function ClubProfile({ user }) {
     time: '',
     location: '',
     recurrenceType: 'none',
-    recurrenceInterval: 1,
     recurrenceEndDate: '',
+    recurrenceDayOfWeek: '',
   });
 
   const loadEvents = useCallback(async () => {
@@ -61,12 +81,13 @@ export default function ClubProfile({ user }) {
   }, [loadEvents]);
 
   useEffect(() => {
-    if (!user?.id || !id) {
+    if (!viewerId || !id) {
       setIsMember(false);
+      setClubAccessRole(null);
       return;
     }
 
-    axios.get(`/api/users/${user.id}`)
+    axios.get(`/api/users/${viewerId}`)
       .then((res) => {
         const joined = Array.isArray(res.data?.clubIds) ? res.data.clubIds.map(String) : [];
         const pending = Array.isArray(res.data?.pendingClubIds) ? res.data.pendingClubIds.map(String) : [];
@@ -80,28 +101,83 @@ export default function ClubProfile({ user }) {
         setIsPendingRequest(false);
         setIsRemovedFromClub(false);
       });
-  }, [user?.id, id]);
+
+    axios.get(`/api/clubs/${id}/access`)
+      .then((res) => {
+        setClubAccessRole(res.data?.role || null);
+      })
+      .catch(() => {
+        setClubAccessRole(null);
+      });
+  }, [viewerId, id]);
 
   const isOrganizer = Boolean(
-    user?.id && Array.isArray(club?.organizerIds) && club.organizerIds.map(String).includes(String(user.id))
+    viewerId && Array.isArray(club?.organizerIds) && club.organizerIds.map(String).includes(viewerId)
   );
 
   const topActionClass = 'profile-button-like min-w-[120px] justify-center';
   const topActionGoldClass = `${topActionClass} profile-button-gold`;
 
-  const canJoin = Boolean(user?.id && !isOrganizer && !isMember && !isPendingRequest && !isRemovedFromClub && club);
-  const canLeave = Boolean(user?.id && !isOrganizer && isMember && club);
+  const canCreateEvent = Boolean(isOrganizer && club && viewerId);
+  const canViewDashboard = Boolean(viewerId && (isOrganizer || clubAccessRole === 'officer' || clubAccessRole === 'admin'));
+  const canJoin = Boolean(viewerId && !isOrganizer && !isMember && !isPendingRequest && club);
+  const canLeave = Boolean(viewerId && !isOrganizer && isMember && club);
   const clubCalendarEvents = useMemo(() => events, [events]);
+  const listedEvents = useMemo(() => {
+    const toTimestamp = (event) => {
+      const dateKey = String(event?.date || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return Number.POSITIVE_INFINITY;
+      const [year, month, day] = dateKey.split('-').map(Number);
+      const timeKey = /^\d{2}:\d{2}$/.test(String(event?.time || '')) ? String(event.time) : '12:00';
+      const [hours, minutes] = timeKey.split(':').map(Number);
+      return new Date(year, month - 1, day, hours, minutes, 0, 0).getTime();
+    };
+
+    const now = Date.now();
+    const recurringByGroup = new Map();
+    const singles = [];
+
+    for (const event of events) {
+      const recurringType = event?.recurrence?.type;
+      const groupId = event?.recurrence?.recurrenceGroupId;
+      const isSeriesEvent = recurringType && recurringType !== 'none' && groupId;
+
+      if (!isSeriesEvent) {
+        singles.push({ ...event, _isRecurringListItem: false });
+        continue;
+      }
+
+      if (!recurringByGroup.has(groupId)) recurringByGroup.set(groupId, []);
+      recurringByGroup.get(groupId).push(event);
+    }
+
+    const recurringRepresentatives = [];
+    recurringByGroup.forEach((seriesEvents) => {
+      const sorted = [...seriesEvents].sort((a, b) => toTimestamp(a) - toTimestamp(b));
+      const upcoming = sorted.find((event) => toTimestamp(event) >= now);
+      const representative = upcoming || sorted[sorted.length - 1];
+      if (representative) {
+        recurringRepresentatives.push({ ...representative, _isRecurringListItem: true });
+      }
+    });
+
+    return [...singles, ...recurringRepresentatives].sort((a, b) => toTimestamp(a) - toTimestamp(b));
+  }, [events]);
 
   const handleJoinClub = async () => {
-    if (!id || !user?.id) return;
+    if (!id || !viewerId) return;
     setNotice(null);
     setActionError(null);
     try {
       setJoining(true);
       await axios.post(`/api/clubs/${id}/join`);
       setIsPendingRequest(true);
-      setNotice('Your join request has been sent.');
+      if (isRemovedFromClub) {
+        setIsRemovedFromClub(false);
+        setNotice('Your rejoin request has been sent.');
+      } else {
+        setNotice('Your join request has been sent.');
+      }
     } catch (err) {
       setActionError(err.response?.data?.message || err.response?.data?.error || 'Failed to join club.');
     } finally {
@@ -110,7 +186,7 @@ export default function ClubProfile({ user }) {
   };
 
   const handleLeaveClub = async () => {
-    if (!id || !user?.id) return;
+    if (!id || !viewerId) return;
     const confirmed = window.confirm('Leave this club?');
     if (!confirmed) return;
     setNotice(null);
@@ -131,6 +207,7 @@ export default function ClubProfile({ user }) {
   const handleCreateEventClick = () => {
     setNotice(null);
     setActionError(null);
+    setCreateEventError(null);
     if (!isOrganizer) {
       setActionError('You do not have permission to create events for this club.');
       return;
@@ -139,6 +216,9 @@ export default function ClubProfile({ user }) {
   };
 
   const handleCreateEvent = async () => {
+    const recurrenceDayOfWeek = newEvent.recurrenceType === 'weekly'
+      ? String(newEvent.recurrenceDayOfWeek || getDayOfWeekValue(newEvent.date) || '')
+      : '';
     const payload = {
       title: String(newEvent.title || '').trim(),
       description: String(newEvent.description || '').trim(),
@@ -148,13 +228,33 @@ export default function ClubProfile({ user }) {
       clubId: id,
       recurrence: newEvent.recurrenceType === 'none' ? { type: 'none' } : {
         type: newEvent.recurrenceType,
-        interval: Number(newEvent.recurrenceInterval) || 1,
+        dayOfWeek: recurrenceDayOfWeek,
         endDate: String(newEvent.recurrenceEndDate || '').trim(),
       },
     };
 
     if (!payload.title || !payload.description || !payload.date || !payload.time || !payload.location) {
-      setActionError('All event fields are required.');
+      setCreateEventError('All event fields are required.');
+      return;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.date)) {
+      setCreateEventError('Date must be in YYYY-MM-DD format.');
+      return;
+    }
+
+    if (!/^\d{2}:\d{2}$/.test(payload.time)) {
+      setCreateEventError('Time must be in HH:mm format.');
+      return;
+    }
+
+    if (payload.recurrence.type !== 'none' && !payload.recurrence.endDate) {
+      setCreateEventError('Recurring events require an end date.');
+      return;
+    }
+
+    if (payload.recurrence.type === 'weekly' && !payload.recurrence.dayOfWeek && payload.recurrence.dayOfWeek !== '0') {
+      setCreateEventError('Recurring events require a day of week.');
       return;
     }
 
@@ -162,6 +262,7 @@ export default function ClubProfile({ user }) {
       setCreatingEvent(true);
       setNotice(null);
       setActionError(null);
+      setCreateEventError(null);
       await axios.post('/api/events', payload);
       await loadEvents();
       setNewEvent({
@@ -171,28 +272,33 @@ export default function ClubProfile({ user }) {
         time: '',
         location: '',
         recurrenceType: 'none',
-        recurrenceInterval: 1,
         recurrenceEndDate: '',
+        recurrenceDayOfWeek: '',
       });
       setShowCreateEventModal(false);
       setNotice('Event created successfully.');
     } catch (err) {
-      setActionError(err.response?.data?.message || err.response?.data?.error || 'Failed to create event.');
+      const fieldMessage = err.response?.data?.fields
+        ? Object.values(err.response.data.fields).find(Boolean)
+        : null;
+      setCreateEventError(fieldMessage || err.response?.data?.message || err.response?.data?.error || 'Failed to create event.');
     } finally {
       setCreatingEvent(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6">
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6 pb-24">
       <div className="page-top-actions">
         <button onClick={() => navigate('/clubs')} className={topActionClass}>Clubs</button>
         <button onClick={() => navigate('/')} className={topActionClass}>Map</button>
         <button onClick={() => navigate('/activity')} className={topActionClass}>Activity</button>
-        <button onClick={handleCreateEventClick} className={topActionGoldClass}>Create Event</button>
+        {canCreateEvent && (
+          <button type="button" onClick={handleCreateEventClick} className={topActionGoldClass}>Create Event</button>
+        )}
         {canJoin && (
           <button onClick={handleJoinClub} disabled={joining} className={topActionGoldClass}>
-            {joining ? 'Sending...' : 'Request to Join'}
+            {joining ? 'Sending...' : isRemovedFromClub ? 'Request to Rejoin' : 'Request to Join'}
           </button>
         )}
         {!canJoin && isPendingRequest && !isMember && (
@@ -200,17 +306,12 @@ export default function ClubProfile({ user }) {
             Request Sent
           </button>
         )}
-        {!canJoin && isRemovedFromClub && (
-          <button disabled className="profile-button-like profile-button-danger min-w-[120px] justify-center opacity-70 cursor-not-allowed">
-            Removed from Club
-          </button>
-        )}
         {canLeave && (
           <button onClick={handleLeaveClub} disabled={joining} className="profile-button-like profile-button-danger min-w-[120px] justify-center">
             {joining ? 'Leaving...' : 'Leave Club'}
           </button>
         )}
-        {isOrganizer && (
+        {canViewDashboard && (
           <button onClick={() => navigate(`/clubs/${id}/dashboard`)} className={topActionGoldClass}>Organizer Dashboard</button>
         )}
       </div>
@@ -236,7 +337,7 @@ export default function ClubProfile({ user }) {
         )}
 
         {!loading && !error && club && (
-          <div className="flex flex-col gap-6 w-full" style={{ maxWidth: '48rem', marginLeft: '2rem', paddingTop: '2rem' }}>
+          <div className="flex flex-col gap-6 w-full" style={{ maxWidth: '72rem', marginLeft: '2rem', paddingTop: '2rem' }}>
 
             {notice && (
               <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm text-emerald-300">
@@ -310,19 +411,26 @@ export default function ClubProfile({ user }) {
               {eventsLoading && (
                 <p className="text-sm text-[var(--color-text-secondary)]">Loading events...</p>
               )}
-              {!eventsLoading && events.length === 0 && (
+              {!eventsLoading && listedEvents.length === 0 && (
                 <p className="text-sm text-[var(--color-text-secondary)]">No events yet.</p>
               )}
-              {!eventsLoading && events.length > 0 && (
+              {!eventsLoading && listedEvents.length > 0 && (
                 <div className="space-y-3">
-                  {events.map((event) => (
+                  {listedEvents.map((event) => (
                     <button
                       key={event.id}
                       onClick={() => navigate(`/events/${event.id}`)}
                       className="w-full text-left rounded-lg bg-[var(--color-surface-hover)] hover:bg-[var(--color-surface)] transition-colors p-4 border border-white/10"
                     >
                       <div className="flex flex-col gap-1">
-                        <h3 className="font-semibold text-[var(--color-text-primary)]">{event.title}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-[var(--color-text-primary)]">{event.title}</h3>
+                          {event._isRecurringListItem && (
+                            <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-[var(--color-purdue-gold)]/20 text-[var(--color-purdue-gold)] border border-[var(--color-purdue-gold)]/30">
+                              {`Recurring ${event.date ? `• ${new Date(event.date).toLocaleDateString('en-US', { weekday: 'short' })}` : ''}`}
+                            </span>
+                          )}
+                        </div>
                         {event.description && (
                           <p className="text-xs text-[var(--color-text-secondary)]">{event.description}</p>
                         )}
@@ -362,6 +470,11 @@ export default function ClubProfile({ user }) {
 
             <div className="mb-6">
               <div className="grid grid-cols-1 gap-3">
+                {createEventError && (
+                  <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-300">
+                    {createEventError}
+                  </div>
+                )}
                 <InputField label="Title" value={newEvent.title} onChange={(v) => setNewEvent((p) => ({ ...p, title: v }))} placeholder="Event title" />
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-[var(--color-text-secondary)]">Description</label>
@@ -374,8 +487,24 @@ export default function ClubProfile({ user }) {
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <InputField label="Date" value={newEvent.date} onChange={(v) => setNewEvent((p) => ({ ...p, date: v }))} placeholder="YYYY-MM-DD" />
-                  <InputField label="Time" value={newEvent.time} onChange={(v) => setNewEvent((p) => ({ ...p, time: v }))} placeholder="HH:mm" />
+                  <InputField
+                    label="Start Date"
+                    type="date"
+                    value={newEvent.date}
+                    onChange={(v) => setNewEvent((p) => ({
+                      ...p,
+                      date: v,
+                      recurrenceDayOfWeek: p.recurrenceType === 'weekly' && !p.recurrenceDayOfWeek ? getDayOfWeekValue(v) : p.recurrenceDayOfWeek,
+                    }))}
+                    placeholder="YYYY-MM-DD"
+                  />
+                  <InputField
+                    label="Time"
+                    type="time"
+                    value={newEvent.time}
+                    onChange={(v) => setNewEvent((p) => ({ ...p, time: v }))}
+                    placeholder="HH:mm"
+                  />
                 </div>
                 <InputField label="Location" value={newEvent.location} onChange={(v) => setNewEvent((p) => ({ ...p, location: v }))} placeholder="Location" />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -383,26 +512,38 @@ export default function ClubProfile({ user }) {
                     <label className="text-xs text-[var(--color-text-secondary)]">Recurrence</label>
                     <select
                       value={newEvent.recurrenceType}
-                      onChange={(e) => setNewEvent((p) => ({ ...p, recurrenceType: e.target.value }))}
+                      onChange={(e) => setNewEvent((p) => ({
+                        ...p,
+                        recurrenceType: e.target.value,
+                        recurrenceDayOfWeek: e.target.value === 'weekly' ? (p.recurrenceDayOfWeek || getDayOfWeekValue(p.date)) : '',
+                      }))}
                       className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)]"
                     >
                       <option value="none">None</option>
                       <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
                     </select>
                   </div>
                   <InputField
-                    label="Interval"
-                    value={String(newEvent.recurrenceInterval)}
-                    onChange={(v) => setNewEvent((p) => ({ ...p, recurrenceInterval: v }))}
-                    placeholder="1"
-                  />
-                  <InputField
                     label="End Date"
+                    type="date"
                     value={newEvent.recurrenceEndDate}
                     onChange={(v) => setNewEvent((p) => ({ ...p, recurrenceEndDate: v }))}
                     placeholder="YYYY-MM-DD"
                   />
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-[var(--color-text-secondary)]">Day of Week</label>
+                    <select
+                      value={newEvent.recurrenceType === 'weekly' ? (newEvent.recurrenceDayOfWeek || getDayOfWeekValue(newEvent.date)) : ''}
+                      onChange={(e) => setNewEvent((p) => ({ ...p, recurrenceDayOfWeek: e.target.value }))}
+                      disabled={newEvent.recurrenceType !== 'weekly'}
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-purdue-gold)] disabled:opacity-60"
+                    >
+                      <option value="">Select day</option>
+                      {DAY_OF_WEEK_OPTIONS.map((day) => (
+                        <option key={day.value} value={day.value}>{day.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button onClick={() => setShowCreateEventModal(false)} disabled={creatingEvent} className="px-5 py-2.5 text-base text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">Cancel</button>
@@ -419,11 +560,13 @@ export default function ClubProfile({ user }) {
   );
 }
 
-function InputField({ label, value, onChange, placeholder }) {
+function InputField({ label, value, onChange, placeholder, type = 'text', min }) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs text-[var(--color-text-secondary)]">{label}</label>
       <input
+        type={type}
+        min={min}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

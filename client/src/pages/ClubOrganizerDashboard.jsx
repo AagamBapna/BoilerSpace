@@ -2,6 +2,41 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 
+const DAY_OF_WEEK_OPTIONS = [
+  { value: '0', label: 'Sunday' },
+  { value: '1', label: 'Monday' },
+  { value: '2', label: 'Tuesday' },
+  { value: '3', label: 'Wednesday' },
+  { value: '4', label: 'Thursday' },
+  { value: '5', label: 'Friday' },
+  { value: '6', label: 'Saturday' },
+];
+
+function getDayOfWeekValue(dateValue) {
+  const normalized = String(dateValue || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return '';
+  const date = new Date(`${normalized}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? '' : String(date.getDay());
+}
+
+function shiftDateToWeekday(dateValue, targetWeekdayValue) {
+  const normalized = String(dateValue || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return dateValue;
+  const targetDay = Number.parseInt(targetWeekdayValue, 10);
+  if (!Number.isInteger(targetDay) || targetDay < 0 || targetDay > 6) return normalized;
+
+  const date = new Date(`${normalized}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return normalized;
+
+  const offset = (targetDay - date.getDay() + 7) % 7;
+  date.setDate(date.getDate() + offset);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function ClubOrganizerDashboard({ user }) {
   const { id: clubId } = useParams();
   const navigate = useNavigate();
@@ -20,6 +55,10 @@ export default function ClubOrganizerDashboard({ user }) {
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [editingEventScope, setEditingEventScope] = useState('single');
+  const [showDeleteEventModal, setShowDeleteEventModal] = useState(false);
+  const [deletingEvent, setDeletingEvent] = useState(null);
+  const [deleteEventScope, setDeleteEventScope] = useState('single');
+  const [deletingEventId, setDeletingEventId] = useState(null);
   const [savingEventId, setSavingEventId] = useState(null);
   const [editEventForm, setEditEventForm] = useState({
     title: '',
@@ -28,8 +67,8 @@ export default function ClubOrganizerDashboard({ user }) {
     time: '',
     location: '',
     recurrenceType: 'none',
-    recurrenceInterval: 1,
     recurrenceEndDate: '',
+    recurrenceDayOfWeek: '',
   });
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -41,6 +80,7 @@ export default function ClubOrganizerDashboard({ user }) {
   const [savingClub, setSavingClub] = useState(false);
   const [showEditClubModal, setShowEditClubModal] = useState(false);
   const [showDeleteClubConfirm, setShowDeleteClubConfirm] = useState(false);
+  const [dashboardAccessRole, setDashboardAccessRole] = useState(null);
 
   const isOrganizer = useMemo(() => {
     const viewerId = String(user?.id || user?._id || '');
@@ -52,7 +92,8 @@ export default function ClubOrganizerDashboard({ user }) {
     () => members.find((m) => String(m.id) === viewerId) || null,
     [members, viewerId]
   );
-  const viewerRole = viewerMembership?.role || (isOrganizer ? 'admin' : 'member');
+  const viewerRole = viewerMembership?.role || dashboardAccessRole || (isOrganizer ? 'admin' : 'member');
+  const canViewDashboard = viewerRole === 'admin' || viewerRole === 'officer';
   const canManagePositions = viewerRole === 'admin';
 
   const loadMembers = async () => {
@@ -88,13 +129,15 @@ export default function ClubOrganizerDashboard({ user }) {
         contactInfo: clubRes.data?.contactInfo || '',
       });
 
-      const organizerIds = Array.isArray(clubRes.data?.organizerIds) ? clubRes.data.organizerIds.map(String) : [];
-      const viewerId = String(user?.id || user?._id || '');
-      const viewerIsOrganizer = Boolean(viewerId && organizerIds.includes(viewerId));
+      const accessRes = await axios.get(`/api/clubs/${clubId}/access`);
+      const role = String(accessRes.data?.role || 'member').toLowerCase();
+      setDashboardAccessRole(role);
 
-      if (!viewerIsOrganizer) {
+      if (role !== 'admin' && role !== 'officer') {
         setEvents([]);
         setMembers([]);
+        setPendingMembers([]);
+        setAnnouncements([]);
         return;
       }
 
@@ -117,6 +160,7 @@ export default function ClubOrganizerDashboard({ user }) {
 
       await loadMembers();
     } catch (err) {
+      setDashboardAccessRole(null);
       setClub(null);
       setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load organizer dashboard.');
     } finally {
@@ -126,7 +170,7 @@ export default function ClubOrganizerDashboard({ user }) {
 
   useEffect(() => {
     loadData();
-  }, [clubId, user?.id]);
+  }, [clubId, user?.id, user?._id]);
 
   const handleKickMember = async (memberId) => {
     try {
@@ -307,28 +351,31 @@ export default function ClubOrganizerDashboard({ user }) {
     }
   };
 
-  const handleDeleteEvent = async (eventId) => {
+  const handleDeleteEventClick = (eventId) => {
     const selectedEvent = events.find((event) => String(event.id) === String(eventId));
-    const isRecurring = Boolean(selectedEvent?.recurrence?.type && selectedEvent.recurrence.type !== 'none');
-    const scope = isRecurring
-      ? (window.prompt('Delete scope: single, future, or all?', 'single') || 'single').toLowerCase()
-      : 'single';
-    const confirmed = window.confirm(
-      scope === 'all'
-        ? 'Delete the entire series? This will also delete its announcements.'
-        : scope === 'future'
-          ? 'Delete this event and all future occurrences? This will also delete their announcements.'
-          : 'Delete this event? This will also delete its announcements.'
-    );
-    if (!confirmed) return;
+    if (!selectedEvent) return;
+    setDeletingEvent(selectedEvent);
+    setDeleteEventScope('single');
+    setShowDeleteEventModal(true);
+  };
+
+  const handleConfirmDeleteEvent = async () => {
+    if (!deletingEvent?.id) return;
+    const isRecurring = Boolean(deletingEvent?.recurrence?.type && deletingEvent.recurrence.type !== 'none');
+    const scope = isRecurring ? deleteEventScope : 'single';
     try {
+      setDeletingEventId(String(deletingEvent.id));
       setNotice(null);
       setError(null);
-      await axios.delete(`/api/events/${eventId}?scope=${encodeURIComponent(scope)}`);
+      await axios.delete(`/api/events/${deletingEvent.id}?scope=${encodeURIComponent(scope)}`);
       await loadData();
+      setShowDeleteEventModal(false);
+      setDeletingEvent(null);
       setNotice('Event deleted.');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete event.');
+    } finally {
+      setDeletingEventId(null);
     }
   };
 
@@ -343,9 +390,11 @@ export default function ClubOrganizerDashboard({ user }) {
       date: event.date || '',
       time: event.time || '',
       location: event.location || '',
-      recurrenceType: event.recurrence?.type || 'none',
-      recurrenceInterval: event.recurrence?.interval || 1,
+      recurrenceType: event.recurrence?.type === 'monthly' ? 'weekly' : (event.recurrence?.type || 'none'),
       recurrenceEndDate: event.recurrence?.endDate || '',
+      recurrenceDayOfWeek: event.recurrence?.dayOfWeek !== undefined && event.recurrence?.dayOfWeek !== null
+        ? String(event.recurrence.dayOfWeek)
+        : getDayOfWeekValue(event.date),
     });
     setShowEditEventModal(true);
   };
@@ -356,19 +405,26 @@ export default function ClubOrganizerDashboard({ user }) {
       setSavingEventId(String(editingEvent.id));
       setNotice(null);
       setError(null);
-      await axios.patch(`/api/events/${editingEvent.id}?scope=${encodeURIComponent(editingEventScope)}`, {
+      const payload = {
         title: editEventForm.title,
         description: editEventForm.description,
         date: editEventForm.date,
         time: editEventForm.time,
         location: editEventForm.location,
-        recurrence: editEventForm.recurrenceType === 'none'
+      };
+
+      if (editingEventScope !== 'single') {
+        payload.recurrence = editEventForm.recurrenceType === 'none'
           ? { type: 'none' }
           : {
               type: editEventForm.recurrenceType,
-              interval: Number(editEventForm.recurrenceInterval) || 1,
+              dayOfWeek: String(editEventForm.recurrenceDayOfWeek || getDayOfWeekValue(editEventForm.date) || ''),
               endDate: editEventForm.recurrenceEndDate,
-            },
+            };
+      }
+
+      await axios.patch(`/api/events/${editingEvent.id}?scope=${encodeURIComponent(editingEventScope)}`, {
+        ...payload,
       });
       setShowEditEventModal(false);
       setEditingEvent(null);
@@ -423,7 +479,7 @@ export default function ClubOrganizerDashboard({ user }) {
     );
   }
 
-  if (!isOrganizer) {
+  if (!canViewDashboard) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-[var(--color-surface-light)] text-[var(--color-text-primary)] gap-3">
         <p>You do not have permission to access this organizer dashboard.</p>
@@ -435,7 +491,7 @@ export default function ClubOrganizerDashboard({ user }) {
   const organizerIdSet = new Set((club?.organizerIds || []).map(String));
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6">
+    <div className="min-h-screen w-full overflow-y-auto bg-[var(--color-surface-light)] text-[var(--color-text-primary)] py-10 px-6 pb-24">
       <div className="page-top-actions">
         <button onClick={() => navigate(`/clubs/${clubId}`)} className="profile-button-like">Back to Club</button>
         <button onClick={() => navigate('/clubs')} className="profile-button-like">Clubs</button>
@@ -533,26 +589,34 @@ export default function ClubOrganizerDashboard({ user }) {
                   <div className="flex items-center gap-3">
                     {canManageMember(m) ? (
                       <>
-                        <select
-                          value={m.role || (organizerIdSet.has(String(m.id)) ? 'admin' : 'member')}
-                          onChange={(e) => handleUpdateMemberRolePosition(m.id, { role: e.target.value })}
-                          disabled={savingMemberId === String(m.id)}
-                          className="text-xs bg-[var(--color-surface-light)] border border-white/15 rounded px-2 py-1"
-                        >
-                          <option value="member">member</option>
-                          <option value="officer">officer</option>
-                          {viewerRole === 'admin' && <option value="admin">admin</option>}
-                        </select>
-                        <select
-                          value={m.position || 'Member'}
-                          onChange={(e) => handleUpdateMemberRolePosition(m.id, { position: e.target.value })}
-                          disabled={savingMemberId === String(m.id)}
-                          className="text-xs bg-[var(--color-surface-light)] border border-white/15 rounded px-2 py-1"
-                        >
-                          {positions.map((positionName) => (
-                            <option key={positionName} value={positionName}>{positionName}</option>
-                          ))}
-                        </select>
+                        <label className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                          <span>Permissions</span>
+                          <select
+                            aria-label="Permissions"
+                            value={m.role || (organizerIdSet.has(String(m.id)) ? 'admin' : 'member')}
+                            onChange={(e) => handleUpdateMemberRolePosition(m.id, { role: e.target.value })}
+                            disabled={savingMemberId === String(m.id)}
+                            className="text-xs bg-[var(--color-surface-light)] border border-white/15 rounded px-2 py-1 text-[var(--color-text-primary)]"
+                          >
+                            <option value="member">member</option>
+                            <option value="officer">officer</option>
+                            {viewerRole === 'admin' && <option value="admin">admin</option>}
+                          </select>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                          <span>Position</span>
+                          <select
+                            aria-label="Position"
+                            value={m.position || 'Member'}
+                            onChange={(e) => handleUpdateMemberRolePosition(m.id, { position: e.target.value })}
+                            disabled={savingMemberId === String(m.id)}
+                            className="text-xs bg-[var(--color-surface-light)] border border-white/15 rounded px-2 py-1 text-[var(--color-text-primary)]"
+                          >
+                            {positions.map((positionName) => (
+                              <option key={positionName} value={positionName}>{positionName}</option>
+                            ))}
+                          </select>
+                        </label>
                       </>
                     ) : (
                       <span className="text-xs text-[var(--color-text-secondary)]">View only</span>
@@ -632,7 +696,7 @@ export default function ClubOrganizerDashboard({ user }) {
                   </div>
                   <div className="flex items-center gap-3">
                     <button onClick={() => handleEditEventClick(event)} className="text-xs text-[var(--color-purdue-gold)] hover:text-[var(--color-purdue-gold-light)]">Edit</button>
-                    <button onClick={() => handleDeleteEvent(event.id)} className="text-xs text-red-300 hover:text-red-200">Delete</button>
+                    <button onClick={() => handleDeleteEventClick(event.id)} className="text-xs text-red-300 hover:text-red-200">Delete</button>
                   </div>
                 </div>
               ))}
@@ -776,12 +840,21 @@ export default function ClubOrganizerDashboard({ user }) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-[var(--color-text-secondary)]">Date</label>
-                  <Input value={editEventForm.date} onChange={(v) => setEditEventForm((prev) => ({ ...prev, date: v }))} placeholder="YYYY-MM-DD" />
+                  <label className="text-xs text-[var(--color-text-secondary)]">Start Date</label>
+                  <Input
+                    type="date"
+                    value={editEventForm.date}
+                    onChange={(v) => setEditEventForm((prev) => ({
+                      ...prev,
+                      date: v,
+                      recurrenceDayOfWeek: prev.recurrenceType === 'weekly' && !prev.recurrenceDayOfWeek ? getDayOfWeekValue(v) : prev.recurrenceDayOfWeek,
+                    }))}
+                    placeholder="YYYY-MM-DD"
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-[var(--color-text-secondary)]">Time</label>
-                  <Input value={editEventForm.time} onChange={(v) => setEditEventForm((prev) => ({ ...prev, time: v }))} placeholder="HH:mm" />
+                  <Input type="time" value={editEventForm.time} onChange={(v) => setEditEventForm((prev) => ({ ...prev, time: v }))} placeholder="HH:mm" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -789,21 +862,40 @@ export default function ClubOrganizerDashboard({ user }) {
                   <label className="text-xs text-[var(--color-text-secondary)]">Recurrence</label>
                   <select
                     value={editEventForm.recurrenceType}
-                    onChange={(e) => setEditEventForm((prev) => ({ ...prev, recurrenceType: e.target.value }))}
+                    onChange={(e) => setEditEventForm((prev) => ({
+                      ...prev,
+                      recurrenceType: e.target.value,
+                      recurrenceDayOfWeek: e.target.value === 'weekly' ? (prev.recurrenceDayOfWeek || getDayOfWeekValue(prev.date)) : '',
+                    }))}
                     className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
                   >
                     <option value="none">None</option>
                     <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-[var(--color-text-secondary)]">Interval</label>
-                  <Input value={String(editEventForm.recurrenceInterval)} onChange={(v) => setEditEventForm((prev) => ({ ...prev, recurrenceInterval: v }))} placeholder="1" />
+                  <label className="text-xs text-[var(--color-text-secondary)]">End Date</label>
+                  <Input type="date" value={editEventForm.recurrenceEndDate} onChange={(v) => setEditEventForm((prev) => ({ ...prev, recurrenceEndDate: v }))} placeholder="YYYY-MM-DD" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-[var(--color-text-secondary)]">End Date</label>
-                  <Input value={editEventForm.recurrenceEndDate} onChange={(v) => setEditEventForm((prev) => ({ ...prev, recurrenceEndDate: v }))} placeholder="YYYY-MM-DD" />
+                  <label className="text-xs text-[var(--color-text-secondary)]">Day of Week</label>
+                  <select
+                    value={editEventForm.recurrenceType === 'weekly' ? (editEventForm.recurrenceDayOfWeek || getDayOfWeekValue(editEventForm.date)) : ''}
+                    onChange={(e) => setEditEventForm((prev) => ({
+                      ...prev,
+                      recurrenceDayOfWeek: e.target.value,
+                      date: editingEventScope === 'single' && prev.recurrenceType === 'weekly'
+                        ? shiftDateToWeekday(prev.date, e.target.value)
+                        : prev.date,
+                    }))}
+                    disabled={editEventForm.recurrenceType !== 'weekly'}
+                    className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm disabled:opacity-60"
+                  >
+                    <option value="">Select day</option>
+                    {DAY_OF_WEEK_OPTIONS.map((day) => (
+                      <option key={day.value} value={day.value}>{day.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -822,6 +914,55 @@ export default function ClubOrganizerDashboard({ user }) {
                 className="px-5 py-2.5 bg-[var(--color-purdue-gold)] text-black rounded text-base font-semibold disabled:opacity-60"
               >
                 {savingEventId ? 'Saving...' : 'Save Event'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteEventModal && deletingEvent && (
+        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-6">
+          <div className="w-full max-w-2xl rounded-2xl bg-[var(--color-surface-light)] border border-red-500/30 p-7 sm:p-8 flex flex-col gap-5">
+            <h2 className="text-2xl font-bold text-red-200">Delete Event</h2>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              {Boolean(deletingEvent?.recurrence?.type && deletingEvent.recurrence.type !== 'none')
+                ? 'Choose what to delete from this recurring series.'
+                : 'Delete this event? This will also delete related announcements.'}
+            </p>
+
+            {Boolean(deletingEvent?.recurrence?.type && deletingEvent.recurrence.type !== 'none') && (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[var(--color-text-secondary)]">Delete scope</label>
+                <select
+                  value={deleteEventScope}
+                  onChange={(e) => setDeleteEventScope(e.target.value)}
+                  className="px-3 py-2 rounded bg-[var(--color-surface-light)] border border-white/10 text-sm"
+                >
+                  <option value="single">This event only</option>
+                  <option value="future">This and future events</option>
+                  <option value="all">Entire series</option>
+                </select>
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                onClick={() => {
+                  if (deletingEventId) return;
+                  setShowDeleteEventModal(false);
+                  setDeletingEvent(null);
+                }}
+                disabled={Boolean(deletingEventId)}
+                className="profile-button-like px-5 py-2.5 text-base"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteEvent}
+                disabled={Boolean(deletingEventId)}
+                className="profile-button-like profile-button-danger px-5 py-2.5 text-base disabled:opacity-60"
+              >
+                {deletingEventId ? 'Deleting...' : 'Delete Event'}
               </button>
             </div>
           </div>
@@ -876,9 +1017,10 @@ function Panel({ title, children }) {
   );
 }
 
-function Input({ value, onChange, placeholder }) {
+function Input({ value, onChange, placeholder, type = 'text' }) {
   return (
     <input
+      type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}

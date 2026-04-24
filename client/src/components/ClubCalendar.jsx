@@ -4,6 +4,12 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function toDateKey(value) {
   if (!value) return null;
+  if (value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
   return String(value).slice(0, 10);
 }
 
@@ -98,16 +104,25 @@ export default function ClubCalendar({ events = [], monthDate, onMonthChange, on
           {monthGrid.map((day) => {
             const key = toDateKey(day);
             const dayEvents = eventsByDate.get(key) || [];
+            const hasEvents = dayEvents.length > 0;
             const isCurrentMonth = day.getMonth() === monthDate.getMonth();
             return (
               <div
                 key={key}
-                className={`min-h-[110px] rounded-xl border p-2 flex flex-col gap-2 ${isCurrentMonth ? 'border-white/10 bg-white/5' : 'border-white/5 bg-white/[0.02] opacity-45'}`}
+                className={`min-h-[110px] rounded-xl border p-2 flex flex-col gap-2 transition-colors ${isCurrentMonth
+                  ? hasEvents
+                    ? 'border-[var(--color-purdue-gold)]/40 bg-[var(--color-purdue-gold)]/8 shadow-[0_0_0_1px_rgba(206,184,136,0.18)]'
+                    : 'border-white/10 bg-white/5'
+                  : 'border-white/5 bg-white/[0.02] opacity-45'}`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-[var(--color-text-primary)]">{day.getDate()}</span>
                   {dayEvents.length > 0 && (
-                    <span className="text-[10px] rounded-full bg-[var(--color-purdue-gold)] text-black px-2 py-0.5 font-semibold">
+                    <span
+                      className="min-w-[28px] text-center text-[10px] rounded-full bg-[var(--color-purdue-gold)] text-black px-2.5 py-0.5 font-semibold"
+                      title={`${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'} on this day`}
+                      aria-label={`${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'} on this day`}
+                    >
                       {dayEvents.length}
                     </span>
                   )}
@@ -118,10 +133,13 @@ export default function ClubCalendar({ events = [], monthDate, onMonthChange, on
                       key={event.id}
                       type="button"
                       onClick={() => onEventClick?.(event)}
-                      className="text-left rounded-lg px-2 py-1 bg-black/20 hover:bg-black/30 transition-colors border border-white/5"
+                      className="text-left rounded-lg px-2 py-1.5 bg-gradient-to-r from-[var(--color-purdue-gold)]/22 to-[var(--color-purdue-rush)]/14 hover:from-[var(--color-purdue-gold)]/30 hover:to-[var(--color-purdue-rush)]/20 transition-colors border border-[var(--color-purdue-gold)]/30 shadow-sm"
                     >
-                      <p className="text-[11px] font-medium text-[var(--color-text-primary)] truncate">{event.title}</p>
+                      <p className="text-[11px] font-semibold text-[var(--color-text-primary)] truncate">{event.title}</p>
                       {event.time && <p className="text-[10px] text-[var(--color-text-secondary)] truncate">{event.time}</p>}
+                      {event.recurrence?.type && event.recurrence.type !== 'none' && (
+                        <p className="text-[10px] text-[var(--color-purdue-gold)] font-medium truncate">Repeats {event.recurrence.type}</p>
+                      )}
                     </button>
                   ))}
                   {dayEvents.length > 4 && (
