@@ -21,6 +21,12 @@ const eventSchema = new mongoose.Schema(
         default: 1,
         min: 1,
       },
+      dayOfWeek: {
+        type: Number,
+        default: null,
+        min: 0,
+        max: 6,
+      },
       endDate: {
         type: String,
         default: null,
@@ -49,6 +55,13 @@ eventSchema.pre('validate', function validateRecurrence(next) {
 
   if (!recurrence.endDate || !recurrence.recurrenceGroupId) {
     return next(new Error('Recurring events must include endDate and recurrenceGroupId'));
+  }
+
+  if (recurrence.dayOfWeek !== null && recurrence.dayOfWeek !== undefined) {
+    const dayOfWeek = Number(recurrence.dayOfWeek);
+    if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
+      return next(new Error('Recurring events must include a valid dayOfWeek'));
+    }
   }
 
   return next();

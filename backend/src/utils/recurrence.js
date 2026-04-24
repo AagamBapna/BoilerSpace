@@ -1,4 +1,5 @@
 const RECURRENCE_TYPES = ['none', 'weekly', 'monthly'];
+const WEEKDAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 function normalizeDateInput(value) {
   if (!value) return null;
@@ -28,12 +29,26 @@ function normalizeRecurrence(input = {}) {
   const interval = Number.isInteger(intervalRaw) && intervalRaw > 0 ? intervalRaw : 1;
   const endDate = normalizeDateInput(input.endDate);
   const recurrenceGroupId = input.recurrenceGroupId ? String(input.recurrenceGroupId) : null;
+  const dayOfWeekRaw = input.dayOfWeek;
+  let dayOfWeek = null;
+
+  if (dayOfWeekRaw !== undefined && dayOfWeekRaw !== null && String(dayOfWeekRaw).trim() !== '') {
+    const numericDay = Number.parseInt(dayOfWeekRaw, 10);
+    if (Number.isInteger(numericDay) && numericDay >= 0 && numericDay <= 6) {
+      dayOfWeek = numericDay;
+    } else {
+      const normalizedDay = String(dayOfWeekRaw).trim().toLowerCase();
+      const dayIndex = WEEKDAY_NAMES.indexOf(normalizedDay);
+      if (dayIndex >= 0) dayOfWeek = dayIndex;
+    }
+  }
 
   return {
     type,
     interval,
     endDate,
     recurrenceGroupId,
+    dayOfWeek,
   };
 }
 
@@ -61,10 +76,25 @@ function generateRecurringDates({ startDate, recurrence, maxInstances = 24 }) {
   let cursor = new Date(baseDate.getTime());
   let guard = 0;
 
+  if (normalized.type === 'weekly') {
+    const targetDayOfWeek = Number.isInteger(normalized.dayOfWeek) ? normalized.dayOfWeek : baseDate.getDay();
+    const offset = (targetDayOfWeek - cursor.getDay() + 7) % 7;
+    cursor.setDate(cursor.getDate() + offset);
+  }
+
   while (guard < maxInstances) {
+    if (endDate && cursor > endDate) {
+      break;
+    }
     dates.push(formatDateOnly(cursor));
-    const next = addRecurrenceInterval(cursor, normalized.type, normalized.interval);
-    if (!next || (endDate && next > endDate)) {
+    let next;
+    if (normalized.type === 'weekly') {
+      next = new Date(cursor.getTime());
+      next.setDate(next.getDate() + 7 * normalized.interval);
+    } else {
+      next = addRecurrenceInterval(cursor, normalized.type, normalized.interval);
+    }
+    if (!next) {
       break;
     }
     cursor = next;

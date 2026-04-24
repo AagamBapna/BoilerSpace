@@ -7,6 +7,45 @@ const Announcement = require('../models/Announcement');
 const { protect } = require('../middleware/auth');
 const { normalizeRecurrence, generateRecurringDates, isRecurringSeries, normalizeDateInput } = require('../utils/recurrence');
 
+function parseDateOnly(value) {
+  const normalized = normalizeDateInput(value);
+  if (!normalized) return null;
+  const [year, month, day] = normalized.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function getDayOfWeekFromDate(value) {
+  const date = parseDateOnly(value);
+  return date ? date.getUTCDay() : null;
+}
+
+function buildRecurrenceForSeries(recurrence, fallbackDate) {
+  const normalized = normalizeRecurrence(recurrence || {});
+  if (normalized.type === 'weekly' && normalized.dayOfWeek === null) {
+    normalized.dayOfWeek = getDayOfWeekFromDate(fallbackDate);
+  }
+  return normalized;
+}
+
+function buildEventFromBase(baseDoc, overrides, date, recurrence, recurrenceGroupId) {
+  return {
+    title: overrides.title !== undefined ? String(overrides.title || '').trim() : String(baseDoc.title || '').trim(),
+    description: overrides.description !== undefined ? String(overrides.description || '').trim() : String(baseDoc.description || '').trim(),
+    date,
+    time: overrides.time !== undefined ? String(overrides.time || '').trim() : String(baseDoc.time || '').trim(),
+    location: overrides.location !== undefined ? String(overrides.location || '').trim() : String(baseDoc.location || '').trim(),
+    clubId: baseDoc.clubId,
+    recurrence: {
+      type: recurrence.type,
+      interval: recurrence.interval,
+      dayOfWeek: recurrence.dayOfWeek,
+      endDate: recurrence.endDate,
+      recurrenceGroupId,
+    },
+  };
+}
+
 function normalizeEvent(eventDoc) {
   const doc = eventDoc.toObject ? eventDoc.toObject() : eventDoc;
   return {
@@ -14,7 +53,7 @@ function normalizeEvent(eventDoc) {
     id: doc._id.toString(),
     club: doc.clubId,
     clubId: doc.clubId?._id?.toString() || doc.clubId?.toString(),
-    recurrence: doc.recurrence || { type: 'none', interval: 1, endDate: null, recurrenceGroupId: null },
+    recurrence: doc.recurrence || { type: 'none', interval: 1, dayOfWeek: null, endDate: null, recurrenceGroupId: null },
   };
 }
 
@@ -60,6 +99,7 @@ function buildEventPayload(body, clubId, date, recurrence, recurrenceGroupId) {
     recurrence: {
       type: recurrence.type,
       interval: recurrence.interval,
+      dayOfWeek: recurrence.dayOfWeek,
       endDate: recurrence.endDate,
       recurrenceGroupId,
     },
@@ -140,17 +180,22 @@ router.post('/', protect, async (req, res) => {
     if (validation.error) return res.status(400).json(validation.error);
 
     const { title, description, date, time, location, clubId } = req.body;
-    const recurrence = normalizeRecurrence(req.body.recurrence || {});
     const normalizedDate = normalizeDateInput(date);
 
     if (!normalizedDate) {
       return res.status(400).json({ error: 'Validation failed', fields: { date: 'Date is required' } });
     }
 
+    const recurrence = buildRecurrenceForSeries(req.body.recurrence || {}, normalizedDate);
+
     const club = await Club.findById(clubId);
     if (!club) return res.status(404).json({ error: 'Club not found' });
     if (!(await assertOrganizerAccess(req, club))) {
       return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to create events for this club.' });
+    }
+
+    if (recurrence.type === 'weekly' && recurrence.dayOfWeek === null) {
+      return res.status(400).json({ error: 'Validation failed', fields: { recurrence: 'Recurring events require a day of week' } });
     }
 
     if (recurrence.type !== 'none' && !recurrence.endDate) {
@@ -162,6 +207,9 @@ router.post('/', protect, async (req, res) => {
     }
 
     const dates = generateRecurringDates({ startDate: normalizedDate, recurrence });
+    if (dates.length === 0) {
+      return res.status(400).json({ error: 'Validation failed', fields: { recurrence: 'Recurring events require a valid start date and day of week' } });
+    }
     const recurrenceGroupId = recurrence.type === 'none' ? null : new mongoose.Types.ObjectId().toString();
     const payloads = dates.map((eventDate) => buildEventPayload(req.body, club._id, eventDate, recurrence, recurrenceGroupId));
 
@@ -200,32 +248,112 @@ router.patch('/:id', protect, async (req, res) => {
       }
     });
 
+    if (updates.date !== undefined) {
+      const normalizedPatchDate = normalizeDateInput(updates.date);
+      if (!normalizedPatchDate) {
+        return res.status(400).json({ error: 'Validation failed', fields: { date: 'Date is required' } });
+      }
+      updates.date = normalizedPatchDate;
+    }
+
     if (req.body.recurrence) {
-      const recurrence = normalizeRecurrence(req.body.recurrence);
+      const recurrence = buildRecurrenceForSeries(req.body.recurrence, updates.date || event.date);
+      if (recurrence.type === 'weekly' && recurrence.dayOfWeek === null) {
+        return res.status(400).json({ error: 'Validation failed', fields: { recurrence: 'Recurring events require a day of week' } });
+      }
       if (recurrence.type !== 'none' && !recurrence.endDate) {
         return res.status(400).json({ error: 'Validation failed', fields: { recurrence: 'Recurring events require an end date' } });
       }
       updates.recurrence = {
         type: recurrence.type,
         interval: recurrence.interval,
+        dayOfWeek: recurrence.dayOfWeek,
         endDate: recurrence.endDate,
         recurrenceGroupId: recurrence.type === 'none' ? null : targetGroupId || new mongoose.Types.ObjectId().toString(),
       };
     }
 
+    if (scope === 'single' && isSeries) {
+      delete updates.recurrence;
+    }
+
     const eventsToUpdate = await Event.find(targetFilter);
     if (eventsToUpdate.length === 0) return res.status(404).json({ error: 'Event not found' });
 
-    await Promise.all(eventsToUpdate.map((doc) => {
-      Object.assign(doc, updates);
-      if (scope !== 'single' && isSeries) {
-        doc.recurrence = {
-          ...(doc.recurrence || {}),
-          ...(updates.recurrence || {}),
-        };
+    const shouldRebuildSeriesDates = scope !== 'single' && isSeries && (updates.date !== undefined || updates.recurrence !== undefined);
+
+    if (shouldRebuildSeriesDates) {
+      const sortedEvents = [...eventsToUpdate].sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || '').localeCompare(String(b.time || '')));
+      const anchorDoc = scope === 'future' ? event : sortedEvents[0];
+      const recurrence = buildRecurrenceForSeries(updates.recurrence || event.recurrence || {}, updates.date || anchorDoc.date);
+      if (recurrence.type === 'weekly' && recurrence.dayOfWeek === null) {
+        recurrence.dayOfWeek = getDayOfWeekFromDate(updates.date || anchorDoc.date);
       }
-      return doc.save();
-    }));
+
+      const desiredDates = generateRecurringDates({
+        startDate: updates.date || anchorDoc.date,
+        recurrence,
+        maxInstances: Math.max(sortedEvents.length + 24, 24),
+      });
+
+      if (desiredDates.length === 0) {
+        return res.status(400).json({ error: 'Validation failed', fields: { recurrence: 'Recurring events require a valid start date and day of week' } });
+      }
+
+      const docsToSave = [];
+      const docsToDelete = [];
+      const docsToCreate = [];
+      const baseDoc = sortedEvents[0].toObject();
+
+      desiredDates.forEach((eventDate, index) => {
+        if (index < sortedEvents.length) {
+          const doc = sortedEvents[index];
+          Object.assign(doc, updates);
+          doc.date = eventDate;
+          doc.recurrence = {
+            ...(doc.recurrence || {}),
+            ...(updates.recurrence || {}),
+            type: recurrence.type,
+            interval: recurrence.interval,
+            dayOfWeek: recurrence.dayOfWeek,
+            endDate: recurrence.endDate,
+            recurrenceGroupId: recurrence.type === 'none' ? null : targetGroupId || doc.recurrence?.recurrenceGroupId || new mongoose.Types.ObjectId().toString(),
+          };
+          docsToSave.push(doc);
+        } else {
+          docsToCreate.push(buildEventFromBase(baseDoc, updates, eventDate, recurrence, targetGroupId || baseDoc.recurrence?.recurrenceGroupId || new mongoose.Types.ObjectId().toString()));
+        }
+      });
+
+      if (sortedEvents.length > desiredDates.length) {
+        docsToDelete.push(...sortedEvents.slice(desiredDates.length));
+      }
+
+      await Promise.all(docsToSave.map((doc) => doc.save()));
+
+      if (docsToCreate.length > 0) {
+        const inserted = await Event.insertMany(docsToCreate);
+        await populateEvents(inserted);
+      }
+
+      if (docsToDelete.length > 0) {
+        await Promise.all([
+          Event.deleteMany({ _id: { $in: docsToDelete.map((doc) => doc._id) } }),
+          Announcement.deleteMany({ eventId: { $in: docsToDelete.map((doc) => doc._id) } }),
+        ]);
+      }
+    } else {
+      await Promise.all(eventsToUpdate.map((doc) => {
+        Object.assign(doc, updates);
+        if (scope !== 'single' && isSeries) {
+          doc.recurrence = {
+            ...(doc.recurrence || {}),
+            ...(updates.recurrence || {}),
+          };
+        }
+        return doc.save();
+      }));
+    }
 
     const refreshed = await Event.find(targetFilter)
       .populate({
