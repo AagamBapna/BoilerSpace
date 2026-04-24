@@ -119,7 +119,6 @@ router.post('/:id/join', protect, async (req, res) => {
     const clubIdStr = club._id.toString();
     const existingClubIds = Array.isArray(user.clubIds) ? user.clubIds.map(String) : [];
     const pendingClubIds = Array.isArray(user.pendingClubIds) ? user.pendingClubIds.map(String) : [];
-    const removedClubIds = Array.isArray(user.removedClubIds) ? user.removedClubIds.map(String) : [];
     if (existingClubIds.includes(clubIdStr)) {
       return res.json({ success: true, alreadyMember: true, clubId: clubIdStr });
     }
@@ -128,14 +127,8 @@ router.post('/:id/join', protect, async (req, res) => {
       return res.json({ success: true, alreadyPending: true, clubId: clubIdStr });
     }
 
-    if (removedClubIds.includes(clubIdStr)) {
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: 'You have been removed from this club and cannot request to join again.',
-      });
-    }
-
     user.pendingClubIds = [...pendingClubIds, clubIdStr];
+    user.removedClubIds = (Array.isArray(user.removedClubIds) ? user.removedClubIds.map(String) : []).filter((id) => id !== clubIdStr);
     if (Array.isArray(club.pendingMemberIds)) {
       const clubPendingIds = club.pendingMemberIds.map(String);
       if (!clubPendingIds.includes(String(userId))) {
@@ -203,10 +196,9 @@ router.post('/:id/leave', protect, async (req, res) => {
  * GET /api/clubs/:id/members
  * Organizer-only: list current members for management dashboard.
  */
-router.get('/:id/members', protect, async (req, res) => {
+router.get('/:id/members', protect, requireClubRole('officer'), async (req, res) => {
   try {
-    const club = await getOrganizerClub(req, res);
-    if (!club) return;
+    const club = req.club;
 
     const members = await User.find({ clubIds: club._id.toString() })
       .select('_id displayName email major year')
@@ -233,6 +225,18 @@ router.get('/:id/members', protect, async (req, res) => {
     console.error(err);
     return res.status(500).json({ error: 'Failed to fetch members' });
   }
+});
+
+/**
+ * GET /api/clubs/:id/access
+ * Members and above: returns the requester's role/position in this club.
+ */
+router.get('/:id/access', protect, requireClubRole('member'), async (req, res) => {
+  return res.json({
+    role: req.clubAccess?.role || 'member',
+    position: req.clubAccess?.position || DEFAULT_POSITION,
+    isOrganizer: Boolean(req.clubAccess?.isOrganizer),
+  });
 });
 
 /**
@@ -504,10 +508,9 @@ router.patch('/:id/members/:userId/role', protect, requireClubRole('officer'), a
  * GET /api/clubs/:id/pending-members
  * Organizer-only: list pending join requests for the club.
  */
-router.get('/:id/pending-members', protect, async (req, res) => {
+router.get('/:id/pending-members', protect, requireClubRole('officer'), async (req, res) => {
   try {
-    const club = await getOrganizerClub(req, res);
-    if (!club) return;
+    const club = req.club;
 
     const members = await User.find({ pendingClubIds: club._id.toString() })
       .select('_id displayName email major year')
@@ -710,10 +713,9 @@ router.delete('/:id/members/:userId', protect, async (req, res) => {
  * GET /api/clubs/:id/announcements
  * Organizer-only: list announcements for this club (including event and club-wide).
  */
-router.get('/:id/announcements', protect, async (req, res) => {
+router.get('/:id/announcements', protect, requireClubRole('officer'), async (req, res) => {
   try {
-    const club = await getOrganizerClub(req, res);
-    if (!club) return;
+    const club = req.club;
 
     const anns = await Announcement.find({ clubId: club._id })
       .populate({ path: 'authorId', select: 'id displayName email' })

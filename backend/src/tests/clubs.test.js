@@ -412,6 +412,26 @@ describe('Clubs API', () => {
       assert.strictEqual(res.body.alreadyPending, true);
     });
 
+    it('allows a removed user to request to rejoin', async () => {
+      mockedUserId = joiner._id.toString();
+      await User.findByIdAndUpdate(joiner._id, {
+        pendingClubIds: [],
+        removedClubIds: [club._id.toString()],
+        clubIds: [],
+      });
+
+      const res = await request(app)
+        .post(`/api/clubs/${club._id}/join`)
+        .expect(201);
+
+      assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.pendingRequest, true);
+
+      const updated = await User.findById(joiner._id);
+      assert.ok(updated.pendingClubIds.map(String).includes(club._id.toString()));
+      assert.ok(!updated.removedClubIds.map(String).includes(club._id.toString()));
+    });
+
     it('cancels a pending request when leaving', async () => {
       mockedUserId = joiner._id.toString();
 
