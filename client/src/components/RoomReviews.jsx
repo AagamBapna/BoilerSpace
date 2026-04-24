@@ -22,6 +22,8 @@ export default function RoomReviews({ roomId, user }) {
     };
     useEffect(() => {
         fetchReviews();
+        const interval = setInterval(fetchReviews, 5000);
+        return () => clearInterval(interval);
     }, [roomId]);
     const handleSubmit = async (e) => {
         e.preventDefault();
