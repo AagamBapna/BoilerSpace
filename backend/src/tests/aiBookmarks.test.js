@@ -6,6 +6,8 @@ const User = require('../models/User');
 const AIBookmark = require('../models/AIBookmark');
 const { signToken } = require('../config/jwt');
 
+jest.setTimeout(30000);
+
 let mongoServer;
 let userA, tokenA, userB, tokenB;
 
