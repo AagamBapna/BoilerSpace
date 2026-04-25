@@ -138,5 +138,33 @@ describe('Announcements API', () => {
       assert.strictEqual(res.body.priorityLevel, 'alert');
       assert.strictEqual(res.body.type, 'global');
     });
+
+    it('broadcast is immediately available to all users via active endpoint', async () => {
+      // Clean existing broadcasts
+      await Announcement.deleteMany({ type: 'global' });
+
+      // Admin creates a broadcast
+      jest.spyOn(passport, 'authenticate').mockImplementationOnce(() => (req, res, next) => {
+        req.user = { id: 'admin-1', email: 'admin@purdue.edu', displayName: 'Admin User', isAdmin: true };
+        next();
+      });
+
+      await request(app)
+        .post('/api/announcements/broadcast')
+        .send({ title: 'Immediate Update', body: 'Available now', priorityLevel: 'info' })
+        .expect(201);
+
+      // Any user (no auth required) fetches active broadcasts
+      const active = await request(app)
+        .get('/api/announcements/active')
+        .expect(200);
+
+      assert(Array.isArray(active.body));
+      assert(active.body.length >= 1);
+      const found = active.body.find(a => a.title === 'Immediate Update');
+      assert(found, 'Broadcast should be immediately available in active list');
+      assert.strictEqual(found.body, 'Available now');
+      assert.strictEqual(found.type, 'global');
+    });
   });
 });
