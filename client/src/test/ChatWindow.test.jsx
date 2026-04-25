@@ -1,4 +1,5 @@
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 import ChatWindow from '../components/ChatWindow';
@@ -179,5 +180,113 @@ describe('ChatWindow', () => {
             handlers.messageDisappeared({ conversationId: 'conv-1', messageId: 'm1' });
         });
         await waitFor(() => expect(screen.queryByText('will vanish')).not.toBeInTheDocument());
+    });
+
+    it('saves a selected reaction and updates the displayed counts', async () => {
+        const user = userEvent.setup();
+        const { socket } = createSocketMock();
+        axios.get.mockResolvedValueOnce({
+            data: {
+                messages: [
+                    {
+                        _id: 'm1',
+                        text: 'reactable',
+                        sender: { _id: 'user-2' },
+                        createdAt: new Date().toISOString(),
+                        reactions: [
+                            { userId: 'user-2', reactionType: '👍' },
+                            { userId: 'user-3', reactionType: '👍' },
+                        ],
+                    },
+                ],
+                totalPages: 1,
+                total: 1,
+            },
+        });
+        axios.post.mockResolvedValueOnce({
+            data: {
+                message: {
+                    _id: 'm1',
+                    text: 'reactable',
+                    sender: { _id: 'user-2' },
+                    createdAt: new Date().toISOString(),
+                    reactions: [
+                        { userId: 'user-2', reactionType: '👍' },
+                        { userId: 'user-3', reactionType: '👍' },
+                        { userId: 'user-1', reactionType: '❤️' },
+                    ],
+                },
+            },
+        });
+
+        render(
+            <ChatWindow
+                conversation={baseConversation}
+                currentUserId="user-1"
+                socket={socket}
+                onBack={vi.fn()}
+                onMessagesRead={vi.fn()}
+            />
+        );
+
+        await waitFor(() => expect(screen.getByText('reactable')).toBeInTheDocument());
+        expect(screen.getByText('👍 2')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Add reaction' }));
+        await user.click(screen.getByRole('button', { name: 'React with ❤️' }));
+
+        await waitFor(() => {
+            expect(axios.post).toHaveBeenCalledWith('/api/messages/m1/reactions', { reactionType: '❤️' });
+        });
+        expect(await screen.findByText('❤️ 1')).toBeInTheDocument();
+    });
+
+    it('updates reaction counts when the socket broadcasts a reaction change', async () => {
+        const { socket, handlers } = createSocketMock();
+        axios.get.mockResolvedValueOnce({
+            data: {
+                messages: [
+                    {
+                        _id: 'm1',
+                        text: 'reactable',
+                        sender: { _id: 'user-2' },
+                        createdAt: new Date().toISOString(),
+                        reactions: [],
+                    },
+                ],
+                totalPages: 1,
+                total: 1,
+            },
+        });
+
+        render(
+            <ChatWindow
+                conversation={baseConversation}
+                currentUserId="user-1"
+                socket={socket}
+                onBack={vi.fn()}
+                onMessagesRead={vi.fn()}
+            />
+        );
+
+        await waitFor(() => expect(screen.getByText('reactable')).toBeInTheDocument());
+
+        act(() => {
+            handlers.messageReactionUpdated({
+                conversationId: 'conv-1',
+                message: {
+                    _id: 'm1',
+                    text: 'reactable',
+                    sender: { _id: 'user-2' },
+                    createdAt: new Date().toISOString(),
+                    reactions: [
+                        { userId: 'user-2', reactionType: '🎉' },
+                        { userId: 'user-3', reactionType: '🎉' },
+                    ],
+                },
+            });
+        });
+
+        expect(await screen.findByText('🎉 2')).toBeInTheDocument();
     });
 });
