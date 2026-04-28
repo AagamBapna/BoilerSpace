@@ -731,7 +731,7 @@ export default function ClubOrganizerDashboard({ user }) {
 
       {showEditClubModal && (
         <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-6">
-          <div className="w-full max-w-2xl rounded-2xl bg-[var(--color-surface-light)] p-7 sm:p-8 flex flex-col gap-5">
+          <div className="modal-inner w-full max-w-2xl rounded-2xl bg-[var(--color-surface-light)] p-7 flex flex-col gap-5">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Edit Club Details</h2>
               <button
@@ -786,7 +786,7 @@ export default function ClubOrganizerDashboard({ user }) {
                     if (ok) setShowEditClubModal(false);
                   }}
                   disabled={savingClub}
-                  className="px-5 py-2.5 bg-[var(--color-purdue-gold)] text-black rounded text-base font-semibold disabled:opacity-60"
+                  className="profile-button-like profile-button-gold text-black rounded text-base font-semibold disabled:opacity-60"
                 >
                   {savingClub ? 'Saving...' : 'Save Club Details'}
                 </button>
@@ -798,7 +798,7 @@ export default function ClubOrganizerDashboard({ user }) {
 
       {showEditEventModal && editingEvent && (
         <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-6">
-          <div className="w-full max-w-2xl rounded-2xl bg-[var(--color-surface-light)] p-7 sm:p-8 flex flex-col gap-5">
+          <div className="modal-inner w-full max-w-2xl rounded-2xl bg-[var(--color-surface-light)] flex flex-col gap-5">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Edit Event</h2>
               <button
@@ -924,7 +924,7 @@ export default function ClubOrganizerDashboard({ user }) {
               <button
                 onClick={handleSaveEvent}
                 disabled={Boolean(savingEventId)}
-                className="px-5 py-2.5 bg-[var(--color-purdue-gold)] text-black rounded text-base font-semibold disabled:opacity-60"
+                className="profile-button-like profile-button-gold text-black rounded text-base font-semibold disabled:opacity-60"
               >
                 {savingEventId ? 'Saving...' : 'Save Event'}
               </button>

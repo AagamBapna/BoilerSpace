@@ -35,7 +35,7 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, onForgotPassw
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div
         className="w-full max-w-sm mx-4 rounded-2xl p-8"
-        style={{ background: '#1e1e1e', border: '1px solid rgba(206,184,136,0.15)' }}
+        style={{ background: '#1e1e1e', border: '1px solid rgba(206,184,136,0.15)', padding: '1rem' }}
       >
         <h1 className="text-xl font-bold text-[#f5f5f5]">Sign in</h1>
         <p className="text-sm text-[#a0a0a0] mt-1 mb-6">Welcome back to BoilerSpace</p>

@@ -427,7 +427,7 @@ export default function ClubProfile({ user }) {
                       onClick={() => navigate(`/events/${event.id}`)}
                       className="w-full text-left rounded-lg bg-[var(--color-surface-hover)] hover:bg-[var(--color-surface)] transition-colors p-4 border border-white/10"
                     >
-                      <div className="flex flex-col gap-1">
+                      <div style={{ padding: '0.5rem' }} className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-[var(--color-text-primary)]">{event.title}</h3>
                           {event._isRecurringListItem && (

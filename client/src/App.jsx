@@ -486,7 +486,7 @@ export default function App() {
           )}
 
           {/* Quiet Zones Toggle */}
-          <div className="bg-[var(--color-surface-light)] h-10 px-5 border border-[var(--color-purdue-gold)]/20 rounded-xl shadow-lg flex items-center gap-3">
+          <div style={{ padding: '0 1rem' }} className="bg-[var(--color-surface-light)] h-10 px-5 border border-[var(--color-purdue-gold)]/20 rounded-xl shadow-lg flex items-center gap-3">
             <span className="text-sm font-medium text-[var(--color-text-primary)] hidden sm:inline">Quiet Zones</span>
             <button
               onClick={() => setIsQuietZonesOnly(!isQuietZonesOnly)}
@@ -512,7 +512,11 @@ export default function App() {
             onOpenCourseNotes={(courseId) => setNotesView({ step: 'notes', courseId, courseName: '' })}
           />
 
-          <button onClick={() => setNavExpanded(!navExpanded)} className="h-10 px-5 bg-[var(--color-surface-light)] border border-[var(--color-purdue-gold)]/20 rounded-xl shadow-lg flex items-center gap-2.5 text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-primary)]">
+          <button 
+            onClick={() => setNavExpanded(!navExpanded)} 
+            style={{ padding: '0 1rem' }}
+            className="h-10 bg-[var(--color-surface-light)] border border-[var(--color-purdue-gold)]/20 rounded-xl shadow-lg flex items-center gap-2.5 text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-primary)]"
+          >
             <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {navExpanded ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -523,7 +527,7 @@ export default function App() {
             <span className="hidden sm:inline">Menu</span>
           </button>
 
-          <button onClick={() => setShowProfile(true)} className="h-10 px-5 bg-[var(--color-surface-light)] border border-[var(--color-purdue-gold)]/20 rounded-xl shadow-lg flex items-center gap-2.5 text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-primary)]">
+          <button onClick={() => setShowProfile(true)} style={{ padding: '0 1rem' }} className="h-10 px-5 bg-[var(--color-surface-light)] border border-[var(--color-purdue-gold)]/20 rounded-xl shadow-lg flex items-center gap-2.5 text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-primary)]">
             {user.profilePictureUrl ? (
               <img src={user.profilePictureUrl} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
             ) : (
@@ -537,7 +541,7 @@ export default function App() {
 
         {/* Collapsible Dropdown Menu */}
         {navExpanded && (
-          <div className="bg-[var(--color-surface-light)] border border-white/10 rounded-xl shadow-2xl p-2 flex flex-col gap-1 w-56 pointer-events-auto max-h-[70vh] overflow-y-auto animate-dropdownIn">
+          <div style={{ padding: '0.5rem 1rem' }} className="bg-[var(--color-surface-light)] border border-white/10 rounded-xl shadow-2xl p-2 flex flex-col gap-1 w-56 pointer-events-auto max-h-[70vh] overflow-y-auto animate-dropdownIn">
 
             {inRouterContext ? (
               <>
