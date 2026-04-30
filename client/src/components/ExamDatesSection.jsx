@@ -100,8 +100,9 @@ export default function ExamDatesSection({ courseId }) {
   const upcoming = exams.filter((exam) => new Date(exam.date).getTime() >= now);
 
   return (
-    <div className="mb-6 p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)]">
-      <div className="flex items-center justify-between mb-3">
+    <div className="mb-8 p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)]">
+      <div className="flex items-center justify-between mb-3"
+            style={{ padding: '0.5rem' }}>
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           Upcoming Exams
         </h3>
@@ -112,6 +113,7 @@ export default function ExamDatesSection({ courseId }) {
               setFormSuccess(null);
             }}
             className="py-1 px-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] font-semibold text-xs rounded-lg hover:opacity-90 transition-opacity"
+            style={{ paddingLeft: '10px', paddingRight: '10px', whiteSpace: 'nowrap' }}
           >
             + Add Exam
           </button>
@@ -204,11 +206,12 @@ export default function ExamDatesSection({ courseId }) {
               <li
                 key={exam._id}
                 data-testid={isThisWeek ? 'exam-priority' : 'exam-upcoming'}
-                className={`p-3 rounded-lg border ${
+                className={`rounded-lg border ${
                   isThisWeek
                     ? 'bg-[var(--color-purdue-gold)]/10 border-[var(--color-purdue-gold)]/40'
                     : 'bg-[var(--color-surface)] border-[var(--color-border)]'
                 }`}
+                style={{ padding: '0.5rem' }}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">

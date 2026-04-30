@@ -527,6 +527,17 @@ body {
   border-color: transparent;
 }
 
+.profile-button-blue {
+  background: #2563eb; /* blue-600 */
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.profile-button-blue:hover {
+  background: #1d4ed8; /* blue-700 */
+  border-color: transparent;
+}
+
 .profile-button-danger {
   background: #dc2626;
   color: #ffffff;
